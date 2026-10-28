@@ -138,11 +138,6 @@ export default function HomePage() {
                   <small>Cocok jika pelatihan sudah selesai atau COE sedang diproses.</small>
                 </span>
               </button>
-              <div className="choice-pagination" aria-label="Halaman 1 dari 3">
-                <span className="active" />
-                <span />
-                <span />
-              </div>
             </>
           )}
 
@@ -679,11 +674,14 @@ export default function HomePage() {
 
         {step < 7 && (
           <footer className={`wizard-footer ${step === 1 ? 'single-action' : ''}`}>
-            {step > 1 && (
-              <div className="progress-track footer-progress" aria-label={`Langkah ${step} dari 6`}>
-                <span style={{ width: `${(step / 6) * 100}%` }} />
-              </div>
-            )}
+            <div className="step-dots" aria-label={`Langkah ${step} dari 6`}>
+              {Array.from({ length: 6 }, (_, index) => (
+                <span
+                  className={index + 1 === step ? 'active' : index + 1 < step ? 'completed' : ''}
+                  key={index}
+                />
+              ))}
+            </div>
             {step > 1 && (
               <button className="back-button" onClick={() => setStep(step - 1)}>
                 Kembali
