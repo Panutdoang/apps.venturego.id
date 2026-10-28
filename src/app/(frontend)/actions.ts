@@ -11,6 +11,7 @@ export type ApplicationInput = {
   birthPlace: string
   birthDate: string
   gender: 'MALE' | 'FEMALE'
+  religion: 'ISLAM' | 'PROTESTANT' | 'CATHOLIC' | 'HINDU' | 'BUDDHIST' | 'CONFUCIAN'
   idCardAddress: string
   domicileSameAsIdCard: boolean
   domicileAddress: string
@@ -38,13 +39,56 @@ export type ApplicationInput = {
   acceptsDataProcessing: boolean
 }
 
-export type ApplicationResult =
-  | { ok: true; applicationId: string }
-  | { ok: false; message: string }
+export type ApplicationResult = { ok: true; applicationId: string } | { ok: false; message: string }
 
 const cleanText = (value: string, max: number) => value.trim().replace(/[<>]/g, '').slice(0, max)
+const indonesianMonths: Record<string, number> = {
+  januari: 1,
+  februari: 2,
+  maret: 3,
+  april: 4,
+  mei: 5,
+  juni: 6,
+  juli: 7,
+  agustus: 8,
+  september: 9,
+  oktober: 10,
+  november: 11,
+  desember: 12,
+}
+const religions: ApplicationInput['religion'][] = [
+  'ISLAM',
+  'PROTESTANT',
+  'CATHOLIC',
+  'HINDU',
+  'BUDDHIST',
+  'CONFUCIAN',
+]
 
-export async function submitFinancingApplication(input: ApplicationInput): Promise<ApplicationResult> {
+const parseIndonesianDate = (value: string) => {
+  const match = cleanText(value, 40).match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/)
+  if (!match) return undefined
+
+  const day = Number(match[1])
+  const month = indonesianMonths[match[2].toLowerCase()]
+  const year = Number(match[3])
+  if (!month || year < 1900) return undefined
+
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined
+  }
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export async function submitFinancingApplication(
+  input: ApplicationInput,
+): Promise<ApplicationResult> {
   const applicantName = cleanText(input.applicantName, 100)
   const phone = cleanText(input.phone, 24)
   const lpkName = cleanText(input.lpkName, 120)
@@ -55,19 +99,30 @@ export async function submitFinancingApplication(input: ApplicationInput): Promi
   if (!/^(\+62|62|0)[0-9]{8,14}$/.test(phone.replace(/[\s-]/g, ''))) {
     return { ok: false, message: 'Masukkan nomor WhatsApp Indonesia yang valid.' }
   }
+  if (!religions.includes(input.religion)) {
+    return { ok: false, message: 'Pilih agama yang valid.' }
+  }
   if (!input.understandsWakalah || !input.acceptsDataProcessing) {
     return { ok: false, message: 'Persetujuan akad dan pemrosesan data wajib dicentang.' }
   }
 
   const departure = input.product === 'DEPARTURE_BRIDGING'
+  const birthDate = parseIndonesianDate(input.birthDate)
   if (!departure && !cleanText(input.trainingProgram, 120)) {
     return { ok: false, message: 'Lengkapi nama program pelatihan Full Cover.' }
   }
-  if (departure && (!input.trainingCompleted || !input.birthDate || !cleanText(input.birthPlace, 80))) {
-    return { ok: false, message: 'Konfirmasi pelatihan selesai dan lengkapi tempat serta tanggal lahir.' }
+  if (departure && (!input.trainingCompleted || !birthDate || !cleanText(input.birthPlace, 80))) {
+    return {
+      ok: false,
+      message:
+        'Konfirmasi pelatihan selesai dan lengkapi tempat serta tanggal lahir dengan format seperti 12 Februari 2000.',
+    }
   }
-  if (departure && (!cleanText(input.idCardAddress, 500) || !cleanText(input.domicileSameAsIdCard ? input.idCardAddress : input.domicileAddress, 500))) {
-    return { ok: false, message: 'Lengkapi alamat KTP dan alamat domisili.' }
+  if (
+    departure &&
+    (!cleanText(input.idCardAddress, 500) || !cleanText(input.domicileAddress, 500))
+  ) {
+    return { ok: false, message: 'Lengkapi alamat sesuai KTP dan alamat korespondensi.' }
   }
   const documents = [
     'KTP siswa',
@@ -78,6 +133,20 @@ export async function submitFinancingApplication(input: ApplicationInput): Promi
       ? ['Paspor', 'Kontrak kerja', 'COE atau bukti proses COE', 'Rincian kebutuhan keberangkatan']
       : ['Akta kelahiran', 'Dokumen pendidikan', 'Rincian program pelatihan']),
   ].map((documentType) => ({ documentType, status: 'NOT_UPLOADED' as const }))
+  const personalDetails = {
+    religion: input.religion,
+    ...(departure
+      ? {
+          birthPlace: cleanText(input.birthPlace, 80),
+          birthDate,
+          gender: input.gender,
+          idCardAddress: cleanText(input.idCardAddress, 500),
+          domicileSameAsIdCard: false,
+          domicileAddress: cleanText(input.domicileAddress, 500),
+          domicilePostalCode: cleanText(input.domicilePostalCode, 10),
+        }
+      : {}),
+  }
 
   try {
     const payload = await getPayload({ config })
@@ -93,17 +162,7 @@ export async function submitFinancingApplication(input: ApplicationInput): Promi
         applicantName,
         phone,
         lpkName,
-        personalDetails: departure
-          ? {
-              birthPlace: cleanText(input.birthPlace, 80),
-              birthDate: input.birthDate,
-              gender: input.gender,
-              idCardAddress: cleanText(input.idCardAddress, 500),
-              domicileSameAsIdCard: input.domicileSameAsIdCard,
-              domicileAddress: cleanText(input.domicileSameAsIdCard ? input.idCardAddress : input.domicileAddress, 500),
-              domicilePostalCode: cleanText(input.domicilePostalCode, 10),
-            }
-          : undefined,
+        personalDetails,
         destination: input.destination,
         eligibility: {
           trainingStarted: input.trainingStarted,
@@ -133,7 +192,16 @@ export async function submitFinancingApplication(input: ApplicationInput): Promi
             }
           : undefined,
         fundingNeeds: (departure ? [] : input.selectedNeeds).map((category) => ({
-          category: category as 'LANGUAGE_TRAINING' | 'SKILL_TRAINING' | 'MEDICAL' | 'DOCUMENT' | 'LPK_PAYMENT' | 'ALLOWANCE' | 'TRANSPORT' | 'ACCOMMODATION' | 'OTHER',
+          category: category as
+            | 'LANGUAGE_TRAINING'
+            | 'SKILL_TRAINING'
+            | 'MEDICAL'
+            | 'DOCUMENT'
+            | 'LPK_PAYMENT'
+            | 'ALLOWANCE'
+            | 'TRANSPORT'
+            | 'ACCOMMODATION'
+            | 'OTHER',
         })),
         financialPlan: departure
           ? {

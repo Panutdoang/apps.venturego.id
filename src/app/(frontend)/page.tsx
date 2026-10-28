@@ -32,6 +32,7 @@ const initialForm: ApplicationInput = {
   birthPlace: '',
   birthDate: '',
   gender: 'MALE',
+  religion: 'ISLAM',
   idCardAddress: '',
   domicileSameAsIdCard: false,
   domicileAddress: '',
@@ -259,6 +260,20 @@ export default function HomePage() {
                   placeholder="08xxxxxxxxxx"
                 />
               </label>
+              <label className="field">
+                <span>Agama</span>
+                <select
+                  value={form.religion}
+                  onChange={(e) => set('religion', e.target.value as ApplicationInput['religion'])}
+                >
+                  <option value="ISLAM">Islam</option>
+                  <option value="PROTESTANT">Kristen Protestan</option>
+                  <option value="CATHOLIC">Katolik</option>
+                  <option value="HINDU">Hindu</option>
+                  <option value="BUDDHIST">Buddha</option>
+                  <option value="CONFUCIAN">Konghucu</option>
+                </select>
+              </label>
               {!isDeparture && (
                 <>
                   <label className="field">
@@ -296,9 +311,9 @@ export default function HomePage() {
                   <label className="field">
                     <span>Tanggal lahir</span>
                     <input
-                      type="date"
                       value={form.birthDate}
                       onChange={(e) => set('birthDate', e.target.value)}
+                      placeholder="12 Februari 2000"
                     />
                   </label>
                   <label className="field">
@@ -316,35 +331,21 @@ export default function HomePage() {
                     <textarea
                       value={form.idCardAddress}
                       onChange={(e) => set('idCardAddress', e.target.value)}
-                      placeholder="Jl. / RT / RW / Kel. / Kec. / Kab. / Prov."
+                      placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
                       rows={4}
                     />
                   </label>
-                  <label className="switch-row">
-                    <span>
-                      <strong>Alamat domisili sama dengan KTP</strong>
-                      <small>Gunakan alamat KTP sebagai alamat surat-menyurat.</small>
-                    </span>
-                    <input
-                      type="checkbox"
-                      role="switch"
-                      checked={form.domicileSameAsIdCard}
-                      onChange={(e) => set('domicileSameAsIdCard', e.target.checked)}
+                  <label className="field">
+                    <span>Alamat korespondensi (untuk surat menyurat)</span>
+                    <textarea
+                      value={form.domicileAddress}
+                      onChange={(e) => set('domicileAddress', e.target.value)}
+                      placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
+                      rows={4}
                     />
                   </label>
-                  {!form.domicileSameAsIdCard && (
-                    <label className="field">
-                      <span>Alamat domisili saat ini</span>
-                      <textarea
-                        value={form.domicileAddress}
-                        onChange={(e) => set('domicileAddress', e.target.value)}
-                        placeholder="Jl. / RT / RW / Kel. / Kec. / Kab. / Prov."
-                        rows={4}
-                      />
-                    </label>
-                  )}
                   <label className="field">
-                    <span>Kode pos domisili saat ini</span>
+                    <span>Kode pos alamat korespondensi</span>
                     <input
                       inputMode="numeric"
                       maxLength={5}

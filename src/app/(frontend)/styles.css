@@ -953,8 +953,16 @@ input[type='checkbox'] {
 body,
 button,
 input,
-select {
+select,
+textarea,
+option {
   font-family: 'Inter Variable', Inter, Arial, sans-serif;
+}
+
+select option {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 body {
@@ -1278,7 +1286,22 @@ body {
   border-radius: 16px;
   background: #fbfcff;
   color: #11143a;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 550;
   box-shadow: 0 3px 12px rgba(37, 45, 104, 0.035);
+}
+
+.mobile-shell:not(.choice-step) .field select option {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 550;
+}
+
+.mobile-shell:not(.choice-step) .field input::placeholder,
+.mobile-shell:not(.choice-step) .field textarea::placeholder {
+  color: #8c90a2;
+  font-weight: 400;
 }
 
 .mobile-shell:not(.choice-step) .field textarea {

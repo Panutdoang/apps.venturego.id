@@ -61,6 +61,18 @@ export const FinancingApplications: CollectionConfig = {
             { label: 'Perempuan', value: 'FEMALE' },
           ],
         },
+        {
+          name: 'religion',
+          type: 'select',
+          options: [
+            { label: 'Islam', value: 'ISLAM' },
+            { label: 'Kristen Protestan', value: 'PROTESTANT' },
+            { label: 'Katolik', value: 'CATHOLIC' },
+            { label: 'Hindu', value: 'HINDU' },
+            { label: 'Buddha', value: 'BUDDHIST' },
+            { label: 'Konghucu', value: 'CONFUCIAN' },
+          ],
+        },
         { name: 'idCardAddress', type: 'textarea' },
         { name: 'domicileSameAsIdCard', type: 'checkbox' },
         { name: 'domicileAddress', type: 'textarea' },
