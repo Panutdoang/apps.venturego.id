@@ -1,0 +1,10 @@
+{
+  "description": "A web application designed to match a requested style or reference, helping users create a tailored experience.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
