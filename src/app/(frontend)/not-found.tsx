@@ -14,7 +14,7 @@ export default function NotFound() {
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
       <Link
-        className="mt-6 font-medium text-blue-600 underline-offset-4 hover:underline"
+        className="mt-6 font-medium text-[#17158c] underline-offset-4 hover:underline"
         href="/"
       >
         &larr; Back to Home

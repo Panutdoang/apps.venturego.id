@@ -77,7 +77,7 @@ export function AdminDashboard({
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-8">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-indigo-700">VentureGo · Operasional</p>
+          <p className="text-sm font-semibold text-[#17158c]">VentureGo · Operasional</p>
           <h1 className="mt-1 text-2xl font-bold">Pengajuan pembiayaan</h1>
           <p className="mt-1 text-sm text-slate-600">Masuk sebagai {email}</p>
         </div>
@@ -107,7 +107,7 @@ export function AdminDashboard({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#17158c]">
                     {application.applicationId}
                   </p>
                   <h2 className="mt-1 text-lg font-bold">{application.applicantName}</h2>
@@ -172,7 +172,7 @@ export function AdminDashboard({
                         </select>
                         {document.storagePath && (
                           <a
-                            className="font-semibold text-indigo-700 underline"
+                            className="font-semibold text-[#17158c] underline"
                             href={`/api/admin/applications/${application.id}/documents/${index}`}
                           >
                             Unduh {document.fileName ?? 'berkas'}
@@ -222,7 +222,7 @@ export function AdminDashboard({
                   />
                 </label>
                 <button
-                  className="self-end rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="self-end rounded-lg bg-[#17158c] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   disabled={pending}
                 >
                   Simpan

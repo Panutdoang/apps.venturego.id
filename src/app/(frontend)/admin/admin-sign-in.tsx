@@ -45,7 +45,7 @@ export function AdminSignIn() {
         className="w-full space-y-5 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
       >
         <div>
-          <p className="text-sm font-semibold text-indigo-700">VentureGo</p>
+          <p className="text-sm font-semibold text-[#17158c]">VentureGo</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">Masuk staf</h1>
           <p className="mt-2 text-sm text-slate-600">
             Gunakan akun staf yang terdaftar di Firebase Authentication.
@@ -77,7 +77,7 @@ export function AdminSignIn() {
           </p>
         )}
         <button
-          className="w-full rounded-lg bg-indigo-700 px-4 py-3 font-semibold text-white disabled:opacity-60"
+          className="w-full rounded-lg bg-[#17158c] px-4 py-3 font-semibold text-white disabled:opacity-60"
           disabled={pending}
         >
           {pending ? 'Memeriksa…' : 'Masuk'}
