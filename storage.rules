@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Visitors can only create their own anonymous-upload objects. Staff access
+    // is proxied through a server route after the staff session is verified.
+    match /application-uploads/{uid}/{filePath=**} {
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && resource == null
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+      allow read, update, delete: if false;
+    }
+  }
+}

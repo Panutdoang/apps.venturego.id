@@ -1,7 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { submitFinancingApplication, type ApplicationInput } from './actions'
+import {
+  discardApplicationUploads,
+  submitFinancingApplication,
+  type ApplicationInput,
+} from './actions'
 import {
   FINANCING_OPTIONS,
   calculateWakalahPlan,
@@ -13,6 +17,9 @@ import {
   MAX_DOCUMENT_SIZE_BYTES,
   isAcceptedDocumentType,
 } from '@/lib/documents'
+import { getFirebaseClientAuth, getFirebaseClientStorage } from '@/lib/firebase-client'
+import { signInAnonymously, signOut } from 'firebase/auth'
+import { ref, uploadBytes } from 'firebase/storage'
 
 type Product = ApplicationInput['product']
 
@@ -76,19 +83,51 @@ export default function HomePage() {
 
   const submit = () => {
     setResult({})
+    const selectedBytes = Object.values(documentFiles).reduce(
+      (total, file) => total + (file?.size ?? 0),
+      0,
+    )
+    if (selectedBytes > 60 * 1024 * 1024) {
+      setResult({ error: 'Ukuran seluruh dokumen tidak boleh melebihi 60 MB.' })
+      return
+    }
     startTransition(async () => {
-      const request = new FormData()
-      request.set('application', JSON.stringify(form))
-      DOCUMENT_DEFINITIONS[form.product].forEach((document, index) => {
-        const file = documentFiles[document.label]
-        if (file) request.set(`document-${index}`, file)
-      })
-      const response = await submitFinancingApplication(request)
-      if (response.ok) {
-        setResult({ id: response.applicationId })
-        setStep(7)
-      } else {
-        setResult({ error: response.message })
+      let uploadToken = ''
+      const uploaded: { index: number; path: string }[] = []
+      try {
+        const auth = getFirebaseClientAuth()
+        if (auth.currentUser && !auth.currentUser.isAnonymous) await signOut(auth)
+        const user = auth.currentUser ?? (await signInAnonymously(auth)).user
+        uploadToken = await user.getIdToken()
+        const storage = getFirebaseClientStorage()
+        for (const [index, document] of DOCUMENT_DEFINITIONS[form.product].entries()) {
+          const file = documentFiles[document.label]
+          if (!file) continue
+          const fileName = file.name.replace(/[\\/]/g, '_').slice(0, 180)
+          const path = `application-uploads/${user.uid}/${crypto.randomUUID()}/${fileName}`
+          await uploadBytes(ref(storage, path), file, {
+            contentType: file.type,
+            customMetadata: { originalName: file.name },
+          })
+          uploaded.push({ index, path })
+        }
+        const request = new FormData()
+        request.set('application', JSON.stringify(form))
+        request.set('uploads', JSON.stringify(uploaded))
+        request.set('uploadToken', uploadToken)
+        const response = await submitFinancingApplication(request)
+        if (response.ok) {
+          setResult({ id: response.applicationId })
+          setStep(7)
+        } else {
+          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
+          setResult({ error: response.message })
+        }
+      } catch {
+        if (uploadToken && uploaded.length) {
+          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
+        }
+        setResult({ error: 'Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.' })
       }
     })
   }
@@ -116,7 +155,10 @@ export default function HomePage() {
               <button
                 aria-pressed={!isDeparture}
                 className={`product-option ${!isDeparture ? 'selected' : ''}`}
-                onClick={() => set('product', 'FULL_COVER')}
+                onClick={() => {
+                  set('product', 'FULL_COVER')
+                  setDocumentFiles({})
+                }}
               >
                 <span className="selection-box" aria-hidden="true">
                   {!isDeparture && <span>✓</span>}
@@ -131,7 +173,10 @@ export default function HomePage() {
               <button
                 aria-pressed={isDeparture}
                 className={`product-option ${isDeparture ? 'selected' : ''}`}
-                onClick={() => set('product', 'DEPARTURE_BRIDGING')}
+                onClick={() => {
+                  set('product', 'DEPARTURE_BRIDGING')
+                  setDocumentFiles({})
+                }}
               >
                 <span className="selection-box" aria-hidden="true">
                   {isDeparture && <span>✓</span>}
