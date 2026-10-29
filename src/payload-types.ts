@@ -83,6 +83,7 @@ export interface Config {
     media: Media;
     folders: Folder;
     tags: Tag;
+    'application-documents': ApplicationDocument;
     'financing-applications': FinancingApplication;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -96,6 +97,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     folders: FoldersSelect<false> | FoldersSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
+    'application-documents': ApplicationDocumentsSelect<false> | ApplicationDocumentsSelect<true>;
     'financing-applications': FinancingApplicationsSelect<false> | FinancingApplicationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -249,6 +251,34 @@ export interface Tag {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "application-documents".
+ */
+export interface ApplicationDocument {
+  id: string;
+  label?: string | null;
+  applicationId?: string | null;
+  createdBy?: {
+    relationTo: 'admins';
+    value: string | Admin;
+  } | null;
+  updatedBy?: {
+    relationTo: 'admins';
+    value: string | Admin;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "financing-applications".
  */
 export interface FinancingApplication {
@@ -323,6 +353,7 @@ export interface FinancingApplication {
   documents?:
     | {
         documentType: string;
+        file?: (string | null) | ApplicationDocument;
         status: 'NOT_UPLOADED' | 'UPLOADED' | 'VERIFIED' | 'REVISION_REQUIRED';
         id?: string | null;
       }[]
@@ -542,6 +573,27 @@ export interface TagsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "application-documents_select".
+ */
+export interface ApplicationDocumentsSelect<T extends boolean = true> {
+  label?: T;
+  applicationId?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "financing-applications_select".
  */
 export interface FinancingApplicationsSelect<T extends boolean = true> {
@@ -617,6 +669,7 @@ export interface FinancingApplicationsSelect<T extends boolean = true> {
     | T
     | {
         documentType?: T;
+        file?: T;
         status?: T;
         id?: T;
       };
@@ -712,7 +765,7 @@ export interface CollectionsWidget {
 export interface CollectionQueryWidget {
   data?: {
     title?: string | null;
-    relatedCollection: 'admins' | 'media' | 'folders' | 'tags' | 'financing-applications';
+    relatedCollection: 'admins' | 'media' | 'folders' | 'tags' | 'application-documents' | 'financing-applications';
     where?:
       | {
           [k: string]: unknown;
@@ -734,7 +787,7 @@ export interface CollectionQueryWidget {
  */
 export interface ActivityWidget {
   data?: {
-    excludedCollections?: ('admins' | 'media' | 'folders' | 'tags' | 'financing-applications')[] | null;
+    excludedCollections?: ('admins' | 'media' | 'folders' | 'tags' | 'application-documents' | 'financing-applications')[] | null;
   };
   width: 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }

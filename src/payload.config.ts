@@ -4,6 +4,7 @@ import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { en as adminLanguage } from '@payloadcms/translations/languages/en'
 import { fileURLToPath } from 'url'
 import { Admins } from './collections/Admins'
+import { ApplicationDocuments } from './collections/ApplicationDocuments'
 import { Media } from './collections/Media'
 import { Folders } from './collections/Folders'
 import { Tags } from './collections/Tags'
@@ -31,7 +32,7 @@ export default buildFigmaConfig({
     fallbackLanguage: 'en',
     supportedLanguages: { 'en': adminLanguage },
   },
-  collections: [Admins, Media, Folders, Tags, FinancingApplications],
+  collections: [Admins, Media, Folders, Tags, ApplicationDocuments, FinancingApplications],
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },

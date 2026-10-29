@@ -704,6 +704,12 @@ input[type='checkbox'] {
   resize: vertical;
 }
 
+.field textarea[readonly] {
+  color: var(--body);
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -1306,6 +1312,12 @@ body {
 
 .mobile-shell:not(.choice-step) .field textarea {
   padding-block: 15px;
+}
+
+.mobile-shell:not(.choice-step) .field textarea[readonly] {
+  color: #6b6f86;
+  background: #f4f5fa;
+  cursor: not-allowed;
 }
 
 .mobile-shell:not(.choice-step) .field input:focus,

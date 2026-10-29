@@ -57,6 +57,7 @@ const nextConfig: NextConfig = {
     // at the local dev server. Allow only that exact platform-provisioned host.
     serverActions: {
       allowedOrigins: makePublicPreviewOrigin ? [makePublicPreviewOrigin] : [],
+      bodySizeLimit: '65mb',
     },
   },
   env: {

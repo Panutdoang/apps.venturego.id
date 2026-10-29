@@ -210,6 +210,7 @@ export const FinancingApplications: CollectionConfig = {
       type: 'array',
       fields: [
         { name: 'documentType', type: 'text', required: true },
+        { name: 'file', type: 'upload', relationTo: 'application-documents' },
         {
           name: 'status',
           type: 'select',

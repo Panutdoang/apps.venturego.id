@@ -2,27 +2,19 @@
 
 import { useState, useTransition } from 'react'
 import { submitFinancingApplication, type ApplicationInput } from './actions'
+import {
+  FINANCING_OPTIONS,
+  calculateWakalahPlan,
+  formatRupiah,
+  isFinancingAmount,
+} from '@/lib/financing-plan'
+import {
+  DOCUMENT_DEFINITIONS,
+  MAX_DOCUMENT_SIZE_BYTES,
+  isAcceptedDocumentType,
+} from '@/lib/documents'
 
 type Product = ApplicationInput['product']
-
-const commonDocuments = ['KTP siswa', 'Kartu Keluarga', 'Persetujuan orang tua', 'Rekomendasi LPK']
-const productDocuments: Record<Product, string[]> = {
-  FULL_COVER: [
-    'Akta kelahiran',
-    'Ijazah terakhir',
-    'Bukti pendaftaran LPK',
-    'Rincian program pelatihan',
-    'Estimasi biaya LPK',
-  ],
-  DEPARTURE_BRIDGING: [
-    'Paspor',
-    'Kontrak kerja',
-    'COE / bukti proses',
-    'Visa / bukti proses',
-    'Tagihan LPK',
-    'Jadwal keberangkatan',
-  ],
-}
 
 const initialForm: ApplicationInput = {
   product: 'FULL_COVER',
@@ -55,6 +47,7 @@ const initialForm: ApplicationInput = {
   requiresAccommodation: false,
   estimatedDeparture: '',
   outstandingLPKAmount: '',
+  financingAmount: '',
   selectedNeeds: [],
   understandsWakalah: false,
   acceptsDataProcessing: false,
@@ -63,11 +56,16 @@ const initialForm: ApplicationInput = {
 export default function HomePage() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(initialForm)
+  const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
   const [result, setResult] = useState<{ id?: string; error?: string }>({})
   const [isPending, startTransition] = useTransition()
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   const isDeparture = form.product === 'DEPARTURE_BRIDGING'
+  const selectedFinancingAmount = Number(form.financingAmount)
+  const plan = isFinancingAmount(selectedFinancingAmount)
+    ? calculateWakalahPlan(selectedFinancingAmount)
+    : null
   const toggleNeed = (need: string) =>
     set(
       'selectedNeeds',
@@ -79,7 +77,13 @@ export default function HomePage() {
   const submit = () => {
     setResult({})
     startTransition(async () => {
-      const response = await submitFinancingApplication(form)
+      const request = new FormData()
+      request.set('application', JSON.stringify(form))
+      DOCUMENT_DEFINITIONS[form.product].forEach((document, index) => {
+        const file = documentFiles[document.label]
+        if (file) request.set(`document-${index}`, file)
+      })
+      const response = await submitFinancingApplication(request)
       if (response.ok) {
         setResult({ id: response.applicationId })
         setStep(7)
@@ -330,17 +334,49 @@ export default function HomePage() {
                     <span>Alamat sesuai KTP</span>
                     <textarea
                       value={form.idCardAddress}
-                      onChange={(e) => set('idCardAddress', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setForm((current) => ({
+                          ...current,
+                          idCardAddress: value,
+                          ...(current.domicileSameAsIdCard ? { domicileAddress: value } : {}),
+                        }))
+                      }}
                       placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
                       rows={4}
+                    />
+                  </label>
+                  <label className="switch-row">
+                    <span>
+                      <strong>Alamat korespondensi sama dengan KTP</strong>
+                      <small>
+                        Aktifkan jika surat menyurat dikirim ke alamat yang sama dengan KTP.
+                      </small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={form.domicileSameAsIdCard}
+                      onChange={(e) => {
+                        const same = e.target.checked
+                        setForm((current) => ({
+                          ...current,
+                          domicileSameAsIdCard: same,
+                          ...(same ? { domicileAddress: current.idCardAddress } : {}),
+                        }))
+                      }}
                     />
                   </label>
                   <label className="field">
                     <span>Alamat korespondensi (untuk surat menyurat)</span>
                     <textarea
-                      value={form.domicileAddress}
+                      value={form.domicileSameAsIdCard ? form.idCardAddress : form.domicileAddress}
                       onChange={(e) => set('domicileAddress', e.target.value)}
-                      placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
+                      placeholder={
+                        form.domicileSameAsIdCard
+                          ? 'Mengikuti alamat sesuai KTP'
+                          : 'Jl., RT, RW, Kel., Kec., Kab., Prov.'
+                      }
+                      readOnly={form.domicileSameAsIdCard}
                       rows={4}
                     />
                   </label>
@@ -396,9 +432,9 @@ export default function HomePage() {
                   <label className="field">
                     <span>Perkiraan tanggal keberangkatan</span>
                     <input
-                      type="date"
                       value={form.estimatedDeparture}
                       onChange={(e) => set('estimatedDeparture', e.target.value)}
+                      placeholder="12 Februari 2026"
                     />
                   </label>
                   <label className="field">
@@ -412,6 +448,57 @@ export default function HomePage() {
                       placeholder="Contoh: 24000000"
                     />
                   </label>
+                  <div className="need-section">
+                    <strong>Jumlah pembiayaan yang dibutuhkan</strong>
+                    <div className="need-grid">
+                      {FINANCING_OPTIONS.map((option) => (
+                        <button
+                          type="button"
+                          key={option.amount}
+                          className={
+                            form.financingAmount === String(option.amount)
+                              ? 'need-chip selected'
+                              : 'need-chip'
+                          }
+                          onClick={() => set('financingAmount', String(option.amount))}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {plan ? (
+                    <>
+                      <div className="finance-grid">
+                        <div>
+                          <span>Nafaqah (pokok)</span>
+                          <strong>{formatRupiah(plan.nafaqahTotal)}</strong>
+                        </div>
+                        <div>
+                          <span>Ujrah VSV</span>
+                          <strong>{formatRupiah(plan.ujrahTotal)}</strong>
+                        </div>
+                        <div className="wide">
+                          <span>Total kewajiban</span>
+                          <strong>{formatRupiah(plan.totalObligation)}</strong>
+                          <small>
+                            12 × {formatRupiah(plan.monthlyInstallment)}
+                            {plan.finalInstallment !== plan.monthlyInstallment
+                              ? `, angsuran terakhir ${formatRupiah(plan.finalInstallment)}`
+                              : ''}
+                          </small>
+                        </div>
+                      </div>
+                      <div className="soft-note">
+                        Ujrah ditetapkan sekali saat akad dan tidak berbunga majemuk.
+                      </div>
+                    </>
+                  ) : (
+                    <div className="soft-note">
+                      Pilih salah satu jumlah pembiayaan untuk melihat rincian Nafaqah, Ujrah, dan
+                      angsuran.
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -513,13 +600,47 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="document-list">
-                {[...commonDocuments, ...productDocuments[form.product]].map((document) => (
-                  <div key={document}>
-                    <strong>{document}</strong>
-                    <small>Belum diunggah</small>
-                  </div>
-                ))}
+                {DOCUMENT_DEFINITIONS[form.product].map((document) => {
+                  const file = documentFiles[document.label]
+                  const error =
+                    file && !isAcceptedDocumentType(file.type)
+                      ? 'Gunakan PDF, JPG, atau PNG.'
+                      : file && file.size > MAX_DOCUMENT_SIZE_BYTES
+                        ? 'Ukuran file maksimal 10 MB.'
+                        : ''
+                  return (
+                    <label
+                      className="flex min-h-16 flex-col gap-2 border-b border-[#ececf1] py-3 text-sm"
+                      key={document.label}
+                    >
+                      <span>
+                        <strong>
+                          {document.label}
+                          {document.required ? ' *' : ''}
+                        </strong>
+                        <small>
+                          {error ||
+                            (file
+                              ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
+                              : 'PDF, JPG, atau PNG · Maks. 10 MB')}
+                        </small>
+                      </span>
+                      <input
+                        aria-label={`Unggah ${document.label}`}
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        onChange={(event) =>
+                          setDocumentFiles((current) => ({
+                            ...current,
+                            [document.label]: event.target.files?.[0] ?? null,
+                          }))
+                        }
+                      />
+                    </label>
+                  )
+                })}
               </div>
+              {result.error && <p className="error-message">{result.error}</p>}
               <div className="soft-note">
                 Dokumen asli hanya untuk administrasi dan verifikasi data, bukan sebagai aset
                 jaminan atau rahn.
@@ -544,21 +665,32 @@ export default function HomePage() {
                 </small>
               </section>
               {isDeparture ? (
-                <div className="finance-grid">
-                  <div>
-                    <span>Nafaqah estimasi</span>
-                    <strong>Rp31.350.000</strong>
+                plan ? (
+                  <div className="finance-grid">
+                    <div>
+                      <span>Nafaqah estimasi</span>
+                      <strong>{formatRupiah(plan.nafaqahTotal)}</strong>
+                    </div>
+                    <div>
+                      <span>Ujrah VSV</span>
+                      <strong>{formatRupiah(plan.ujrahTotal)}</strong>
+                    </div>
+                    <div className="wide">
+                      <span>Total estimasi</span>
+                      <strong>{formatRupiah(plan.totalObligation)}</strong>
+                      <small>
+                        {plan.tenorMonths} × {formatRupiah(plan.monthlyInstallment)}
+                        {plan.finalInstallment !== plan.monthlyInstallment
+                          ? `, angsuran terakhir ${formatRupiah(plan.finalInstallment)}`
+                          : ''}
+                      </small>
+                    </div>
                   </div>
-                  <div>
-                    <span>Ujrah VSV</span>
-                    <strong>Rp10.770.000</strong>
+                ) : (
+                  <div className="soft-note">
+                    Pilih jumlah pembiayaan yang dibutuhkan pada langkah sebelumnya.
                   </div>
-                  <div className="wide">
-                    <span>Total estimasi</span>
-                    <strong>Rp42.120.000</strong>
-                    <small>12 × Rp3.510.000</small>
-                  </div>
-                </div>
+                )
               ) : (
                 <div className="soft-note">
                   Rincian Nafaqah dan Ujrah Full Cover akan disusun setelah verifikasi program
@@ -578,6 +710,12 @@ export default function HomePage() {
                   <span>Tujuan</span>
                   <strong>{form.destination === 'JAPAN' ? 'Jepang' : 'Turki'}</strong>
                 </div>
+                {isDeparture && (
+                  <div>
+                    <span>Jumlah pembiayaan</span>
+                    <strong>{plan ? formatRupiah(plan.nafaqahTotal) : 'Belum dipilih'}</strong>
+                  </div>
+                )}
                 <div>
                   <span>{isDeparture ? 'Tempat, tanggal lahir' : 'Program'}</span>
                   <strong>
@@ -691,7 +829,32 @@ export default function HomePage() {
             <button
               className="primary-button"
               disabled={isPending}
-              onClick={() => (step === 6 ? submit() : setStep(step + 1))}
+              onClick={() => {
+                if (step === 5) {
+                  const definitions = DOCUMENT_DEFINITIONS[form.product]
+                  const missing = definitions.find(
+                    (document) => document.required && !documentFiles[document.label],
+                  )
+                  const invalid = definitions.find((document) => {
+                    const file = documentFiles[document.label]
+                    return (
+                      file &&
+                      (!isAcceptedDocumentType(file.type) || file.size > MAX_DOCUMENT_SIZE_BYTES)
+                    )
+                  })
+                  if (missing) {
+                    setResult({ error: `Dokumen ${missing.label} wajib diunggah.` })
+                    return
+                  }
+                  if (invalid) {
+                    setResult({ error: `Periksa tipe dan ukuran dokumen ${invalid.label}.` })
+                    return
+                  }
+                  setResult({})
+                }
+                if (step === 6) submit()
+                else setStep(step + 1)
+              }}
             >
               {isPending ? 'Mengirim…' : step === 6 ? 'Kirim pengajuan' : 'Lanjut'}
             </button>
