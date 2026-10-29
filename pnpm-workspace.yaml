@@ -4,6 +4,8 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+overrides:
+  'jwks-rsa>jose': 4.15.9
 # Keep host-native binaries for builds and Linux ARM64 binaries for Lambda.
 supportedArchitectures:
   os:
