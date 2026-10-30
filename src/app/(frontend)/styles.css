@@ -651,6 +651,45 @@ input[type='checkbox'] {
   line-height: 19px;
 }
 
+.field-label {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.product-choices {
+  display: grid;
+  gap: 12px;
+}
+
+.product-choices .product-option,
+.product-choices .product-option.selected {
+  min-height: 0;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  border: 1.5px solid #dfe1e7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.product-choices .product-option:hover {
+  background: #fafbff;
+}
+
+.product-choices .product-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.product-choices .product-option::after,
+.product-choices .product-option.selected::after {
+  display: none;
+}
+
 .product-tag {
   padding: 0;
   border-radius: 0;
