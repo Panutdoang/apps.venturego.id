@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import {
   discardApplicationUploads,
   submitFinancingApplication,
@@ -140,18 +139,13 @@ export default function HomePage() {
       >
         {step === 0 ? (
           <header className="welcome-hero">
-            <svg className="welcome-illustration" viewBox="0 0 240 220" aria-hidden="true">
-              <path
-                d="M43 28c-9-9-17-11-22-7-5 5-2 14 5 24l16 22-14 22 10 7 18-18 31 33 10-4-22-39 38-8-9-12-42-1-12-17 9-9-7-7-11 9z"
-                fill="var(--accent)"
-                transform="rotate(-18 67 63)"
-              />
-              <path d="m20 130 101-72 99 45-98 72z" fill="white" />
-              <path d="m67 143 58 1 62-34 11 31c-14 40-54 61-100 55-15-2-22-8-26-17z" fill="white" />
-              <path d="m218 104 11 35" fill="none" stroke="white" strokeWidth="5" />
-              <path d="m225 135 15 13-16 17-4-29z" fill="white" />
-              <circle cx="218" cy="103" r="7" fill="white" />
-            </svg>
+            <img
+              className="welcome-logo"
+              src="/venturego-mark.svg"
+              alt="VentureGo"
+              width={24}
+              height={23}
+            />
             <div className="welcome-brand">
               <h1>Vworks Student Venture</h1>
               <span>by venturego.id</span>
@@ -174,18 +168,10 @@ export default function HomePage() {
                 Persiapkan perjalananmu bersama kami. Mulai pengajuan pembiayaan dengan langkah
                 yang mudah dan terarah.
               </p>
-              <div className="welcome-steps" aria-label="Tahapan pengajuan">
-                <span><i>01</i>Pilih kebutuhan</span>
-                <span><i>02</i>Lengkapi data</span>
-                <span><i>03</i>Unggah dokumen</span>
-              </div>
               <div className="welcome-actions">
                 <button className="primary-button welcome-primary" onClick={() => setStep(1)}>
-                  Daftar
+                  Masuk/Daftar
                 </button>
-                <Link className="back-button welcome-secondary" href="/admin">
-                  Masuk Admin
-                </Link>
               </div>
               <p className="welcome-note">Siapkan dokumen pendukung sebelum memulai pengajuan.</p>
             </div>
