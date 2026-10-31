@@ -120,18 +120,12 @@ export default function HomePage() {
           setResult({ id: response.applicationId })
           setStep(7)
         } else {
-          await discardApplicationUploads(
-            uploadToken,
-            uploaded.map((item) => item.path),
-          )
+          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
           setResult({ error: response.message })
         }
       } catch {
         if (uploadToken && uploaded.length) {
-          await discardApplicationUploads(
-            uploadToken,
-            uploaded.map((item) => item.path),
-          )
+          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
         }
         setResult({ error: 'Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.' })
       }
@@ -140,7 +134,9 @@ export default function HomePage() {
 
   return (
     <main className="app-canvas">
-      <section className={`mobile-shell ${step === 0 ? 'welcome-step' : ''}`}>
+      <section
+        className={`mobile-shell ${step === 0 ? 'welcome-step' : step === 1 ? 'choice-step' : ''}`}
+      >
         {step === 0 ? (
           <header className="welcome-hero">
             <img
@@ -169,16 +165,64 @@ export default function HomePage() {
             <div className="welcome-copy">
               <h2>Selamat datang!</h2>
               <p>
-                Persiapkan perjalananmu bersama kami. Mulai pengajuan pembiayaan dengan langkah yang
-                mudah dan terarah.
+                Persiapkan perjalananmu bersama kami. Mulai pengajuan pembiayaan dengan langkah
+                yang mudah dan terarah.
               </p>
               <div className="welcome-actions">
-                <button className="primary-button welcome-primary" onClick={() => setStep(2)}>
+                <button className="primary-button welcome-primary" onClick={() => setStep(1)}>
                   Masuk/Daftar
                 </button>
               </div>
               <p className="welcome-note">Siapkan dokumen pendukung sebelum memulai pengajuan.</p>
             </div>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className="intro intro-choice">
+                <h2>Pilih pembiayaan yang sesuai</h2>
+                <p>
+                  Setiap tahap persiapan memiliki kebutuhan yang berbeda. Pilih opsi yang paling
+                  sesuai dengan kondisi Anda saat ini.
+                </p>
+              </div>
+              <button
+                aria-pressed={!isDeparture}
+                className={`product-option ${!isDeparture ? 'selected' : ''}`}
+                onClick={() => {
+                  set('product', 'FULL_COVER')
+                  setDocumentFiles({})
+                }}
+              >
+                <span className="selection-box" aria-hidden="true">
+                  {!isDeparture && <span>✓</span>}
+                </span>
+                <span className="product-copy">
+                  <span className="product-tag">Persiapan lengkap</span>
+                  <strong>VSV Full Cover</strong>
+                  <p>Pelatihan bahasa, keterampilan, dokumen, dan kebutuhan keberangkatan.</p>
+                  <small>Cocok jika Anda baru memulai proses di LPK.</small>
+                </span>
+              </button>
+              <button
+                aria-pressed={isDeparture}
+                className={`product-option ${isDeparture ? 'selected' : ''}`}
+                onClick={() => {
+                  set('product', 'DEPARTURE_BRIDGING')
+                  setDocumentFiles({})
+                }}
+              >
+                <span className="selection-box" aria-hidden="true">
+                  {isDeparture && <span>✓</span>}
+                </span>
+                <span className="product-copy">
+                  <span className="product-tag">Tahap akhir</span>
+                  <strong>VSV Dana Keberangkatan</strong>
+                  <p>Pembayaran LPK, dokumen akhir, dan uang saku keberangkatan.</p>
+                  <small>Cocok jika pelatihan sudah selesai atau COE sedang diproses.</small>
+                </span>
+              </button>
+            </>
           )}
 
           {step === 2 && (
@@ -194,45 +238,6 @@ export default function HomePage() {
                     ? 'Dana Keberangkatan ditujukan bagi siswa yang telah menyelesaikan sebagian besar proses pelatihan.'
                     : 'Informasi ini membantu VSV menyusun kebutuhan pelatihan dan pembiayaan persiapan Anda.'}
                 </p>
-              </div>
-              <p className="field-label">Jenis pembiayaan</p>
-              <div className="product-choices">
-                <button
-                  aria-pressed={!isDeparture}
-                  className={`product-option ${!isDeparture ? 'selected' : ''}`}
-                  onClick={() => {
-                    set('product', 'FULL_COVER')
-                    setDocumentFiles({})
-                  }}
-                >
-                  <span className="selection-box" aria-hidden="true">
-                    {!isDeparture && <span>✓</span>}
-                  </span>
-                  <span className="product-copy">
-                    <span className="product-tag">Persiapan lengkap</span>
-                    <strong>VSV Full Cover</strong>
-                    <p>Pelatihan bahasa, keterampilan, dokumen, dan kebutuhan keberangkatan.</p>
-                    <small>Cocok jika Anda baru memulai proses di LPK.</small>
-                  </span>
-                </button>
-                <button
-                  aria-pressed={isDeparture}
-                  className={`product-option ${isDeparture ? 'selected' : ''}`}
-                  onClick={() => {
-                    set('product', 'DEPARTURE_BRIDGING')
-                    setDocumentFiles({})
-                  }}
-                >
-                  <span className="selection-box" aria-hidden="true">
-                    {isDeparture && <span>✓</span>}
-                  </span>
-                  <span className="product-copy">
-                    <span className="product-tag">Tahap akhir</span>
-                    <strong>VSV Dana Keberangkatan</strong>
-                    <p>Pembayaran LPK, dokumen akhir, dan uang saku keberangkatan.</p>
-                    <small>Cocok jika pelatihan sudah selesai atau COE sedang diproses.</small>
-                  </span>
-                </button>
               </div>
               <div className="choice-list">
                 {(isDeparture
@@ -887,23 +892,20 @@ export default function HomePage() {
         </div>
 
         {step > 0 && step < 7 && (
-          <footer className="wizard-footer">
-            <div className="step-dots" aria-label={`Langkah ${step - 1} dari 5`}>
-              {Array.from({ length: 5 }, (_, index) => {
-                const stepNumber = index + 2
-                return (
-                  <span
-                    className={
-                      stepNumber === step ? 'active' : stepNumber < step ? 'completed' : ''
-                    }
-                    key={index}
-                  />
-                )
-              })}
+          <footer className={`wizard-footer ${step === 1 ? 'single-action' : ''}`}>
+            <div className="step-dots" aria-label={`Langkah ${step} dari 6`}>
+              {Array.from({ length: 6 }, (_, index) => (
+                <span
+                  className={index + 1 === step ? 'active' : index + 1 < step ? 'completed' : ''}
+                  key={index}
+                />
+              ))}
             </div>
-            <button className="back-button" onClick={() => setStep(step === 2 ? 0 : step - 1)}>
-              Kembali
-            </button>
+            {step > 1 && (
+              <button className="back-button" onClick={() => setStep(step - 1)}>
+                Kembali
+              </button>
+            )}
             <button
               className="primary-button"
               disabled={isPending}
