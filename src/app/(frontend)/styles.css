@@ -19,9 +19,33 @@
 }
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter Variable', Inter, Arial, Helvetica, sans-serif;
   color: var(--ink);
   background: var(--canvas);
+}
+
+.dashboard-app {
+  font-family: 'Inter Variable', Inter, Arial, Helvetica, sans-serif;
+}
+
+.dashboard-app h1,
+.dashboard-app h2,
+.dashboard-app h3,
+.dashboard-app strong {
+  font-family: var(--font-plus-jakarta), 'Inter Variable', Inter, sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.dashboard-app p {
+  font-family: 'Inter Variable', Inter, Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dashboard-app small {
+  font-family: 'Inter Variable', Inter, Arial, Helvetica, sans-serif;
+  font-size: 9px;
+  line-height: 1.45;
 }
 button,
 input,

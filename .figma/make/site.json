@@ -1,5 +1,5 @@
 {
-  "description": "A web application designed to match a requested style or reference, helping users create a tailored experience.",
+  "description": "Helps project teams coordinate and manage code pushes, making it easier to prepare and share project updates.",
   "robots": {
     "index": false
   },

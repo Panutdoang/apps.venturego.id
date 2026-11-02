@@ -1,35 +1,31 @@
-import React from "react"
-import type { Metadata } from "next"
-import Script from "next/script"
-import { BodyCustomCode, renderHeadCustomCode } from "@/lib/make-custom-code"
-import {
-  makeSiteSettings,
-  sanitizeHtmlAttribute,
-} from "@/lib/make-site-settings"
-import "@fontsource-variable/inter"
-import "./styles.css"
+import React from 'react'
+import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
+import Script from 'next/script'
+import { BodyCustomCode, renderHeadCustomCode } from '@/lib/make-custom-code'
+import { makeSiteSettings, sanitizeHtmlAttribute } from '@/lib/make-site-settings'
+import '@fontsource-variable/inter'
+import './styles.css'
 
-const defaultTitle = "VentureGo VSV"
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta',
+  display: 'swap',
+})
+
+const defaultTitle = 'VentureGo VSV'
 const title = makeSiteSettings.title ?? defaultTitle
 const description =
-  makeSiteSettings.description ??
-  "Pengajuan pembiayaan syariah Wakalah bil Ujrah untuk siswa VSV"
+  makeSiteSettings.description ?? 'Pengajuan pembiayaan syariah Wakalah bil Ujrah untuk siswa VSV'
 const favicon = makeSiteSettings.icons?.icon
 const socialImage = makeSiteSettings.openGraph?.image
-const googleAnalyticsId = sanitizeHtmlAttribute(
-  makeSiteSettings.analytics?.googleAnalyticsId,
-)
+const googleAnalyticsId = sanitizeHtmlAttribute(makeSiteSettings.analytics?.googleAnalyticsId)
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  ),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title,
   description,
-  robots:
-    makeSiteSettings.robots?.index === false
-      ? { follow: false, index: false }
-      : undefined,
+  robots: makeSiteSettings.robots?.index === false ? { follow: false, index: false } : undefined,
   icons: favicon ? { icon: favicon } : undefined,
   openGraph: {
     title,
@@ -38,26 +34,22 @@ export const metadata: Metadata = {
   },
   twitter: socialImage
     ? {
-        card: "summary_large_image",
+        card: 'summary_large_image',
         images: [socialImage],
       }
     : undefined,
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const language = sanitizeHtmlAttribute(makeSiteSettings.language) || "id"
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const language = sanitizeHtmlAttribute(makeSiteSettings.language) || 'id'
   const addBypassLinks = makeSiteSettings.accessibility?.addBypassLinks === true
   const customScripts = makeSiteSettings.customScripts
 
   return (
-    <html lang={language}>
+    <html className={plusJakartaSans.variable} lang={language}>
       <head>
-        {renderHeadCustomCode(customScripts?.headStart, "head-start")}
-        {renderHeadCustomCode(customScripts?.headEnd, "head-end")}
+        {renderHeadCustomCode(customScripts?.headStart, 'head-start')}
+        {renderHeadCustomCode(customScripts?.headEnd, 'head-end')}
       </head>
       <body className="min-h-screen bg-white text-slate-950 antialiased">
         <BodyCustomCode html={customScripts?.bodyStart} />

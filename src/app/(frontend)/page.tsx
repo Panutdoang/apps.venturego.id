@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import {
   discardApplicationUploads,
   submitFinancingApplication,
@@ -120,12 +121,18 @@ export default function HomePage() {
           setResult({ id: response.applicationId })
           setStep(7)
         } else {
-          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
+          await discardApplicationUploads(
+            uploadToken,
+            uploaded.map((item) => item.path),
+          )
           setResult({ error: response.message })
         }
       } catch {
         if (uploadToken && uploaded.length) {
-          await discardApplicationUploads(uploadToken, uploaded.map((item) => item.path))
+          await discardApplicationUploads(
+            uploadToken,
+            uploaded.map((item) => item.path),
+          )
         }
         setResult({ error: 'Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.' })
       }
@@ -165,12 +172,15 @@ export default function HomePage() {
             <div className="welcome-copy">
               <h2>Selamat datang!</h2>
               <p>
-                Persiapkan perjalananmu bersama kami. Mulai pengajuan pembiayaan dengan langkah
-                yang mudah dan terarah.
+                Persiapkan perjalananmu bersama kami. Mulai pengajuan pembiayaan dengan langkah yang
+                mudah dan terarah.
               </p>
               <div className="welcome-actions">
-                <button className="primary-button welcome-primary" onClick={() => setStep(1)}>
+                <Link className="primary-button welcome-primary" href="/dashboard">
                   Masuk/Daftar
+                </Link>
+                <button className="back-button welcome-secondary" onClick={() => setStep(1)}>
+                  Ajukan pembiayaan baru
                 </button>
               </div>
               <p className="welcome-note">Siapkan dokumen pendukung sebelum memulai pengajuan.</p>
