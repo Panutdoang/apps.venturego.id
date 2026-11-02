@@ -166,7 +166,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500">Sisa pembiayaan</p>
+                <p className="text-xs font-medium text-slate-500">Total angsuran terbayar</p>
                 <div className="mt-2 flex items-center gap-2">
                   <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
                     {showBalance ? 'Rp14.500.000' : 'Rp••••••••'}
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-2 flex justify-between text-[11px] text-slate-500">
               <span>28% telah dibayar</span>
-              <span>Total Rp20.000.000</span>
+              <span>Total kewajiban Rp20.000.000</span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
               <div>
