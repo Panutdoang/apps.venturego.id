@@ -198,8 +198,8 @@ export default function DashboardPage() {
                 <strong className="mt-1 block text-sm text-slate-800">12 bulan</strong>
               </div>
               <div className="border-l border-slate-100 pl-4">
-                <span className="text-[11px] text-slate-400">Nomor kontrak</span>
-                <strong className="mt-1 block text-sm text-slate-800">VSV-240182</strong>
+                <span className="text-[11px] text-slate-400">Virtual Account</span>
+                <strong className="mt-1 block text-sm text-slate-800">8877 0012 3456 7890</strong>
               </div>
             </div>
           </section>
