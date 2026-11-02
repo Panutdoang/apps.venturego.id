@@ -315,41 +315,77 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section aria-labelledby="activity-title" id="riwayat">
+          <section aria-labelledby="progress-title" id="progress">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold tracking-tight text-slate-900" id="activity-title">
-                Aktivitas terbaru
+              <h2 className="text-base font-bold tracking-tight text-slate-900" id="progress-title">
+                Alur progress saat ini
               </h2>
-              <Link
-                className="text-xs font-semibold text-[var(--primary)]"
-                href="/dashboard/riwayat"
-              >
-                Lihat semua
-              </Link>
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-[var(--primary)]">
+                Tahap 6/7
+              </span>
             </div>
-            <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100">
-              <article className="flex items-center gap-3 border-b border-slate-100 p-4">
-                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <Icon name="receipt" className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-bold text-slate-800">Pembayaran angsuran</h3>
-                  <p className="mt-1 text-[11px] text-slate-400">25 Maret 2026 • Berhasil</p>
-                </div>
-                <strong className="text-sm text-slate-800">Rp1.250.000</strong>
-              </article>
-              <Link className="flex items-center gap-3 p-4" href="/dashboard/dokumen">
-                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-[var(--primary)]">
-                  <Icon name="document" className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-bold text-slate-800">
-                    Dokumen akad tersedia
-                  </h3>
-                  <p className="mt-1 text-[11px] text-slate-400">12 Maret 2026 • Dokumen</p>
-                </div>
-                <Icon name="chevron" className="size-5 text-slate-300" />
-              </Link>
+            <div className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <ol className="relative space-y-0">
+                {[
+                  { step: 1, label: 'Formulir pendaftaran', sub: 'Mengisi gform pendaftaran VSV', done: true },
+                  { step: 2, label: 'Form aplikasi pembiayaan', sub: 'Pengisian & pengiriman ke LPK', done: true },
+                  { step: 3, label: 'Pengumpulan dokumen', sub: 'Scan dokumen persyaratan lengkap', done: true },
+                  { step: 4, label: 'Akad pembiayaan', sub: 'Penandatanganan kontrak syariah', done: true },
+                  { step: 5, label: 'Pencairan dana', sub: 'Dana dikirim langsung ke LPK', done: true },
+                  { step: 6, label: 'Program angsuran', sub: 'Cicilan berjalan sesuai jadwal', done: false, active: true },
+                  { step: 7, label: 'Pelunasan', sub: 'Program pembiayaan selesai', done: false },
+                ].map((item, idx, arr) => (
+                  <li key={item.step} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <span
+                        className={[
+                          'grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ring-2',
+                          item.done
+                            ? 'bg-[var(--primary)] text-white ring-[var(--primary)]'
+                            : item.active
+                              ? 'bg-white text-[var(--primary)] ring-[var(--primary)]'
+                              : 'bg-slate-100 text-slate-400 ring-slate-200',
+                        ].join(' ')}
+                      >
+                        {item.done ? (
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        ) : (
+                          item.step
+                        )}
+                      </span>
+                      {idx < arr.length - 1 && (
+                        <span
+                          className={[
+                            'mt-1 w-0.5 flex-1 rounded-full',
+                            item.done ? 'bg-[var(--primary)]' : 'bg-slate-200',
+                          ].join(' ')}
+                          style={{ minHeight: '28px' }}
+                        />
+                      )}
+                    </div>
+                    <div className={['pb-5', idx === arr.length - 1 ? 'pb-0' : ''].join(' ')}>
+                      <p
+                        className={[
+                          'text-sm font-bold leading-tight',
+                          item.active ? 'text-[var(--primary)]' : item.done ? 'text-slate-800' : 'text-slate-400',
+                        ].join(' ')}
+                      >
+                        {item.label}
+                        {item.active && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700">
+                            SEKARANG
+                          </span>
+                        )}
+                      </p>
+                      <p className={['mt-0.5 text-[11px]', item.done || item.active ? 'text-slate-400' : 'text-slate-300'].join(' ')}>
+                        {item.sub}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           </section>
 
