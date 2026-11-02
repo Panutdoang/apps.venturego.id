@@ -165,7 +165,7 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-app min-h-dvh bg-[var(--canvas)]">
-      <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#f8f9fd] shadow-[0_0_48px_rgba(15,23,42,0.08)]">
+      <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col overflow-y-auto bg-[#f8f9fd] shadow-[0_0_48px_rgba(15,23,42,0.08)]">
         <header className="rounded-b-[32px] bg-[var(--primary)] px-5 pb-24 pt-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <div className="-mt-16 flex flex-1 flex-col gap-6 px-5 pb-8">
+        <div className="-mt-16 flex flex-1 flex-col gap-6 px-5 pb-32">
           <section
             className="rounded-3xl bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.10)]"
             id="ringkasan"
@@ -404,33 +404,46 @@ export default function DashboardPage() {
 
         <nav
           aria-label="Navigasi utama"
-          className="sticky bottom-0 z-20 mt-auto grid grid-cols-4 border-t border-slate-100 bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
+          className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 px-4 pb-[max(16px,env(safe-area-inset-bottom))]"
         >
-          <a className="flex flex-col items-center gap-1 text-[var(--primary)]" href="#ringkasan">
-            <Icon name="home" className="size-5" />
-            <span className="text-[10px] font-bold">Beranda</span>
-          </a>
-          <Link
-            className="flex flex-col items-center gap-1 text-slate-400"
-            href="/dashboard/angsuran"
-          >
-            <Icon name="wallet" className="size-5" />
-            <span className="text-[10px] font-semibold">Angsuran</span>
-          </Link>
-          <Link
-            className="flex flex-col items-center gap-1 text-slate-400"
-            href="/dashboard/riwayat"
-          >
-            <Icon name="history" className="size-5" />
-            <span className="text-[10px] font-semibold">Riwayat</span>
-          </Link>
-          <Link
-            className="flex flex-col items-center gap-1 text-slate-400"
-            href="/dashboard/profil"
-          >
-            <Icon name="profile" className="size-5" />
-            <span className="text-[10px] font-semibold">Profil</span>
-          </Link>
+          <div className="flex items-center justify-around rounded-[28px] bg-white/90 px-2 py-2 shadow-[0_8px_32px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/60 backdrop-blur-xl">
+            <a
+              href="#ringkasan"
+              className="flex flex-col items-center gap-1 px-4 py-1.5 group"
+            >
+              <span className="grid size-9 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm transition group-hover:opacity-90">
+                <Icon name="home" className="size-5" />
+              </span>
+              <span className="text-[10px] font-bold text-[var(--primary)]">Beranda</span>
+            </a>
+            <Link
+              href="/dashboard/angsuran"
+              className="flex flex-col items-center gap-1 px-4 py-1.5 group"
+            >
+              <span className="grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600">
+                <Icon name="wallet" className="size-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">Angsuran</span>
+            </Link>
+            <Link
+              href="/dashboard/riwayat"
+              className="flex flex-col items-center gap-1 px-4 py-1.5 group"
+            >
+              <span className="grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600">
+                <Icon name="history" className="size-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">Riwayat</span>
+            </Link>
+            <Link
+              href="/dashboard/profil"
+              className="flex flex-col items-center gap-1 px-4 py-1.5 group"
+            >
+              <span className="grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600">
+                <Icon name="profile" className="size-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">Profil</span>
+            </Link>
+          </div>
         </nav>
       </section>
     </main>
