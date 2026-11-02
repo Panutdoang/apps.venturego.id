@@ -124,6 +124,35 @@ function Icon({ name, className = 'size-5' }: { name: IconName; className?: stri
   )
 }
 
+function CopyVA({ va }: { va: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(va).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button
+      aria-label="Salin nomor Virtual Account"
+      onClick={handleCopy}
+      type="button"
+      className="grid size-6 shrink-0 place-items-center rounded-full transition active:scale-90"
+    >
+      {copied ? (
+        <svg aria-hidden="true" className="size-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg aria-hidden="true" className="size-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 const quickActions = [
   { label: 'Bayar angsuran', icon: 'receipt' as const, href: '/dashboard/pembayaran' },
   { label: 'Simulasi', icon: 'wallet' as const, href: '/dashboard/simulasi' },
@@ -192,14 +221,17 @@ export default function DashboardPage() {
               <span>28% telah dibayar</span>
               <span>Total kewajiban Rp20.000.000</span>
             </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4" style={{ gridTemplateColumns: '2fr 3fr' }}>
               <div>
                 <span className="text-[11px] text-slate-400">Tenor tersisa</span>
                 <strong className="mt-1 block text-sm text-slate-800">12 bulan</strong>
               </div>
               <div className="border-l border-slate-100 pl-4">
                 <span className="text-[11px] text-slate-400">Virtual Account</span>
-                <strong className="mt-1 block text-sm text-slate-800">8877 0012 3456 7890</strong>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <strong className="text-sm text-slate-800">8877 0012 3456 7890</strong>
+                  <CopyVA va="8877001234567890" />
+                </div>
               </div>
             </div>
           </section>
