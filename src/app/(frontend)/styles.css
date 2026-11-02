@@ -1608,19 +1608,24 @@ body {
   --primary: #17158c;
   --primary-soft: #f2f1ff;
   --accent: #5782f6;
+  height: 100dvh;
   min-height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .welcome-hero {
   position: relative;
-  min-height: 438px;
-  padding: 44px 22px 76px;
+  flex: 1 1 52%;
+  min-height: 0;
+  padding: 32px 22px 42px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   overflow: hidden;
   border-radius: 0 0 50% 50% / 0 0 18% 18%;
   background: var(--primary);
@@ -1638,14 +1643,14 @@ body {
 
 .welcome-illustration {
   position: relative;
-  width: min(54vw, 204px);
+  width: min(50vw, 190px);
   height: auto;
   overflow: visible;
 }
 
 .welcome-logo {
   position: relative;
-  width: min(34vw, 120px);
+  width: min(30vw, 105px);
   height: auto;
 }
 
@@ -1655,8 +1660,8 @@ body {
 
 .welcome-brand h1 {
   margin: 0;
-  font-size: clamp(21px, 5.8vw, 27px);
-  line-height: 1.28;
+  font-size: clamp(20px, 5.5vw, 26px);
+  line-height: 1.25;
   font-weight: 750;
   letter-spacing: 0.035em;
   white-space: nowrap;
@@ -1664,16 +1669,19 @@ body {
 
 .welcome-brand span {
   display: block;
-  margin-top: 4px;
-  font-size: 14px;
-  line-height: 20px;
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 650;
   letter-spacing: 0.04em;
 }
 
 .mobile-shell.welcome-step .wizard-body {
-  flex: 1;
-  padding: 22px 30px max(28px, env(safe-area-inset-bottom));
+  flex: 1 1 48%;
+  min-height: 0;
+  padding: 20px 28px max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   gap: 0;
 }
@@ -1685,26 +1693,26 @@ body {
 }
 
 .welcome-copy h2 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--primary);
-  font-size: 32px;
-  line-height: 40px;
+  font-size: 30px;
+  line-height: 38px;
   font-weight: 750;
   letter-spacing: 0.005em;
 }
 
 .welcome-copy > p:not(.welcome-note) {
-  max-width: 350px;
+  max-width: 320px;
   margin: 0 auto;
-  color: #424255;
-  font-size: 14px;
-  line-height: 22px;
+  color: #4b4b60;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .welcome-actions {
-  margin-top: 28px;
+  margin-top: 24px;
   display: grid;
-  gap: 12px;
+  gap: 0;
 }
 
 .welcome-actions .welcome-primary {
@@ -1713,6 +1721,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   border-radius: 999px;
   font-size: 16px;
   line-height: 22px;
@@ -1727,6 +1736,24 @@ body {
 
 .welcome-actions .welcome-primary:hover {
   background: #111077;
+}
+
+.welcome-actions .google-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.welcome-actions .google-badge svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .welcome-note {

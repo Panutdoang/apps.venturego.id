@@ -127,7 +127,7 @@ function Icon({ name, className = 'size-5' }: { name: IconName; className?: stri
 const quickActions = [
   { label: 'Bayar angsuran', icon: 'receipt' as const, href: '/dashboard/pembayaran' },
   { label: 'Simulasi', icon: 'wallet' as const, href: '/dashboard/simulasi' },
-  { label: 'Ajukan dana', icon: 'plus' as const, href: '/' },
+  { label: 'Ajukan baru', icon: 'plus' as const, href: '/?step=1' },
   { label: 'Bantuan', icon: 'help' as const, href: '/dashboard/bantuan' },
 ]
 
@@ -202,6 +202,26 @@ export default function DashboardPage() {
                 <strong className="mt-1 block text-sm text-slate-800">VSV-240182</strong>
               </div>
             </div>
+          </section>
+
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--primary)] to-indigo-900 p-5 text-white shadow-sm">
+            <div className="relative z-10 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold tracking-tight text-white">
+                  Ajukan Pembiayaan Baru
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-indigo-100">
+                  Mulai pengajuan Full Cover atau Dana Keberangkatan dengan skema syariah.
+                </p>
+              </div>
+              <Link
+                className="shrink-0 rounded-full bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-sm transition hover:bg-amber-300 active:scale-95"
+                href="/?step=1"
+              >
+                Mulai
+              </Link>
+            </div>
+            <div className="pointer-events-none absolute -bottom-8 -right-8 size-32 rounded-full bg-white/10 blur-xl" />
           </section>
 
           <section aria-labelledby="quick-actions-title">

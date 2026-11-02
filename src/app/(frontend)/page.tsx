@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
   discardApplicationUploads,
@@ -61,12 +61,45 @@ const initialForm: ApplicationInput = {
   acceptsDataProcessing: false,
 }
 
+function GoogleIcon({ className = 'size-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 6-1.08 8-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.12 1.16-3.17 0-5.86-2.14-6.82-5.03H1.14v3.15C3.15 21.32 7.28 24 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.18 14.17c-.24-.72-.38-1.49-.38-2.17s.14-1.45.38-2.17V6.68H1.14C.41 8.13 0 9.77 0 12s.41 3.87 1.14 5.32l4.04-3.15Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.28 0 3.15 2.68 1.14 6.68l4.04 3.15c.96-2.89 3.65-5.08 6.82-5.08Z"
+      />
+    </svg>
+  )
+}
+
 export default function HomePage() {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initialForm)
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
   const [result, setResult] = useState<{ id?: string; error?: string }>({})
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const requestedStep = Number(params.get('step'))
+    if (requestedStep >= 1 && requestedStep <= 6) {
+      setStep(requestedStep)
+    } else if (params.get('apply') === 'true' || params.get('baru') === 'true') {
+      setStep(1)
+    }
+  }, [])
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   const isDeparture = form.product === 'DEPARTURE_BRIDGING'
@@ -177,11 +210,11 @@ export default function HomePage() {
               </p>
               <div className="welcome-actions">
                 <Link className="primary-button welcome-primary" href="/dashboard">
-                  Masuk/Daftar
+                  <span className="google-badge" aria-hidden="true">
+                    <GoogleIcon />
+                  </span>
+                  <span>Masuk/Daftar</span>
                 </Link>
-                <button className="back-button welcome-secondary" onClick={() => setStep(1)}>
-                  Ajukan pembiayaan baru
-                </button>
               </div>
               <p className="welcome-note">Siapkan dokumen pendukung sebelum memulai pengajuan.</p>
             </div>
@@ -902,7 +935,7 @@ export default function HomePage() {
         </div>
 
         {step > 0 && step < 7 && (
-          <footer className={`wizard-footer ${step === 1 ? 'single-action' : ''}`}>
+          <footer className="wizard-footer">
             <div className="step-dots" aria-label={`Langkah ${step} dari 6`}>
               {Array.from({ length: 6 }, (_, index) => (
                 <span
@@ -911,7 +944,11 @@ export default function HomePage() {
                 />
               ))}
             </div>
-            {step > 1 && (
+            {step === 1 ? (
+              <Link className="back-button" href="/dashboard">
+                Kembali
+              </Link>
+            ) : (
               <button className="back-button" onClick={() => setStep(step - 1)}>
                 Kembali
               </button>

@@ -25,10 +25,10 @@ const services: {
     detail: 'Hitung estimasi kewajiban',
   },
   {
-    href: '/',
+    href: '/?step=1',
     icon: 'plus',
-    title: 'Ajukan pembiayaan',
-    detail: 'Mulai pengajuan baru',
+    title: 'Ajukan pembiayaan baru',
+    detail: 'Mulai formulir pengajuan baru',
   },
   {
     href: '/dashboard/dokumen',
