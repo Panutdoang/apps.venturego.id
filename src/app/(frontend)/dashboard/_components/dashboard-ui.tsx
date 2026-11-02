@@ -204,7 +204,7 @@ export function DashboardScaffold({
             {subtitle && <p className="mt-0.5 truncate text-[11px] text-slate-500">{subtitle}</p>}
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-8">{children}</div>
+        <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-28">{children}</div>
         <DashboardBottomNav active={active} />
       </section>
     </main>
@@ -215,23 +215,39 @@ export function DashboardBottomNav({ active }: { active: PrimaryRoute }) {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="sticky bottom-0 z-20 mt-auto grid grid-cols-4 border-t border-slate-100 bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
+      className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 px-4 pb-[max(16px,env(safe-area-inset-bottom))]"
     >
-      {navigation.map((item) => {
-        const isActive = active === item.key
-        return (
-          <Link
-            className={`flex flex-col items-center gap-1 ${isActive ? 'text-[var(--primary)]' : 'text-slate-400'}`}
-            href={item.href}
-            key={item.key}
-          >
-            <DashboardIcon name={item.icon} className="size-5" />
-            <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-semibold'}`}>
-              {item.label}
-            </span>
-          </Link>
-        )
-      })}
+      <div className="flex items-center justify-around rounded-[28px] bg-white/90 px-2 py-2 shadow-[0_8px_32px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/60 backdrop-blur-xl">
+        {navigation.map((item) => {
+          const isActive = active === item.key
+          return (
+            <Link
+              className="group flex flex-col items-center gap-1 px-4 py-1.5"
+              href={item.href}
+              key={item.key}
+            >
+              <span
+                className={
+                  isActive
+                    ? 'grid size-9 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm transition group-hover:opacity-90'
+                    : 'grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600'
+                }
+              >
+                <DashboardIcon name={item.icon} className="size-5" />
+              </span>
+              <span
+                className={
+                  isActive
+                    ? 'text-[10px] font-bold text-[var(--primary)]'
+                    : 'text-[10px] font-semibold text-slate-400'
+                }
+              >
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
     </nav>
   )
 }
