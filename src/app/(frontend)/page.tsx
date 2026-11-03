@@ -946,13 +946,9 @@ export default function HomePage() {
               ))}
             </div>
             {step === 1 ? (
-              <button
-                className="back-button"
-                onClick={() => router.push('/dashboard')}
-                type="button"
-              >
+              <Link className="back-button" href="/dashboard">
                 Kembali
-              </button>
+              </Link>
             ) : (
               <button className="back-button" onClick={() => setStep(step - 1)}>
                 Kembali
