@@ -27,9 +27,10 @@
   "name": "figma-make-app",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS=--no-deprecation next dev --port ${PORT:-3000} --hostname 0.0.0.0",
-    "build": "NODE_OPTIONS=--no-deprecation next build --webpack",
-    "start": "NODE_OPTIONS=--no-deprecation next start",
+    "dev": "node scripts/start-local-app.mjs",
+    "backend:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local-backend.ps1",
+    "build": "next build --webpack",
+    "start": "next start",
     "format": "oxfmt"
   },
   "type": "module",

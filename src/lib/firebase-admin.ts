@@ -5,23 +5,36 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
 
+const useEmulators = process.env.NODE_ENV === 'development'
+const localProjectId = 'demo-venturego-local'
+
 const getAdminApp = () => {
-  const projectId = process.env.FIREBASE_PROJECT_ID
+  const projectId = useEmulators ? localProjectId : process.env.FIREBASE_PROJECT_ID
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
+  const storageBucket = useEmulators
+    ? `${localProjectId}.appspot.com`
+    : process.env.FIREBASE_STORAGE_BUCKET
 
-  if (!projectId || !clientEmail || !privateKey || !storageBucket) {
+  if (!projectId || !storageBucket) {
+    throw new Error('Firebase project configuration is missing.')
+  }
+  if (!useEmulators && (!clientEmail || !privateKey)) {
     throw new Error('Firebase Admin credentials are not configured.')
   }
 
-  return (
-    getApps()[0] ??
-    initializeApp({
-      credential: cert({ projectId, clientEmail, privateKey }),
+  const appName = useEmulators ? 'venturego-local-emulator' : '[DEFAULT]'
+
+  const existingApp = getApps().find((app) => app.name === appName)
+  if (existingApp) return existingApp
+
+  return initializeApp(
+    {
+      ...(useEmulators ? {} : { credential: cert({ projectId, clientEmail, privateKey }) }),
       projectId,
       storageBucket,
-    })
+    },
+    appName,
   )
 }
 
