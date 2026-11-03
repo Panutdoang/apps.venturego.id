@@ -1243,8 +1243,8 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .wizard-header {
-  min-height: 172px;
-  padding: 34px 30px 40px;
+  min-height: 124px;
+  padding: 20px 24px;
   justify-content: center;
   align-items: center;
   border-radius: 0 0 42px 42px;
@@ -1794,8 +1794,8 @@ body {
 }
 
 .choice-step .wizard-header {
-  min-height: 208px;
-  padding: 42px 34px 50px;
+  min-height: 140px;
+  padding: 24px;
   justify-content: center;
   align-items: center;
   border-radius: 0 0 48px 48px;
@@ -1968,7 +1968,7 @@ body {
 
 @media (max-width: 380px) {
   .choice-step .wizard-header {
-    min-height: 190px;
+    min-height: 130px;
   }
 
   .choice-step .wizard-body,
