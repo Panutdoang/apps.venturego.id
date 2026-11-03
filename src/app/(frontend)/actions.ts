@@ -334,6 +334,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     const applicationRef = getFirebaseFirestore().collection('applications').doc()
     const record = {
       applicationId,
+      ownerFirebaseUid: identity.uid,
       product: input.product,
       contractScheme: 'WAKALAH_BIL_UJRAH',
       applicantName,

@@ -25,6 +25,7 @@ export type DashboardIconName =
   | 'profile'
   | 'receipt'
   | 'shield'
+  | 'upload'
   | 'wallet'
 
 export function DashboardIcon({
@@ -139,6 +140,11 @@ export function DashboardIcon({
         <path d="m9 12 2 2 4-5" />
       </>
     ),
+    upload: (
+      <>
+        <path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4" />
+      </>
+    ),
     wallet: (
       <>
         <path d="M4 5h14a2 2 0 0 1 2 2v12H4a2 2 0 0 1-2-2V5a3 3 0 0 1 3-3h12" />
@@ -163,7 +169,7 @@ export function DashboardIcon({
   )
 }
 
-type PrimaryRoute = 'home' | 'angsuran' | 'riwayat' | 'profil'
+type PrimaryRoute = 'home' | 'angsuran' | 'riwayat' | 'berkas' | 'profil'
 
 const navigation: {
   key: PrimaryRoute
@@ -171,9 +177,10 @@ const navigation: {
   label: string
   icon: DashboardIconName
 }[] = [
-  { key: 'home', href: '/dashboard', label: 'Beranda', icon: 'home' },
   { key: 'angsuran', href: '/dashboard/angsuran', label: 'Angsuran', icon: 'wallet' },
   { key: 'riwayat', href: '/dashboard/riwayat', label: 'Riwayat', icon: 'history' },
+  { key: 'home', href: '/dashboard', label: 'Beranda', icon: 'home' },
+  { key: 'berkas', href: '/dashboard/unggah-berkas', label: 'Unggah', icon: 'upload' },
   { key: 'profil', href: '/dashboard/profil', label: 'Profil', icon: 'profile' },
 ]
 
@@ -204,7 +211,7 @@ export function DashboardScaffold({
             {subtitle && <p className="mt-0.5 truncate text-[11px] text-slate-500">{subtitle}</p>}
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-28">{children}</div>
+        <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-32">{children}</div>
         <DashboardBottomNav active={active} />
       </section>
     </main>
@@ -215,31 +222,38 @@ export function DashboardBottomNav({ active }: { active: PrimaryRoute }) {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 px-4 pb-[max(16px,env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="flex items-center justify-around rounded-[28px] bg-white/90 px-2 py-2 shadow-[0_8px_32px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/60 backdrop-blur-xl">
+      <div className="flex w-full items-center rounded-t-[24px] bg-white/95 px-2 py-1.5 shadow-[0_-8px_28px_rgba(15,23,42,0.10)] ring-1 ring-slate-200/60 backdrop-blur-xl">
         {navigation.map((item) => {
           const isActive = active === item.key
+          const isHome = item.key === 'home'
           return (
             <Link
-              className="group flex flex-col items-center gap-1 px-4 py-1.5"
+              className="group flex min-w-0 flex-1 flex-col items-center gap-0 px-1 py-1"
               href={item.href}
               key={item.key}
             >
-              <span
-                className={
-                  isActive
-                    ? 'grid size-9 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm transition group-hover:opacity-90'
-                    : 'grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600'
-                }
-              >
-                <DashboardIcon name={item.icon} className="size-5" />
+              <span className="grid h-10 w-full place-items-center">
+                <span
+                  className={
+                    isHome && isActive
+                      ? 'grid size-10 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-[0_4px_12px_rgba(23,21,140,0.24)] ring-2 ring-indigo-100 transition group-hover:opacity-90'
+                      : isActive
+                        ? 'grid size-9 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm transition group-hover:opacity-90'
+                        : 'grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600'
+                  }
+                >
+                  <DashboardIcon name={item.icon} className={isHome ? 'size-6' : 'size-5'} />
+                </span>
               </span>
               <span
                 className={
-                  isActive
-                    ? 'text-[10px] font-bold text-[var(--primary)]'
-                    : 'text-[10px] font-semibold text-slate-400'
+                  isHome && isActive
+                    ? 'text-[11px] font-extrabold text-[var(--primary)]'
+                    : isActive
+                      ? 'text-[10px] font-bold text-[var(--primary)]'
+                      : `text-[10px] font-semibold ${isHome ? 'text-slate-500' : 'text-slate-400'}`
                 }
               >
                 {item.label}

@@ -3,22 +3,28 @@ export type DocumentProduct = 'FULL_COVER' | 'DEPARTURE_BRIDGING'
 export type DocumentDefinition = {
   label: string
   required: boolean
+  section?: 'dokumen-pendukung'
 }
 
 export const DOCUMENT_DEFINITIONS: Record<DocumentProduct, DocumentDefinition[]> = {
   DEPARTURE_BRIDGING: [
     { label: 'Pas Foto', required: true },
     { label: 'Scan KTP', required: true },
+    { label: 'Scan Akta Kelahiran', required: false },
     { label: 'Scan KK (Kartu Keluarga)', required: true },
     { label: 'Ijazah SD/MI', required: true },
     { label: 'Ijazah SMP/MTs/SLTP', required: true },
     { label: 'Ijazah SMA/SMK/MA/SLTA', required: true },
     { label: 'Scan Passport', required: false },
-    { label: 'Surat Kesediaan Mengangsur', required: false },
-    { label: 'Surat Rekomendasi LPK', required: false },
-    { label: 'Scan KTP Orang Tua / Wali', required: false },
+    { label: 'Scan Surat Rekomendasi LPK', required: false, section: 'dokumen-pendukung' },
+    { label: 'Scan Form Pendaftaran', required: false, section: 'dokumen-pendukung' },
+    { label: 'Scan Surat Kesediaan Mengangsur', required: false, section: 'dokumen-pendukung' },
+    { label: 'Scan Surat Mengetahui Orang Tua', required: false, section: 'dokumen-pendukung' },
     { label: 'Scan SKCK', required: false },
     { label: 'Scan COE', required: false },
+    { label: 'Scan Kontrak Kerja', required: false },
+    { label: 'Scan KTP Orang Tua / Wali', required: false },
+    { label: 'Scan Surat Nikah Orang Tua', required: false },
   ],
   FULL_COVER: [
     { label: 'KTP siswa', required: false },
