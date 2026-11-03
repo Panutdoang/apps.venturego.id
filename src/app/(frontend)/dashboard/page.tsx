@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DashboardBottomNav } from './_components/dashboard-ui'
 
 type IconName =
@@ -163,9 +163,33 @@ const quickActions = [
 
 export default function DashboardPage() {
   const [showBalance, setShowBalance] = useState(true)
+  const [showSubmissionNotice, setShowSubmissionNotice] = useState(false)
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('applicationSubmitted') !== '1') return
+
+    setShowSubmissionNotice(true)
+    window.history.replaceState(window.history.state, '', '/dashboard')
+    const timeout = window.setTimeout(() => setShowSubmissionNotice(false), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [])
 
   return (
     <main className="dashboard-app min-h-dvh bg-[var(--canvas)]">
+      {showSubmissionNotice && (
+        <div
+          aria-live="polite"
+          className="fixed left-1/2 top-4 z-50 flex w-[calc(100%-32px)] max-w-[398px] -translate-x-1/2 items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_8px_32px_rgba(15,23,42,0.16)] ring-1 ring-emerald-100"
+          role="status"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">
+            ✓
+          </span>
+          <span className="text-sm font-semibold text-slate-800">
+            Pengajuan berhasil diajukan
+          </span>
+        </div>
+      )}
       <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-[#f8f9fd] shadow-[0_0_48px_rgba(15,23,42,0.08)]">
         <header className="rounded-b-[32px] bg-[var(--primary)] px-5 pb-24 pt-6 text-white">
           <div className="flex items-center justify-between">

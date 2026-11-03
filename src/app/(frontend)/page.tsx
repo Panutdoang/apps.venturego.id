@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   discardApplicationUploads,
   submitFinancingApplication,
@@ -85,6 +86,7 @@ function GoogleIcon({ className = 'size-5' }: { className?: string }) {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initialForm)
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
@@ -151,8 +153,7 @@ export default function HomePage() {
         request.set('uploadToken', uploadToken)
         const response = await submitFinancingApplication(request)
         if (response.ok) {
-          setResult({ id: response.applicationId })
-          setStep(7)
+          router.replace('/dashboard?applicationSubmitted=1')
         } else {
           await discardApplicationUploads(
             uploadToken,
@@ -945,9 +946,13 @@ export default function HomePage() {
               ))}
             </div>
             {step === 1 ? (
-              <Link className="back-button" href="/dashboard">
+              <button
+                className="back-button"
+                onClick={() => router.push('/dashboard')}
+                type="button"
+              >
                 Kembali
-              </Link>
+              </button>
             ) : (
               <button className="back-button" onClick={() => setStep(step - 1)}>
                 Kembali
