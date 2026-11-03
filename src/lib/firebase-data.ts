@@ -67,9 +67,28 @@ export type FinancingApplicationRecord = {
   departureDetails: Record<string, unknown> | null
   fundingNeeds: Record<string, unknown>[]
   financialPlan: Record<string, unknown>
+  financialPlanHistory?: {
+    changedAt: string
+    changedBy: string
+    financialPlan: Record<string, unknown>
+    pricingStatus: string
+    finalAgreementReference?: string
+    settlementNotes?: string
+  }[]
   documents: ApplicationDocumentRecord[]
   understandsWakalah: boolean
   acceptsDataProcessing: boolean
+  userFinancingAcceptance?: {
+    acceptedAt: string
+    offerSnapshot: Record<string, unknown>
+  }
+  supportRequests?: {
+    type: 'PAYMENT_RELIEF'
+    message: string
+    requestedAt: string
+    status: 'OPEN' | 'REVIEWED'
+    response?: string
+  }[]
   internalNotes?: string
 }
 

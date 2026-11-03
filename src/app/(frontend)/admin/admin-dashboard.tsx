@@ -9,6 +9,7 @@ import {
   type FinancingApplicationRecord,
 } from '@/lib/firebase-data'
 import { updateApplicationStatus } from './actions'
+import { FinanceTermsFields } from './finance-terms-fields'
 
 const STATUS_LABELS: Record<(typeof APPLICATION_STATUSES)[number], string> = {
   SUBMITTED: 'Terkirim',
@@ -67,7 +68,23 @@ export function AdminDashboard({
           tenorMonths: String(formData.get('tenorMonths') ?? ''),
           monthlyInstallment: String(formData.get('monthlyInstallment') ?? ''),
           jualaTotal: String(formData.get('jualaTotal') ?? ''),
+          nafaqahItems: String(formData.get('nafaqahItems') ?? '[]'),
+          ujrahItems: String(formData.get('ujrahItems') ?? '[]'),
+          qardhAmount: String(formData.get('qardhAmount') ?? '0'),
+          qardhDisbursed: String(formData.get('qardhDisbursed') ?? 'false'),
+          installmentCount: String(formData.get('installmentCount') ?? ''),
+          firstPaymentDate: String(formData.get('firstPaymentDate') ?? ''),
+          refundTotal: String(formData.get('refundTotal') ?? '0'),
+          refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
+          finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
+          settlementNotes: String(formData.get('settlementNotes') ?? ''),
         },
+        (application.supportRequests ?? []).map((request, index) => ({
+          status: String(formData.get(`supportRequestStatus-${index}`) ?? request.status),
+          response: String(
+            formData.get(`supportRequestResponse-${index}`) ?? request.response ?? '',
+          ),
+        })),
       )
       if (!result.ok) setError(result.message)
       else router.refresh()
@@ -133,6 +150,17 @@ export function AdminDashboard({
                   {application.documents.filter((doc) => doc.storagePath).length} terunggah
                 </p>
               </div>
+              {application.product === 'DEPARTURE_BRIDGING' && (
+                <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+                  Estimasi total yang diajukan pemohon:{' '}
+                  <strong>
+                    {typeof application.departureDetails?.requestedFinancingAmount === 'number'
+                      ? `Rp${application.departureDetails.requestedFinancingAmount.toLocaleString('id-ID')}`
+                      : 'Belum tercatat'}
+                  </strong>
+                  . Ini bukan total Nafaqah/Ujrah terverifikasi atau nominal akad.
+                </p>
+              )}
               <details className="rounded-lg bg-slate-50 px-4 py-3">
                 <summary className="cursor-pointer text-sm font-semibold">
                   Rincian dan dokumen
@@ -147,6 +175,9 @@ export function AdminDashboard({
                         departureDetails: application.departureDetails,
                         fundingNeeds: application.fundingNeeds,
                         financialPlan: application.financialPlan,
+                        userFinancingAcceptance: application.userFinancingAcceptance,
+                        supportRequests: application.supportRequests,
+                        financialPlanHistory: application.financialPlanHistory,
                       },
                       null,
                       2,
@@ -184,6 +215,42 @@ export function AdminDashboard({
                   ))}
                 </div>
               </details>
+              {(application.supportRequests ?? []).map((request, index) => (
+                <section
+                  className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3"
+                  key={`${request.requestedAt}-${index}`}
+                >
+                  <h3 className="text-xs font-bold text-amber-950">
+                    Permohonan keringanan ·{' '}
+                    {request.status === 'OPEN' ? 'Perlu ditinjau' : 'Ditinjau'}
+                  </h3>
+                  <p className="whitespace-pre-wrap text-xs leading-5 text-amber-900">
+                    {request.message}
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1 text-xs font-semibold text-slate-600">
+                      Status permohonan
+                      <select
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900"
+                        defaultValue={request.status}
+                        name={`supportRequestStatus-${index}`}
+                      >
+                        <option value="OPEN">Menunggu tinjauan</option>
+                        <option value="REVIEWED">Ditinjau</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs font-semibold text-slate-600">
+                      Tanggapan untuk pemohon
+                      <input
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900"
+                        defaultValue={request.response ?? ''}
+                        maxLength={1000}
+                        name={`supportRequestResponse-${index}`}
+                      />
+                    </label>
+                  </div>
+                </section>
+              ))}
               <div className="grid gap-3 sm:grid-cols-[1fr_1fr_2fr_auto]">
                 <label className="space-y-1 text-xs font-semibold text-slate-600">
                   Status
@@ -236,54 +303,22 @@ export function AdminDashboard({
                     : 'Akad contoh hanya menetapkan Ju’alah untuk Jepang. Konfirmasi ketentuan negara tujuan sebelum biaya dapat diverifikasi.'}
                 </p>
               )}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {([
-                  ['nafaqahTotal', 'Nafaqah'],
-                  ['ujrahTotal', 'Ujrah'],
-                  ...(application.product === 'FULL_COVER'
-                    ? ([
-                        ['jualaTotal', 'Ju’alah (jika COE terbit)'],
-                        ['tenorMonths', 'Tenor setelah keberangkatan (bulan)'],
-                      ] as const)
-                    : ([
-                        ['totalObligation', 'Total kewajiban'],
-                        ['tenorMonths', 'Tenor (bulan)'],
-                        ['monthlyInstallment', 'Angsuran bulanan'],
-                      ] as const)),
-                ] as const).map(([name, label]) => (
-                  <label className="space-y-1 text-xs font-semibold text-slate-600" key={name}>
-                    {label}
-                    <input
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900"
-                      defaultValue={String(application.financialPlan[name] ?? '')}
-                      min={name === 'tenorMonths' ? 1 : 0}
-                      max={name === 'tenorMonths' ? 36 : undefined}
-                      name={name}
-                      step={1}
-                      type="number"
-                    />
-                  </label>
-                ))}
-              </div>
-              {application.product === 'FULL_COVER' &&
-                Number.isFinite(application.financialPlan.totalObligationIfCoe) && (
-                  <p className="text-xs leading-5 text-slate-600">
-                    Nafaqah + Ujrah (di luar Ju’alah): Rp
-                    {Number(application.financialPlan.totalObligation).toLocaleString('id-ID')}.
-                    Jika COE terbit: Rp
-                    {Number(application.financialPlan.totalObligationIfCoe).toLocaleString('id-ID')},
-                    angsuran sekitar Rp
-                    {Number(
-                      application.financialPlan.monthlyInstallmentAfterCoe,
-                    ).toLocaleString('id-ID')}
-                    {application.financialPlan.finalInstallmentAfterCoe !==
-                      application.financialPlan.monthlyInstallmentAfterCoe &&
-                      ` (angsuran terakhir Rp${Number(
-                        application.financialPlan.finalInstallmentAfterCoe,
-                      ).toLocaleString('id-ID')})`}
-                    .
-                  </p>
-                )}
+              {application.product === 'DEPARTURE_BRIDGING' && (
+                <p className="rounded-lg bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">
+                  Persetujuan pemohon:{' '}
+                  {application.userFinancingAcceptance?.acceptedAt
+                    ? `tercatat pada ${new Date(
+                        application.userFinancingAcceptance.acceptedAt,
+                      ).toLocaleString('id-ID')}`
+                    : 'belum tercatat.'}{' '}
+                  Status Disepakati mensyaratkan persetujuan ini dan referensi akad final yang
+                  ditandatangani.
+                </p>
+              )}
+              <FinanceTermsFields
+                financialPlan={application.financialPlan}
+                product={application.product}
+              />
             </form>
           ))}
         </div>

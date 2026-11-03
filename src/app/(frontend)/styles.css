@@ -276,15 +276,17 @@ input[type='checkbox'] {
 .finance-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-top: 1px solid var(--border);
-  border-left: 1px solid var(--border);
+  gap: 10px;
 }
 .finance-grid > div {
-  padding: 14px;
+  min-width: 0;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f6fa;
 }
 .finance-grid .wide {
   grid-column: 1 / -1;
@@ -303,9 +305,22 @@ input[type='checkbox'] {
   color: var(--primary);
   font-size: 19px;
 }
+.finance-grid .finance-highlight strong {
+  color: var(--primary);
+  font-size: 16px;
+}
+.finance-grid .finance-highlight {
+  background: #eeefff;
+}
+.finance-grid .finance-installment {
+  background: #f5f6fa;
+}
 .finance-grid small {
   color: var(--body);
   font-size: 10px;
+}
+.finance-review-total strong {
+  color: var(--primary);
 }
 .review-list > div {
   min-height: 52px;
@@ -909,16 +924,15 @@ input[type='checkbox'] {
 }
 
 .finance-grid {
-  border-color: #d3dbe6;
+  gap: 10px;
 }
 
 .finance-grid > div {
-  min-height: 78px;
-  padding: 16px;
+  min-height: 72px;
 }
 
 .finance-grid .wide {
-  min-height: 92px;
+  min-height: 76px;
 }
 
 .finance-grid strong {
@@ -1517,14 +1531,11 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .finance-grid {
-  gap: 10px;
-  border: 0;
+  gap: 8px;
 }
 
 .mobile-shell:not(.choice-step) .finance-grid > div {
-  border: 0;
-  border-radius: 16px;
-  background: #f5f6fa;
+  border-radius: 12px;
 }
 
 .mobile-shell:not(.choice-step) .finance-grid .wide strong {

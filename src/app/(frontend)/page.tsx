@@ -8,12 +8,7 @@ import {
   submitFinancingApplication,
   type ApplicationInput,
 } from './actions'
-import {
-  FINANCING_OPTIONS,
-  calculateWakalahPlan,
-  formatRupiah,
-  isFinancingAmount,
-} from '@/lib/financing-plan'
+import { formatRupiah } from '@/lib/financing-plan'
 import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
 import { getFirebaseClientAuth, getFirebaseClientStorage } from '@/lib/firebase-client'
 import { signInAnonymously, signOut } from 'firebase/auth'
@@ -113,12 +108,22 @@ export default function HomePage() {
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   const isDeparture = form.product === 'DEPARTURE_BRIDGING'
+  const requestedFinancingAmount = Number(form.financingAmount)
+  const estimatedMonthlyUjrah =
+    Number.isSafeInteger(requestedFinancingAmount) && requestedFinancingAmount > 0
+      ? Math.round(requestedFinancingAmount * 0.024)
+      : null
+  const estimatedTotalUjrah = estimatedMonthlyUjrah === null ? null : estimatedMonthlyUjrah * 12
+  const estimatedAdminFee =
+    Number.isSafeInteger(requestedFinancingAmount) && requestedFinancingAmount > 0
+      ? Math.round(requestedFinancingAmount * 0.05)
+      : null
+  const estimatedCashDisbursed =
+    estimatedAdminFee === null ? null : requestedFinancingAmount - estimatedAdminFee
+  const estimatedFinancingTotal =
+    estimatedTotalUjrah === null ? null : requestedFinancingAmount + estimatedTotalUjrah
   const visibleSteps = [1, 2, 3, 4, 6]
   const currentStep = visibleSteps.indexOf(step) + 1
-  const selectedFinancingAmount = Number(form.financingAmount)
-  const plan = isFinancingAmount(selectedFinancingAmount)
-    ? calculateWakalahPlan(selectedFinancingAmount)
-    : null
   const toggleNeed = (need: string) =>
     set(
       'selectedNeeds',
@@ -557,56 +562,75 @@ export default function HomePage() {
                     </div>
                   </label>
                   <div className="need-section">
-                    <strong>Jumlah pembiayaan yang dibutuhkan</strong>
-                    <div className="need-grid">
-                      {FINANCING_OPTIONS.map((option) => (
-                        <button
-                          type="button"
-                          key={option.amount}
-                          className={
-                            form.financingAmount === String(option.amount)
-                              ? 'need-chip selected'
-                              : 'need-chip'
-                          }
-                          onClick={() => set('financingAmount', String(option.amount))}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
+                    <label className="field">
+                      <span>Nilai pembiayaan sebelum potongan admin</span>
+                      <select
+                        value={form.financingAmount}
+                        onChange={(event) => set('financingAmount', event.target.value)}
+                      >
+                        <option value="">Pilih nilai pembiayaan</option>
+                        {[31_000_000, 33_000_000, 36_000_000, 40_000_000].map((amount) => (
+                          <option key={amount} value={String(amount)}>
+                            Rp{amount.toLocaleString('id-ID')}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {estimatedMonthlyUjrah !== null &&
+                      estimatedTotalUjrah !== null &&
+                      estimatedAdminFee !== null &&
+                      estimatedCashDisbursed !== null &&
+                      estimatedFinancingTotal !== null && (
+                        <div className="finance-grid mt-3">
+                          <div className="wide finance-highlight">
+                            <span>Estimasi dana cair</span>
+                            <strong>{formatRupiah(estimatedCashDisbursed)}</strong>
+                            <small>Nilai pengajuan setelah potongan admin 5%</small>
+                          </div>
+                          <div>
+                            <span>Total Ujrah (simulasi 2,4% × 12 bulan)</span>
+                            <strong>{formatRupiah(estimatedTotalUjrah)}</strong>
+                          </div>
+                          <div>
+                            <span>Biaya admin (5%)</span>
+                            <strong>{formatRupiah(estimatedAdminFee)}</strong>
+                          </div>
+                          <div className="finance-highlight">
+                            <span>Total kewajiban (simulasi)</span>
+                            <strong>{formatRupiah(estimatedFinancingTotal)}</strong>
+                            <small>Nilai pembiayaan + total Ujrah 12 bulan</small>
+                          </div>
+                          <div className="finance-highlight finance-installment">
+                            <span>Angsuran per bulan (simulasi 12 bulan)</span>
+                            <strong>{formatRupiah(estimatedFinancingTotal / 12)}</strong>
+                            <small>12 kali angsuran, belum menjadi jadwal akad final</small>
+                          </div>
+                        </div>
+                      )}
+                    <div className="soft-note space-y-2 mt-4">
+                      <p className="font-semibold text-slate-800">
+                        Mengenal akad Wakalah bil Ujrah
+                      </p>
+                      <ul className="list-disc space-y-1 pl-5">
+                        <li>
+                          Anda memberi kuasa kepada VentureGo sebagai wakil untuk membantu mengurus
+                          kebutuhan keberangkatan yang disepakati.
+                        </li>
+                        <li>
+                          Dana digunakan untuk kebutuhan yang disetujui; rincian dan bukti
+                          pengeluaran diverifikasi sebelum akad final.
+                        </li>
+                        <li>
+                          Ujrah adalah imbalan jasa yang besarannya dan cara pembayarannya harus
+                          tercantum jelas dalam akad.
+                        </li>
+                        <li>
+                          Simulasi dana cair, Ujrah, total kewajiban, dan angsuran di atas belum
+                          menjadi ketentuan final sebelum diverifikasi dan disepakati.
+                        </li>
+                      </ul>
                     </div>
                   </div>
-                  {plan ? (
-                    <>
-                      <div className="finance-grid">
-                        <div>
-                          <span>Nafaqah (pokok)</span>
-                          <strong>{formatRupiah(plan.nafaqahTotal)}</strong>
-                        </div>
-                        <div>
-                          <span>Ujrah VSV</span>
-                          <strong>{formatRupiah(plan.ujrahTotal)}</strong>
-                        </div>
-                        <div className="wide">
-                          <span>Total kewajiban</span>
-                          <strong>{formatRupiah(plan.totalObligation)}</strong>
-                          <small>
-                            12 × {formatRupiah(plan.monthlyInstallment)}
-                            {plan.finalInstallment !== plan.monthlyInstallment
-                              ? `, angsuran terakhir ${formatRupiah(plan.finalInstallment)}`
-                              : ''}
-                          </small>
-                        </div>
-                      </div>
-                      <div className="soft-note">
-                        Ujrah ditetapkan sekali saat akad dan tidak berbunga majemuk.
-                      </div>
-                    </>
-                  ) : (
-                    <div className="soft-note">
-                      Pilih salah satu jumlah pembiayaan untuk melihat rincian Nafaqah, Ujrah, dan
-                      angsuran.
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -704,32 +728,47 @@ export default function HomePage() {
                 </small>
               </section>
               {isDeparture ? (
-                plan ? (
-                  <div className="finance-grid">
-                    <div>
-                      <span>Nafaqah estimasi</span>
-                      <strong>{formatRupiah(plan.nafaqahTotal)}</strong>
-                    </div>
-                    <div>
-                      <span>Ujrah VSV</span>
-                      <strong>{formatRupiah(plan.ujrahTotal)}</strong>
-                    </div>
-                    <div className="wide">
-                      <span>Total estimasi</span>
-                      <strong>{formatRupiah(plan.totalObligation)}</strong>
-                      <small>
-                        {plan.tenorMonths} × {formatRupiah(plan.monthlyInstallment)}
-                        {plan.finalInstallment !== plan.monthlyInstallment
-                          ? `, angsuran terakhir ${formatRupiah(plan.finalInstallment)}`
-                          : ''}
-                      </small>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="soft-note">
-                    Pilih jumlah pembiayaan yang dibutuhkan pada langkah sebelumnya.
-                  </div>
-                )
+                <div className="soft-note space-y-2">
+                  <p>
+                    Estimasi dana cair setelah potongan admin 5%:{' '}
+                    <strong>
+                      {estimatedCashDisbursed !== null
+                        ? formatRupiah(estimatedCashDisbursed)
+                        : 'Belum diisi'}
+                    </strong>
+                  </p>
+                  {estimatedMonthlyUjrah !== null &&
+                    estimatedTotalUjrah !== null &&
+                    estimatedAdminFee !== null &&
+                    estimatedCashDisbursed !== null &&
+                    estimatedFinancingTotal !== null && (
+                      <>
+                        <p>
+                          Estimasi dana cair setelah potongan admin 5%:{' '}
+                          <strong>{formatRupiah(estimatedCashDisbursed)}</strong>
+                        </p>
+                        <p>
+                          Total Ujrah (simulasi 2,4% × 12 bulan):{' '}
+                          <strong>{formatRupiah(estimatedTotalUjrah)}</strong>
+                        </p>
+                        <p>
+                          Biaya admin (5%): <strong>{formatRupiah(estimatedAdminFee)}</strong>
+                        </p>
+                        <p>
+                          Total kewajiban (simulasi):{' '}
+                          <strong>{formatRupiah(estimatedFinancingTotal)}</strong>
+                        </p>
+                        <p>
+                          Angsuran per bulan (simulasi 12 bulan):{' '}
+                          <strong>{formatRupiah(estimatedFinancingTotal / 12)}</strong>
+                        </p>
+                      </>
+                    )}
+                  <p>
+                    Nilai dana cair, total Ujrah, total kewajiban, dan angsuran di atas hanya
+                    simulasi. Rincian final menunggu verifikasi admin dan persetujuan Anda.
+                  </p>
+                </div>
               ) : (
                 <div className="soft-note space-y-3">
                   <p className="font-semibold text-slate-800">
@@ -776,9 +815,7 @@ export default function HomePage() {
                     <strong>Kebutuhan yang diajukan</strong>
                     <p className="mt-1">
                       {form.selectedNeeds.length
-                        ? FULL_COVER_NEEDS.filter(([value]) =>
-                            form.selectedNeeds.includes(value),
-                          )
+                        ? FULL_COVER_NEEDS.filter(([value]) => form.selectedNeeds.includes(value))
                             .map(([, label]) => label)
                             .join(', ')
                         : 'Belum dipilih'}
@@ -804,10 +841,40 @@ export default function HomePage() {
                   <strong>{form.destination === 'JAPAN' ? 'Jepang' : 'Turki'}</strong>
                 </div>
                 {isDeparture && (
-                  <div>
-                    <span>Jumlah pembiayaan</span>
-                    <strong>{plan ? formatRupiah(plan.nafaqahTotal) : 'Belum dipilih'}</strong>
-                  </div>
+                  <>
+                    <div>
+                      <span>Estimasi dana cair (setelah admin 5%)</span>
+                      <strong>
+                        {estimatedCashDisbursed !== null
+                          ? formatRupiah(estimatedCashDisbursed)
+                          : 'Belum diisi'}
+                      </strong>
+                    </div>
+                    {estimatedMonthlyUjrah !== null &&
+                      estimatedTotalUjrah !== null &&
+                      estimatedAdminFee !== null &&
+                      estimatedCashDisbursed !== null &&
+                      estimatedFinancingTotal !== null && (
+                        <>
+                          <div>
+                            <span>Total Ujrah (simulasi 2,4% × 12 bulan)</span>
+                            <strong>{formatRupiah(estimatedTotalUjrah)}</strong>
+                          </div>
+                          <div>
+                            <span>Biaya admin (5%)</span>
+                            <strong>{formatRupiah(estimatedAdminFee)}</strong>
+                          </div>
+                          <div className="finance-review-total">
+                            <span>Total kewajiban (simulasi)</span>
+                            <strong>{formatRupiah(estimatedFinancingTotal)}</strong>
+                          </div>
+                          <div className="finance-review-total">
+                            <span>Angsuran per bulan (simulasi 12 bulan)</span>
+                            <strong>{formatRupiah(estimatedFinancingTotal / 12)}</strong>
+                          </div>
+                        </>
+                      )}
+                  </>
                 )}
                 <div>
                   <span>Tempat, tanggal lahir</span>
@@ -841,7 +908,6 @@ export default function HomePage() {
               {result.error && <p className="error-message">{result.error}</p>}
             </>
           )}
-
         </div>
 
         {step > 0 && step < 7 && (

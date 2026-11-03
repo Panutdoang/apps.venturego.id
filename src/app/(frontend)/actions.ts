@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseBucket, getFirebaseFirestore } from '@/lib/firebase-admin'
-import { calculateWakalahPlan, isFinancingAmount } from '@/lib/financing-plan'
 import {
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
@@ -191,10 +190,15 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     return { ok: false, message: 'Lengkapi alamat sesuai KTP dan alamat korespondensi.' }
   }
   const financingAmount = Number(input.financingAmount)
-  if (departure && !isFinancingAmount(financingAmount)) {
-    return { ok: false, message: 'Pilih jumlah pembiayaan yang dibutuhkan.' }
+  if (
+    departure &&
+    (typeof input.financingAmount !== 'string' ||
+      input.financingAmount.length > 16 ||
+      !Number.isSafeInteger(financingAmount) ||
+      financingAmount <= 0)
+  ) {
+    return { ok: false, message: 'Masukkan estimasi total kebutuhan pembiayaan yang valid.' }
   }
-  const plan = departure ? calculateWakalahPlan(financingAmount) : null
   const definitions = DOCUMENT_DEFINITIONS[input.product]
   if (!definitions) return { ok: false, message: 'Jenis pengajuan tidak valid.' }
   const serializedUploads = request.get('uploads')
@@ -365,18 +369,14 @@ export async function submitFinancingApplication(request: FormData): Promise<App
             requiresAccommodation: Boolean(input.requiresAccommodation),
           },
       departureDetails: departure
-        ? { outstandingLPKAmount: Number(input.outstandingLPKAmount.replace(/\D/g, '')) || 0 }
+        ? {
+            outstandingLPKAmount: Number(input.outstandingLPKAmount.replace(/\D/g, '')) || 0,
+            requestedFinancingAmount: financingAmount,
+          }
         : null,
       fundingNeeds,
-      financialPlan: plan
-        ? {
-            nafaqahTotal: plan.nafaqahTotal,
-            ujrahTotal: plan.ujrahTotal,
-            totalObligation: plan.totalObligation,
-            tenorMonths: plan.tenorMonths,
-            monthlyInstallment: plan.monthlyInstallment,
-            pricingStatus: 'ESTIMATED',
-          }
+      financialPlan: departure
+        ? { pricingStatus: 'ESTIMATED' }
         : {
             pricingStatus: 'ESTIMATED',
             jualaCondition: input.destination === 'JAPAN' ? 'COE_ISSUED' : 'NOT_CONFIGURED',
