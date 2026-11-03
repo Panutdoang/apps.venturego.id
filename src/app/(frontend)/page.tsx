@@ -24,6 +24,16 @@ type Product = ApplicationInput['product']
 const formatAmountInput = (value: string) =>
   value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
+const FULL_COVER_NEEDS = [
+  ['LANGUAGE_TRAINING', 'Biaya pelatihan bahasa'],
+  ['LANGUAGE_ALLOWANCE', 'Uang saku pelatihan bahasa'],
+  ['SKILL_TRAINING', 'Biaya pelatihan skill'],
+  ['SKILL_ALLOWANCE', 'Uang saku pelatihan skill'],
+  ['MEDICAL', 'Biaya MCU'],
+  ['DOCUMENT', 'Biaya dokumen keberangkatan'],
+  ['ALLOWANCE', 'Biaya uang saku keberangkatan'],
+] as const
+
 const initialForm: ApplicationInput = {
   product: 'FULL_COVER',
   applicantName: '',
@@ -176,7 +186,7 @@ export default function HomePage() {
   return (
     <main className="app-canvas">
       <section
-        className={`mobile-shell ${step === 0 ? 'welcome-step' : step === 1 ? 'choice-step' : ''}`}
+        className={`mobile-shell application-form ${step === 0 ? 'welcome-step' : step === 1 ? 'choice-step' : ''}`}
       >
         {step === 0 ? (
           <header className="welcome-hero">
@@ -401,122 +411,94 @@ export default function HomePage() {
                   <option value="CONFUCIAN">Konghucu</option>
                 </select>
               </label>
-              {!isDeparture && (
-                <>
-                  <label className="field">
-                    <span>Nama LPK</span>
-                    <input
-                      value={form.lpkName}
-                      onChange={(e) => set('lpkName', e.target.value)}
-                      placeholder="Contoh: LPK Sakura"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Negara tujuan</span>
-                    <select
-                      value={form.destination}
-                      onChange={(e) =>
-                        set('destination', e.target.value as ApplicationInput['destination'])
-                      }
-                    >
-                      <option value="JAPAN">Jepang</option>
-                      <option value="TURKEY">Turki</option>
-                    </select>
-                  </label>
-                </>
-              )}
-              {isDeparture && (
-                <>
-                  <label className="field">
-                    <span>Tempat lahir</span>
-                    <input
-                      value={form.birthPlace}
-                      onChange={(e) => set('birthPlace', e.target.value)}
-                      placeholder="Kota / kabupaten"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Tanggal lahir</span>
-                    <input
-                      value={form.birthDate}
-                      onChange={(e) => set('birthDate', e.target.value)}
-                      placeholder="12 Februari 2000"
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Jenis kelamin</span>
-                    <select
-                      value={form.gender}
-                      onChange={(e) => set('gender', e.target.value as ApplicationInput['gender'])}
-                    >
-                      <option value="MALE">Laki-laki</option>
-                      <option value="FEMALE">Perempuan</option>
-                    </select>
-                  </label>
-                  <label className="field">
-                    <span>Alamat sesuai KTP</span>
-                    <textarea
-                      value={form.idCardAddress}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setForm((current) => ({
-                          ...current,
-                          idCardAddress: value,
-                          ...(current.domicileSameAsIdCard ? { domicileAddress: value } : {}),
-                        }))
-                      }}
-                      placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
-                      rows={4}
-                    />
-                  </label>
-                  <label className="switch-row">
-                    <span>
-                      <strong>Alamat korespondensi sama dengan KTP</strong>
-                      <small>
-                        Aktifkan jika surat menyurat dikirim ke alamat yang sama dengan KTP.
-                      </small>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={form.domicileSameAsIdCard}
-                      onChange={(e) => {
-                        const same = e.target.checked
-                        setForm((current) => ({
-                          ...current,
-                          domicileSameAsIdCard: same,
-                          ...(same ? { domicileAddress: current.idCardAddress } : {}),
-                        }))
-                      }}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Alamat korespondensi (untuk surat menyurat)</span>
-                    <textarea
-                      value={form.domicileSameAsIdCard ? form.idCardAddress : form.domicileAddress}
-                      onChange={(e) => set('domicileAddress', e.target.value)}
-                      placeholder={
-                        form.domicileSameAsIdCard
-                          ? 'Mengikuti alamat sesuai KTP'
-                          : 'Jl., RT, RW, Kel., Kec., Kab., Prov.'
-                      }
-                      readOnly={form.domicileSameAsIdCard}
-                      rows={4}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Kode pos alamat korespondensi</span>
-                    <input
-                      inputMode="numeric"
-                      maxLength={5}
-                      value={form.domicilePostalCode}
-                      onChange={(e) =>
-                        set('domicilePostalCode', e.target.value.replace(/\D/g, '').slice(0, 5))
-                      }
-                      placeholder="Contoh: 56351"
-                    />
-                  </label>
-                </>
-              )}
+              <label className="field">
+                <span>Tempat lahir</span>
+                <input
+                  value={form.birthPlace}
+                  onChange={(e) => set('birthPlace', e.target.value)}
+                  placeholder="Kota / kabupaten"
+                />
+              </label>
+              <label className="field">
+                <span>Tanggal lahir</span>
+                <input
+                  value={form.birthDate}
+                  onChange={(e) => set('birthDate', e.target.value)}
+                  placeholder="12 Februari 2000"
+                />
+              </label>
+              <label className="field">
+                <span>Jenis kelamin</span>
+                <select
+                  value={form.gender}
+                  onChange={(e) => set('gender', e.target.value as ApplicationInput['gender'])}
+                >
+                  <option value="MALE">Laki-laki</option>
+                  <option value="FEMALE">Perempuan</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Alamat sesuai KTP</span>
+                <textarea
+                  value={form.idCardAddress}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setForm((current) => ({
+                      ...current,
+                      idCardAddress: value,
+                      ...(current.domicileSameAsIdCard ? { domicileAddress: value } : {}),
+                    }))
+                  }}
+                  placeholder="Jl., RT, RW, Kel., Kec., Kab., Prov."
+                  rows={4}
+                />
+              </label>
+              <label className="switch-row">
+                <span>
+                  <strong>Alamat korespondensi sama dengan KTP</strong>
+                  <small>
+                    Aktifkan jika surat menyurat dikirim ke alamat yang sama dengan KTP.
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={form.domicileSameAsIdCard}
+                  onChange={(e) => {
+                    const same = e.target.checked
+                    setForm((current) => ({
+                      ...current,
+                      domicileSameAsIdCard: same,
+                      ...(same ? { domicileAddress: current.idCardAddress } : {}),
+                    }))
+                  }}
+                />
+              </label>
+              <label className="field">
+                <span>Alamat korespondensi (untuk surat menyurat)</span>
+                <textarea
+                  value={form.domicileSameAsIdCard ? form.idCardAddress : form.domicileAddress}
+                  onChange={(e) => set('domicileAddress', e.target.value)}
+                  placeholder={
+                    form.domicileSameAsIdCard
+                      ? 'Mengikuti alamat sesuai KTP'
+                      : 'Jl., RT, RW, Kel., Kec., Kab., Prov.'
+                  }
+                  readOnly={form.domicileSameAsIdCard}
+                  rows={4}
+                />
+              </label>
+              <label className="field">
+                <span>Kode pos alamat korespondensi</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={form.domicilePostalCode}
+                  onChange={(e) =>
+                    set('domicilePostalCode', e.target.value.replace(/\D/g, '').slice(0, 5))
+                  }
+                  placeholder="Contoh: 56351"
+                />
+              </label>
             </>
           )}
 
@@ -680,36 +662,16 @@ export default function HomePage() {
                       />
                     </label>
                   </div>
-                  <div className="choice-list">
-                    <label className="check-row">
-                      <span>Butuh uang saku pelatihan</span>
-                      <input
-                        type="checkbox"
-                        checked={form.requiresTrainingAllowance}
-                        onChange={(e) => set('requiresTrainingAllowance', e.target.checked)}
-                      />
-                    </label>
-                    <label className="check-row">
-                      <span>Butuh biaya tempat tinggal</span>
-                      <input
-                        type="checkbox"
-                        checked={form.requiresAccommodation}
-                        onChange={(e) => set('requiresAccommodation', e.target.checked)}
-                      />
-                    </label>
-                  </div>
                   <div className="need-section">
                     <strong>Kebutuhan yang diajukan</strong>
-                    <div className="choice-list">
-                      {[
-                        ['LANGUAGE_TRAINING', 'Pelatihan bahasa'],
-                        ['SKILL_TRAINING', 'Pelatihan keterampilan'],
-                        ['MEDICAL', 'MCU'],
-                        ['DOCUMENT', 'Dokumen'],
-                        ['ALLOWANCE', 'Uang saku'],
-                        ['ACCOMMODATION', 'Tempat tinggal'],
-                      ].map(([value, label]) => (
-                        <label className="check-row" key={value}>
+                    <div className="choice-list need-checkbox-list">
+                      {FULL_COVER_NEEDS.map(([value, label]) => (
+                        <label
+                          className={`check-row need-checkbox-row ${
+                            form.selectedNeeds.includes(value) ? 'selected' : ''
+                          }`}
+                          key={value}
+                        >
                           <span>{label}</span>
                           <input
                             type="checkbox"
@@ -769,9 +731,63 @@ export default function HomePage() {
                   </div>
                 )
               ) : (
-                <div className="soft-note">
-                  Rincian Nafaqah dan Ujrah Full Cover akan disusun setelah verifikasi program
-                  pelatihan dan kebutuhan Anda.
+                <div className="soft-note space-y-3">
+                  <p className="font-semibold text-slate-800">
+                    Rincian biaya Full Cover akan diisi dan diverifikasi tim VentureGo sebelum akad
+                    disepakati.
+                  </p>
+                  <ul className="space-y-2">
+                    <li>
+                      <strong>Nafaqah:</strong> pengeluaran riil untuk kebutuhan yang disetujui,
+                      disertai bukti pembayaran.
+                    </li>
+                    <li>
+                      <strong>Ujrah:</strong> imbalan jasa yang nilainya dicantumkan dalam akad.
+                    </li>
+                    <li>
+                      <strong>Ju&apos;alah:</strong>{' '}
+                      {form.destination === 'JAPAN'
+                        ? 'hanya berlaku jika COE atas nama Anda terbit.'
+                        : 'ketentuannya belum ditetapkan untuk negara tujuan ini dan perlu dikonfirmasi dalam akad.'}
+                    </li>
+                  </ul>
+                  <p>
+                    VentureGo bertindak sebagai wakil terbatas untuk kebutuhan yang disetujui dan
+                    bukti pengeluaran dapat diminta. Dokumen administrasi digunakan untuk
+                    verifikasi, bukan sebagai jaminan.
+                  </p>
+                  <p>
+                    Total, tenor, angsuran, dan waktu mulai pembayaran akan dikonfirmasi sebelum
+                    penandatanganan. Jika COE tidak terbit atau pengajuan dihentikan, perhitungan
+                    dilakukan berdasarkan ketentuan akad final dan biaya aktual yang dapat
+                    dibuktikan; aplikasi ini tidak menetapkan biaya komitmen otomatis.
+                  </p>
+                  <p>
+                    Contoh akad menyebut total tetap setelah ditandatangani, pelunasan dipercepat
+                    tanpa penalti, dan biaya penagihan hanya berdasarkan biaya aktual yang
+                    dibuktikan. Ketentuan yang berlaku tetap harus tercantum dalam akad final.
+                  </p>
+                  <p>
+                    {form.destination === 'JAPAN'
+                      ? 'Contoh akad memulai angsuran pada bulan pertama setelah keberangkatan; tanggal dan jadwal final tetap dicantumkan dalam akad yang disepakati.'
+                      : 'Jadwal pembayaran untuk negara tujuan ini akan ditetapkan dalam akad final.'}
+                  </p>
+                  <div className="border-t border-slate-200 pt-3">
+                    <strong>Kebutuhan yang diajukan</strong>
+                    <p className="mt-1">
+                      {form.selectedNeeds.length
+                        ? FULL_COVER_NEEDS.filter(([value]) =>
+                            form.selectedNeeds.includes(value),
+                          )
+                            .map(([, label]) => label)
+                            .join(', ')
+                        : 'Belum dipilih'}
+                    </p>
+                    <p className="mt-1">
+                      Durasi pelatihan: bahasa {form.languageTrainingMonths || '—'} bulan,
+                      keterampilan {form.skillTrainingMonths || '—'} bulan.
+                    </p>
+                  </div>
                 </div>
               )}
               <div className="review-list">
@@ -807,8 +823,11 @@ export default function HomePage() {
                   onChange={(e) => set('understandsWakalah', e.target.checked)}
                 />
                 <span>
-                  Saya memahami bahwa total kewajiban terdiri dari pengeluaran riil (Nafaqah) dan
-                  Ujrah jasa VSV.
+                  {isDeparture
+                    ? 'Saya memahami bahwa total kewajiban terdiri dari pengeluaran riil (Nafaqah) dan Ujrah jasa VSV.'
+                    : form.destination === 'JAPAN'
+                      ? 'Saya memahami bahwa Nafaqah dan Ujrah akan diverifikasi serta Ju’alah hanya berlaku jika COE terbit; rincian final akan dicantumkan dalam akad.'
+                      : 'Saya memahami bahwa Nafaqah, Ujrah, dan ketentuan Ju’alah untuk negara tujuan akan dikonfirmasi serta dicantumkan dalam akad final.'}
                 </span>
               </label>
               <label className="consent">

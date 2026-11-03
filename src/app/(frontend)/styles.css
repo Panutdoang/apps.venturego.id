@@ -823,6 +823,28 @@ input[type='checkbox'] {
   font-weight: 500;
 }
 
+.need-checkbox-list {
+  display: grid;
+  gap: 8px;
+  border: 0;
+}
+
+.need-checkbox-list .need-checkbox-row {
+  min-height: 54px;
+  padding: 10px 14px;
+  border: 1px solid #dfe3eb;
+  border-radius: 8px;
+  background: #fff;
+  transition:
+    border-color 0.18s ease-out,
+    background 0.18s ease-out;
+}
+
+.need-checkbox-list .need-checkbox-row.selected {
+  border-color: #bdbbfa;
+  background: #f7f6ff;
+}
+
 .need-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1380,6 +1402,24 @@ body {
   background: transparent;
   color: #25263a;
   font-weight: 550;
+}
+
+.mobile-shell:not(.choice-step) .need-section .need-checkbox-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-shell:not(.choice-step) .need-section .need-checkbox-row {
+  min-height: 54px;
+  padding: 10px 14px;
+  border: 1px solid #dfe3eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.mobile-shell:not(.choice-step) .need-section .need-checkbox-row.selected {
+  border-color: #bdbbfa;
+  background: #f7f6ff;
 }
 
 .mobile-shell:not(.choice-step) input[type='checkbox'] {
@@ -2086,4 +2126,20 @@ body {
   min-height: 48px;
   padding-inline: 14px;
   border-radius: 6px;
+}
+
+.mobile-shell.application-form:not(.welcome-step) .field input,
+.mobile-shell.application-form:not(.welcome-step) .field select {
+  min-height: 40px;
+  padding-inline: 11px;
+}
+
+.mobile-shell.application-form:not(.welcome-step) .field textarea {
+  min-height: 72px;
+  padding: 9px 11px;
+}
+
+.mobile-shell.application-form:not(.welcome-step) .currency-input {
+  min-height: 40px;
+  padding-inline: 11px;
 }

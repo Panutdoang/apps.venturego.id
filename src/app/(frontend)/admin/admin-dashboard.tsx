@@ -66,6 +66,7 @@ export function AdminDashboard({
           totalObligation: String(formData.get('totalObligation') ?? ''),
           tenorMonths: String(formData.get('tenorMonths') ?? ''),
           monthlyInstallment: String(formData.get('monthlyInstallment') ?? ''),
+          jualaTotal: String(formData.get('jualaTotal') ?? ''),
         },
       )
       if (!result.ok) setError(result.message)
@@ -228,13 +229,27 @@ export function AdminDashboard({
                   Simpan
                 </button>
               </div>
+              {application.product === 'FULL_COVER' && (
+                <p className="rounded-lg bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">
+                  {application.destination === 'JAPAN'
+                    ? 'Nilai tidak diisi dari contoh akad. Verifikasi nominal berdasarkan kebutuhan dan bukti aktual. Ju’alah hanya berlaku jika COE terbit; tenor diisi sesuai akad yang disepakati. Tandai Disepakati hanya setelah akad final ditandatangani.'
+                    : 'Akad contoh hanya menetapkan Ju’alah untuk Jepang. Konfirmasi ketentuan negara tujuan sebelum biaya dapat diverifikasi.'}
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 {([
                   ['nafaqahTotal', 'Nafaqah'],
                   ['ujrahTotal', 'Ujrah'],
-                  ['totalObligation', 'Total kewajiban'],
-                  ['tenorMonths', 'Tenor (bulan)'],
-                  ['monthlyInstallment', 'Angsuran bulanan'],
+                  ...(application.product === 'FULL_COVER'
+                    ? ([
+                        ['jualaTotal', 'Ju’alah (jika COE terbit)'],
+                        ['tenorMonths', 'Tenor setelah keberangkatan (bulan)'],
+                      ] as const)
+                    : ([
+                        ['totalObligation', 'Total kewajiban'],
+                        ['tenorMonths', 'Tenor (bulan)'],
+                        ['monthlyInstallment', 'Angsuran bulanan'],
+                      ] as const)),
                 ] as const).map(([name, label]) => (
                   <label className="space-y-1 text-xs font-semibold text-slate-600" key={name}>
                     {label}
@@ -250,6 +265,25 @@ export function AdminDashboard({
                   </label>
                 ))}
               </div>
+              {application.product === 'FULL_COVER' &&
+                Number.isFinite(application.financialPlan.totalObligationIfCoe) && (
+                  <p className="text-xs leading-5 text-slate-600">
+                    Nafaqah + Ujrah (di luar Ju’alah): Rp
+                    {Number(application.financialPlan.totalObligation).toLocaleString('id-ID')}.
+                    Jika COE terbit: Rp
+                    {Number(application.financialPlan.totalObligationIfCoe).toLocaleString('id-ID')},
+                    angsuran sekitar Rp
+                    {Number(
+                      application.financialPlan.monthlyInstallmentAfterCoe,
+                    ).toLocaleString('id-ID')}
+                    {application.financialPlan.finalInstallmentAfterCoe !==
+                      application.financialPlan.monthlyInstallmentAfterCoe &&
+                      ` (angsuran terakhir Rp${Number(
+                        application.financialPlan.finalInstallmentAfterCoe,
+                      ).toLocaleString('id-ID')})`}
+                    .
+                  </p>
+                )}
             </form>
           ))}
         </div>

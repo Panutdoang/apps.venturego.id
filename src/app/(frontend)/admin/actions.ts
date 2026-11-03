@@ -35,23 +35,18 @@ export async function updateApplicationStatus(
     'nafaqahTotal',
     'ujrahTotal',
     'totalObligation',
+    'jualaTotal',
     'tenorMonths',
     'monthlyInstallment',
   ] as const
-  const financialNumbers: Record<(typeof financialFields)[number], number | null> = {
-    nafaqahTotal: null,
-    ujrahTotal: null,
-    totalObligation: null,
-    tenorMonths: null,
-    monthlyInstallment: null,
-  }
+  const financialNumbers: Partial<Record<(typeof financialFields)[number], number>> = {}
   for (const field of financialFields) {
     const value = financialValues?.[field]
     if (typeof value !== 'string' || value.length > 20) {
       return { ok: false, message: 'Rincian biaya tidak valid.' }
     }
     if (value.trim() === '') continue
-    if (!/^\d+(?:\.\d{1,2})?$/.test(value)) {
+    if (!/^\d+$/.test(value)) {
       return { ok: false, message: 'Masukkan angka yang valid pada rincian biaya.' }
     }
     financialNumbers[field] = Number(value)
@@ -60,21 +55,12 @@ export async function updateApplicationStatus(
     }
   }
   if (
-    financialNumbers.tenorMonths !== null &&
+    financialNumbers.tenorMonths !== undefined &&
     (!Number.isInteger(financialNumbers.tenorMonths) ||
       financialNumbers.tenorMonths < 1 ||
       financialNumbers.tenorMonths > 36)
   ) {
     return { ok: false, message: 'Tenor harus antara 1 dan 36 bulan.' }
-  }
-  if (
-    financialNumbers.nafaqahTotal !== null &&
-    financialNumbers.ujrahTotal !== null &&
-    financialNumbers.totalObligation !== null &&
-    financialNumbers.nafaqahTotal + financialNumbers.ujrahTotal !==
-      financialNumbers.totalObligation
-  ) {
-    return { ok: false, message: 'Total kewajiban harus sama dengan Nafaqah ditambah Ujrah.' }
   }
   try {
     const applicationRef = getFirebaseFirestore().collection('applications').doc(documentId)
@@ -111,11 +97,60 @@ export async function updateApplicationStatus(
       status: documentStatuses[index],
     }))
     const existingFinancialPlan = application.data()?.financialPlan ?? {}
+    const applicationProduct = application.data()?.product
+    const nextFinancialPlan = { ...existingFinancialPlan, ...financialNumbers }
+    if (
+      applicationProduct === 'FULL_COVER' &&
+      (pricingStatus === 'VERIFIED' || pricingStatus === 'AGREED')
+    ) {
+      if (application.data()?.destination !== 'JAPAN') {
+        return {
+          ok: false,
+          message: 'Akad contoh hanya menetapkan Ju’alah untuk Jepang; konfirmasi ketentuan negara tujuan terlebih dahulu.',
+        }
+      }
+      const { nafaqahTotal, ujrahTotal, jualaTotal, tenorMonths } = nextFinancialPlan as Record<
+        string,
+        number
+      >
+      if (
+        ![nafaqahTotal, ujrahTotal, jualaTotal, tenorMonths].every(Number.isFinite) ||
+        tenorMonths < 1 ||
+        tenorMonths > 36
+      ) {
+        return {
+          ok: false,
+          message: 'Isi dan verifikasi Nafaqah, Ujrah, Ju’alah, serta tenor sebelum menyetujui biaya.',
+        }
+      }
+      const totalObligation = nafaqahTotal + ujrahTotal
+      const totalObligationIfCoe = totalObligation + jualaTotal
+      const monthlyInstallmentAfterCoe = Math.floor(totalObligationIfCoe / tenorMonths)
+      Object.assign(nextFinancialPlan, {
+        totalObligation,
+        totalObligationIfCoe,
+        monthlyInstallmentAfterCoe,
+        finalInstallmentAfterCoe:
+          totalObligationIfCoe - monthlyInstallmentAfterCoe * (tenorMonths - 1),
+        jualaCondition: 'COE_ISSUED',
+        paymentStartCondition: 'AFTER_DEPARTURE',
+      })
+    }
+    if (
+      applicationProduct !== 'FULL_COVER' &&
+      Number.isFinite(nextFinancialPlan.nafaqahTotal) &&
+      Number.isFinite(nextFinancialPlan.ujrahTotal) &&
+      Number.isFinite(nextFinancialPlan.totalObligation) &&
+      nextFinancialPlan.nafaqahTotal + nextFinancialPlan.ujrahTotal !==
+        nextFinancialPlan.totalObligation
+    ) {
+      return { ok: false, message: 'Total kewajiban harus sama dengan Nafaqah ditambah Ujrah.' }
+    }
     await applicationRef.update({
       status,
       internalNotes: internalNotes.trim(),
       documents,
-      financialPlan: { ...existingFinancialPlan, ...financialNumbers, pricingStatus },
+      financialPlan: { ...nextFinancialPlan, pricingStatus },
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: staff.email ?? staff.uid,
     })

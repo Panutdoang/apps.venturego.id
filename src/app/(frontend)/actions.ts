@@ -313,7 +313,9 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     )
     const allowedNeeds = new Set([
       'LANGUAGE_TRAINING',
+      'LANGUAGE_ALLOWANCE',
       'SKILL_TRAINING',
+      'SKILL_ALLOWANCE',
       'MEDICAL',
       'DOCUMENT',
       'LPK_PAYMENT',
@@ -331,7 +333,11 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       applicationId,
       ownerFirebaseUid: identity.uid,
       product: input.product,
-      contractScheme: 'WAKALAH_BIL_UJRAH',
+      contractScheme: departure
+        ? 'WAKALAH_BIL_UJRAH'
+        : input.destination === 'JAPAN'
+          ? 'WAKALAH_BIL_UJRAH_AND_JUALAH'
+          : 'WAKALAH_BIL_UJRAH',
       applicantName,
       phone,
       lpkName,
@@ -352,7 +358,6 @@ export async function submitFinancingApplication(request: FormData): Promise<App
         ? null
         : {
             languageLevel: input.languageLevel,
-            trainingProgram: cleanText(input.trainingProgram, 120),
             trainingStartDate: input.trainingStartDate || null,
             languageTrainingMonths: Number(input.languageTrainingMonths) || null,
             skillTrainingMonths: Number(input.skillTrainingMonths) || null,
@@ -372,7 +377,12 @@ export async function submitFinancingApplication(request: FormData): Promise<App
             monthlyInstallment: plan.monthlyInstallment,
             pricingStatus: 'ESTIMATED',
           }
-        : { pricingStatus: 'ESTIMATED' },
+        : {
+            pricingStatus: 'ESTIMATED',
+            jualaCondition: input.destination === 'JAPAN' ? 'COE_ISSUED' : 'NOT_CONFIGURED',
+            paymentStartCondition:
+              input.destination === 'JAPAN' ? 'AFTER_DEPARTURE' : 'NOT_CONFIGURED',
+          },
       documents,
       understandsWakalah: true,
       acceptsDataProcessing: true,
