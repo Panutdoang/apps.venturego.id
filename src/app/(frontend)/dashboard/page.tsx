@@ -19,6 +19,7 @@ type IconName =
   | 'profile'
   | 'receipt'
   | 'shield'
+  | 'vip'
   | 'wallet'
 
 function Icon({ name, className = 'size-5' }: { name: IconName; className?: string }) {
@@ -101,6 +102,12 @@ function Icon({ name, className = 'size-5' }: { name: IconName; className?: stri
         <path d="m9 12 2 2 4-5" />
       </>
     ),
+    vip: (
+      <>
+        <path d="m12 3 2.5 5.1 5.6.8-4.1 4 .97 5.6L12 15.9l-5 2.6.97-5.6-4.1-4 5.6-.8L12 3Z" />
+        <path d="M7 21h10" />
+      </>
+    ),
     wallet: (
       <>
         <path d="M4 5h14a2 2 0 0 1 2 2v12H4a2 2 0 0 1-2-2V5a3 3 0 0 1 3-3h12" />
@@ -159,6 +166,7 @@ const quickActions = [
   { label: 'Simulasi', icon: 'wallet' as const, href: '/dashboard/simulasi' },
   { label: 'Ajukan baru', icon: 'plus' as const, href: '/?step=1' },
   { label: 'Bantuan', icon: 'help' as const, href: '/dashboard/bantuan' },
+  { label: 'VIP', icon: 'vip' as const, href: '/dashboard/vip' },
 ]
 
 export default function DashboardPage() {
@@ -246,7 +254,7 @@ export default function DashboardPage() {
               <span>28% telah dibayar</span>
               <span>Total kewajiban Rp20.000.000</span>
             </div>
-            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4" style={{ gridTemplateColumns: '2fr 3fr' }}>
+            <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4" style={{ gridTemplateColumns: '1fr 3fr' }}>
               <div>
                 <span className="text-[11px] text-slate-400">Tenor tersisa</span>
                 <strong className="mt-1 block text-sm text-slate-800">12 bulan</strong>
@@ -293,7 +301,7 @@ export default function DashboardPage() {
                 Semua layanan
               </Link>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {quickActions.map((action) => (
                 <Link
                   className="group flex min-w-0 flex-col items-center gap-2 text-center"
@@ -311,35 +319,6 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section
-            className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-100"
-            id="angsuran"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--primary)]">
-                  Angsuran berikutnya
-                </p>
-                <h2 className="mt-1 text-lg font-bold text-slate-900">Rp1.250.000</h2>
-              </div>
-              <span className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-600">
-                <CalendarPage />
-              </span>
-            </div>
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Icon name="clock" className="size-4" />
-                <span>Jatuh tempo 25 April 2026</span>
-              </div>
-              <Link
-                className="rounded-full bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:opacity-90"
-                href="/dashboard/pembayaran"
-              >
-                Bayar
-              </Link>
-            </div>
-          </section>
-
           <section aria-labelledby="progress-title" id="progress">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-bold tracking-tight text-slate-900" id="progress-title">
@@ -352,9 +331,9 @@ export default function DashboardPage() {
             <div className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
               <ol className="relative space-y-0">
                 {[
-                  { step: 1, label: 'Formulir pendaftaran', sub: 'Mengisi gform pendaftaran VSV', done: true },
-                  { step: 2, label: 'Form aplikasi pembiayaan', sub: 'Pengisian & pengiriman ke LPK', done: true },
-                  { step: 3, label: 'Pengumpulan dokumen', sub: 'Scan dokumen persyaratan lengkap', done: true },
+                  { step: 1, label: 'Pengajuan', sub: 'Mengisi form pengajuan Vworks Students Venture', done: true },
+                  { step: 2, label: 'Verifikasi & kelayakan', sub: 'Oleh tim Venturego & pihak LPK mitra', done: true },
+                  { step: 3, label: 'Pengumpulan berkas online', sub: 'Scan dokumen persyaratan lengkap', done: true },
                   { step: 4, label: 'Akad pembiayaan', sub: 'Penandatanganan kontrak syariah', done: true },
                   { step: 5, label: 'Pencairan dana', sub: 'Dana dikirim langsung ke LPK', done: true },
                   { step: 6, label: 'Program angsuran', sub: 'Cicilan berjalan sesuai jadwal', done: false, active: true },
@@ -431,8 +410,4 @@ export default function DashboardPage() {
       </section>
     </main>
   )
-}
-
-function CalendarPage() {
-  return <Icon name="calendar" className="size-5" />
 }

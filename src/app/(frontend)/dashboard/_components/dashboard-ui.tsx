@@ -25,6 +25,7 @@ export type DashboardIconName =
   | 'profile'
   | 'receipt'
   | 'shield'
+  | 'star'
   | 'upload'
   | 'wallet'
 
@@ -140,6 +141,7 @@ export function DashboardIcon({
         <path d="m9 12 2 2 4-5" />
       </>
     ),
+    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
     upload: (
       <>
         <path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4" />
