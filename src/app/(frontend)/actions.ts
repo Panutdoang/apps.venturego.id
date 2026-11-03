@@ -34,7 +34,6 @@ export type ApplicationInput = {
   coeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'ISSUED'
   visaStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'ISSUED'
   languageLevel: 'NOT_STARTED' | 'BASIC_N5' | 'N5' | 'N4' | 'N3_PLUS'
-  trainingProgram: string
   trainingStartDate: string
   languageTrainingMonths: string
   skillTrainingMonths: string
@@ -174,22 +173,21 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       message: 'Isi perkiraan tanggal keberangkatan dengan format seperti 12 Februari 2026.',
     }
   }
-  if (!departure && !cleanText(input.trainingProgram, 120)) {
-    return { ok: false, message: 'Lengkapi nama program pelatihan Full Cover.' }
-  }
-  if (departure && (!input.trainingCompleted || !birthDate || !cleanText(input.birthPlace, 80))) {
+  if (!birthDate || !cleanText(input.birthPlace, 80)) {
     return {
       ok: false,
-      message:
-        'Konfirmasi pelatihan selesai dan lengkapi tempat serta tanggal lahir dengan format seperti 12 Februari 2000.',
+      message: 'Lengkapi tempat dan tanggal lahir dengan format seperti 12 Februari 2000.',
     }
   }
+  if (departure && !input.trainingCompleted) {
+    return { ok: false, message: 'Konfirmasi bahwa pelatihan telah selesai.' }
+  }
   const idCardAddress = cleanText(input.idCardAddress, 500)
-  const domicileSameAsIdCard = departure && Boolean(input.domicileSameAsIdCard)
+  const domicileSameAsIdCard = Boolean(input.domicileSameAsIdCard)
   const domicileAddress = domicileSameAsIdCard
     ? idCardAddress
     : cleanText(input.domicileAddress, 500)
-  if (departure && (!idCardAddress || !domicileAddress)) {
+  if (!idCardAddress || !domicileAddress) {
     return { ok: false, message: 'Lengkapi alamat sesuai KTP dan alamat korespondensi.' }
   }
   const financingAmount = Number(input.financingAmount)
@@ -211,17 +209,13 @@ export async function submitFinancingApplication(request: FormData): Promise<App
   }
   const personalDetails = {
     religion: input.religion,
-    ...(departure
-      ? {
-          birthPlace: cleanText(input.birthPlace, 80),
-          birthDate,
-          gender: input.gender,
-          idCardAddress,
-          domicileSameAsIdCard,
-          domicileAddress,
-          domicilePostalCode: cleanText(input.domicilePostalCode, 10),
-        }
-      : {}),
+    birthPlace: cleanText(input.birthPlace, 80),
+    birthDate,
+    gender: input.gender,
+    idCardAddress,
+    domicileSameAsIdCard,
+    domicileAddress,
+    domicilePostalCode: cleanText(input.domicilePostalCode, 10),
   }
 
   let cleanupPaths: string[] = []
@@ -247,9 +241,10 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     const uploadIndexes = new Set<number>(
       uploadRefs.filter((ref) => Number.isInteger(ref?.index)).map((ref) => ref.index),
     )
-    const missingRequired = definitions.find(
-      (definition, index) => definition.required && !uploadIndexes.has(index),
-    )
+    const missingRequired =
+      input.product === 'FULL_COVER'
+        ? definitions.find((definition, index) => definition.required && !uploadIndexes.has(index))
+        : undefined
     if (missingRequired) {
       return { ok: false, message: `Dokumen ${missingRequired.label} wajib diunggah.` }
     }
@@ -365,7 +360,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
             requiresAccommodation: Boolean(input.requiresAccommodation),
           },
       departureDetails: departure
-        ? { outstandingLPKAmount: Number(input.outstandingLPKAmount) || 0 }
+        ? { outstandingLPKAmount: Number(input.outstandingLPKAmount.replace(/\D/g, '')) || 0 }
         : null,
       fundingNeeds,
       financialPlan: plan

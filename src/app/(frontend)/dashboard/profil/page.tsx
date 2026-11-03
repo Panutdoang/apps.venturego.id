@@ -1,3 +1,9 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { signOut } from 'firebase/auth'
+import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import {
   DashboardCard,
   DashboardIcon,
@@ -6,6 +12,22 @@ import {
 } from '../_components/dashboard-ui'
 
 export default function ProfilePage() {
+  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [error, setError] = useState('')
+
+  const logout = async () => {
+    setIsLoggingOut(true)
+    setError('')
+    try {
+      await signOut(getFirebaseClientAuth())
+      router.replace('/')
+    } catch {
+      setError('Tidak dapat keluar saat ini. Silakan coba lagi.')
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
     <DashboardScaffold active="profil" subtitle="Kelola akun dan keamanan" title="Profil saya">
       <DashboardCard>
@@ -68,6 +90,20 @@ export default function ProfilePage() {
           />
         </DashboardCard>
       </section>
+
+      {error && (
+        <p className="text-center text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+      <button
+        className="w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+        disabled={isLoggingOut}
+        onClick={logout}
+        type="button"
+      >
+        {isLoggingOut ? 'Keluar…' : 'Keluar'}
+      </button>
 
       <p className="text-center text-[10px] text-slate-400">VentureGo VSV • Versi demo 1.0</p>
     </DashboardScaffold>

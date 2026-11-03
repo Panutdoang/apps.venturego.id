@@ -26,7 +26,16 @@ export const metadata: Metadata = {
   title,
   description,
   robots: makeSiteSettings.robots?.index === false ? { follow: false, index: false } : undefined,
-  icons: favicon ? { icon: favicon } : undefined,
+  icons: {
+    icon: [
+      ...(favicon ? [favicon] : []),
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.webmanifest',
   openGraph: {
     title,
     description,

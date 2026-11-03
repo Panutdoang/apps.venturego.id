@@ -1983,3 +1983,107 @@ body {
     gap: 12px;
   }
 }
+
+/* Keep application copy compact and use the form's heading/body type pairing. */
+.mobile-shell:not(.welcome-step) {
+  font-family: 'Inter Variable', Inter, Arial, sans-serif;
+}
+
+.mobile-shell:not(.welcome-step) h1,
+.mobile-shell:not(.welcome-step) h2,
+.mobile-shell:not(.welcome-step) h3,
+.mobile-shell:not(.welcome-step) .product-option strong,
+.mobile-shell:not(.welcome-step) .summary-hero strong,
+.mobile-shell:not(.welcome-step) .finance-grid strong,
+.mobile-shell:not(.welcome-step) .review-list strong,
+.mobile-shell:not(.welcome-step) .application-id strong {
+  font-family: var(--font-plus-jakarta), 'Inter Variable', Inter, sans-serif;
+}
+
+.mobile-shell:not(.welcome-step) .intro-choice h2 {
+  font-size: 21px;
+  line-height: 28px;
+}
+
+.mobile-shell:not(.welcome-step) .product-option strong {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.mobile-shell:not(.welcome-step) .intro-choice p {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mobile-shell:not(.welcome-step) .field span {
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.mobile-shell:not(.welcome-step) .check-row,
+.mobile-shell:not(.welcome-step) .document-list strong,
+.mobile-shell:not(.welcome-step) .review-list strong,
+.mobile-shell:not(.welcome-step) .consent,
+.mobile-shell:not(.welcome-step) .soft-note {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mobile-shell:not(.welcome-step) .currency-input {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  padding-inline: 17px;
+  border: 1.5px solid #dfe1e7;
+  border-radius: 16px;
+  background: #fbfcff;
+  color: #15137d;
+  box-shadow: 0 3px 12px rgba(23, 21, 140, 0.035);
+}
+
+.mobile-shell:not(.welcome-step) .currency-input > span {
+  padding: 0;
+  color: #15137d;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.mobile-shell:not(.welcome-step) .currency-input input {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  padding: 0 0 0 6px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-shell:not(.welcome-step) .currency-input:focus-within {
+  border-color: #17158c;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(23, 21, 140, 0.08);
+}
+
+.mobile-shell:not(.welcome-step) .field {
+  gap: 6px;
+}
+
+.mobile-shell:not(.welcome-step) .field input,
+.mobile-shell:not(.welcome-step) .field select {
+  min-height: 48px;
+  padding-inline: 14px;
+  border-radius: 6px;
+}
+
+.mobile-shell:not(.welcome-step) .field textarea {
+  min-height: 96px;
+  padding: 12px 14px;
+  border-radius: 6px;
+}
+
+.mobile-shell:not(.welcome-step) .currency-input {
+  min-height: 48px;
+  padding-inline: 14px;
+  border-radius: 6px;
+}

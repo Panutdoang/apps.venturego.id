@@ -14,16 +14,15 @@ import {
   formatRupiah,
   isFinancingAmount,
 } from '@/lib/financing-plan'
-import {
-  DOCUMENT_DEFINITIONS,
-  MAX_DOCUMENT_SIZE_BYTES,
-  isAcceptedDocumentType,
-} from '@/lib/documents'
+import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
 import { getFirebaseClientAuth, getFirebaseClientStorage } from '@/lib/firebase-client'
 import { signInAnonymously, signOut } from 'firebase/auth'
 import { ref, uploadBytes } from 'firebase/storage'
 
 type Product = ApplicationInput['product']
+
+const formatAmountInput = (value: string) =>
+  value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
 const initialForm: ApplicationInput = {
   product: 'FULL_COVER',
@@ -48,7 +47,6 @@ const initialForm: ApplicationInput = {
   coeStatus: 'NOT_STARTED',
   visaStatus: 'NOT_STARTED',
   languageLevel: 'NOT_STARTED',
-  trainingProgram: '',
   trainingStartDate: '',
   languageTrainingMonths: '',
   skillTrainingMonths: '',
@@ -97,7 +95,7 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search)
     const requestedStep = Number(params.get('step'))
     if (requestedStep >= 1 && requestedStep <= 6) {
-      setStep(requestedStep)
+      setStep(requestedStep === 5 ? 6 : requestedStep)
     } else if (params.get('apply') === 'true' || params.get('baru') === 'true') {
       setStep(1)
     }
@@ -105,6 +103,8 @@ export default function HomePage() {
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   const isDeparture = form.product === 'DEPARTURE_BRIDGING'
+  const visibleSteps = [1, 2, 3, 4, 6]
+  const currentStep = visibleSteps.indexOf(step) + 1
   const selectedFinancingAmount = Number(form.financingAmount)
   const plan = isFinancingAmount(selectedFinancingAmount)
     ? calculateWakalahPlan(selectedFinancingAmount)
@@ -562,14 +562,17 @@ export default function HomePage() {
                   </label>
                   <label className="field">
                     <span>Sisa kewajiban kepada LPK</span>
-                    <input
-                      inputMode="numeric"
-                      value={form.outstandingLPKAmount}
-                      onChange={(e) =>
-                        set('outstandingLPKAmount', e.target.value.replace(/\D/g, ''))
-                      }
-                      placeholder="Contoh: 24000000"
-                    />
+                    <div className="currency-input">
+                      <span>Rp</span>
+                      <input
+                        inputMode="numeric"
+                        value={formatAmountInput(form.outstandingLPKAmount)}
+                        onChange={(e) =>
+                          set('outstandingLPKAmount', e.target.value.replace(/\D/g, ''))
+                        }
+                        placeholder="0"
+                      />
+                    </div>
                   </label>
                   <div className="need-section">
                     <strong>Jumlah pembiayaan yang dibutuhkan</strong>
@@ -626,12 +629,24 @@ export default function HomePage() {
               ) : (
                 <>
                   <label className="field">
-                    <span>Nama program pelatihan</span>
+                    <span>Nama Lembaga Pelatihan Kerja</span>
                     <input
-                      value={form.trainingProgram}
-                      onChange={(e) => set('trainingProgram', e.target.value)}
-                      placeholder="Contoh: Bahasa dan skill kerja Jepang"
+                      value={form.lpkName}
+                      onChange={(e) => set('lpkName', e.target.value)}
+                      placeholder="Contoh: LPK Sakura"
                     />
+                  </label>
+                  <label className="field">
+                    <span>Negara tujuan</span>
+                    <select
+                      value={form.destination}
+                      onChange={(e) =>
+                        set('destination', e.target.value as ApplicationInput['destination'])
+                      }
+                    >
+                      <option value="JAPAN">Jepang</option>
+                      <option value="TURKEY">Turki</option>
+                    </select>
                   </label>
                   <label className="field">
                     <span>Perkiraan tanggal mulai</span>
@@ -685,7 +700,7 @@ export default function HomePage() {
                   </div>
                   <div className="need-section">
                     <strong>Kebutuhan yang diajukan</strong>
-                    <div className="need-grid">
+                    <div className="choice-list">
                       {[
                         ['LANGUAGE_TRAINING', 'Pelatihan bahasa'],
                         ['SKILL_TRAINING', 'Pelatihan keterampilan'],
@@ -694,80 +709,19 @@ export default function HomePage() {
                         ['ALLOWANCE', 'Uang saku'],
                         ['ACCOMMODATION', 'Tempat tinggal'],
                       ].map(([value, label]) => (
-                        <button
-                          type="button"
-                          key={value}
-                          className={
-                            form.selectedNeeds.includes(value) ? 'need-chip selected' : 'need-chip'
-                          }
-                          onClick={() => toggleNeed(value)}
-                        >
-                          {label}
-                        </button>
+                        <label className="check-row" key={value}>
+                          <span>{label}</span>
+                          <input
+                            type="checkbox"
+                            checked={form.selectedNeeds.includes(value)}
+                            onChange={() => toggleNeed(value)}
+                          />
+                        </label>
                       ))}
                     </div>
                   </div>
                 </>
               )}
-            </>
-          )}
-
-          {step === 5 && (
-            <>
-              <div className="intro intro-choice">
-                <h2>{isDeparture ? 'Dokumen keberangkatan' : 'Dokumen program'}</h2>
-                <p>
-                  {isDeparture
-                    ? 'Siapkan dokumen untuk memverifikasi data diri dan kesiapan keberangkatan.'
-                    : 'Siapkan dokumen program agar VSV dapat menyusun rincian Nafaqah dan Ujrah.'}
-                </p>
-              </div>
-              <div className="document-list">
-                {DOCUMENT_DEFINITIONS[form.product].map((document) => {
-                  const file = documentFiles[document.label]
-                  const error =
-                    file && !isAcceptedDocumentType(file.type)
-                      ? 'Gunakan PDF, JPG, atau PNG.'
-                      : file && file.size > MAX_DOCUMENT_SIZE_BYTES
-                        ? 'Ukuran file maksimal 10 MB.'
-                        : ''
-                  return (
-                    <label
-                      className="flex min-h-16 flex-col gap-2 border-b border-[#ececf1] py-3 text-sm"
-                      key={document.label}
-                    >
-                      <span>
-                        <strong>
-                          {document.label}
-                          {document.required ? ' *' : ''}
-                        </strong>
-                        <small>
-                          {error ||
-                            (file
-                              ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
-                              : 'PDF, JPG, atau PNG · Maks. 10 MB')}
-                        </small>
-                      </span>
-                      <input
-                        aria-label={`Unggah ${document.label}`}
-                        type="file"
-                        accept="application/pdf,image/jpeg,image/png"
-                        onChange={(event) =>
-                          setDocumentFiles((current) => ({
-                            ...current,
-                            [document.label]: event.target.files?.[0] ?? null,
-                          }))
-                        }
-                      />
-                    </label>
-                  )
-                })}
-              </div>
-              {result.error && <p className="error-message">{result.error}</p>}
-              <div className="soft-note">
-                Dokumen asli hanya untuk administrasi dan verifikasi data, bukan sebagai aset
-                jaminan atau rahn.
-              </div>
             </>
           )}
 
@@ -840,11 +794,9 @@ export default function HomePage() {
                   </div>
                 )}
                 <div>
-                  <span>{isDeparture ? 'Tempat, tanggal lahir' : 'Program'}</span>
+                  <span>Tempat, tanggal lahir</span>
                   <strong>
-                    {isDeparture
-                      ? `${form.birthPlace || 'Belum diisi'}${form.birthDate ? `, ${form.birthDate}` : ''}`
-                      : form.trainingProgram || 'Belum diisi'}
+                    {`${form.birthPlace || 'Belum diisi'}${form.birthDate ? `, ${form.birthDate}` : ''}`}
                   </strong>
                 </div>
               </div>
@@ -871,77 +823,20 @@ export default function HomePage() {
             </>
           )}
 
-          {step === 7 && (
-            <div className="success-state">
-              <span className="success-mark">✓</span>
-              <span className="status-pill">Terkirim</span>
-              <h2>
-                {isDeparture
-                  ? 'Pengajuan Dana Keberangkatan diterima'
-                  : 'Pengajuan Full Cover diterima'}
-              </h2>
-              <p>
-                {isDeparture
-                  ? 'Tim VSV akan memverifikasi data diri, kesiapan, dan dokumen keberangkatan Anda.'
-                  : 'Tim VSV akan mengonfirmasi program dengan LPK dan menyusun rincian Nafaqah serta Ujrah.'}
-              </p>
-              <div className="application-id">
-                <span>ID Pengajuan</span>
-                <strong>{result.id}</strong>
-              </div>
-              <div className="timeline">
-                <div className="done">
-                  <i />
-                  <span>
-                    <strong>Pengajuan diterima</strong>
-                    <small>Hari ini</small>
-                  </span>
-                </div>
-                <div>
-                  <i />
-                  <span>
-                    <strong>
-                      {isDeparture
-                        ? 'Verifikasi data, COE, dan visa'
-                        : 'Konfirmasi program dengan LPK'}
-                    </strong>
-                    <small>Langkah berikutnya</small>
-                  </span>
-                </div>
-                <div>
-                  <i />
-                  <span>
-                    <strong>
-                      {isDeparture
-                        ? 'Persiapan akad dan pencairan'
-                        : 'Penyusunan Nafaqah, Ujrah, dan akad'}
-                    </strong>
-                    <small>Menunggu</small>
-                  </span>
-                </div>
-              </div>
-              <button
-                className="primary-button"
-                onClick={() => {
-                  setForm(initialForm)
-                  setDocumentFiles({})
-                  setStep(0)
-                  setResult({})
-                }}
-              >
-                Kembali ke awal
-              </button>
-            </div>
-          )}
         </div>
 
         {step > 0 && step < 7 && (
           <footer className="wizard-footer">
-            <div className="step-dots" aria-label={`Langkah ${step} dari 6`}>
-              {Array.from({ length: 6 }, (_, index) => (
+            <div
+              className="step-dots"
+              aria-label={`Langkah ${currentStep} dari ${visibleSteps.length}`}
+            >
+              {visibleSteps.map((visibleStep) => (
                 <span
-                  className={index + 1 === step ? 'active' : index + 1 < step ? 'completed' : ''}
-                  key={index}
+                  className={
+                    visibleStep === step ? 'active' : visibleStep < step ? 'completed' : ''
+                  }
+                  key={visibleStep}
                 />
               ))}
             </div>
@@ -950,7 +845,11 @@ export default function HomePage() {
                 Kembali
               </Link>
             ) : (
-              <button className="back-button" onClick={() => setStep(step - 1)}>
+              <button
+                className="back-button"
+                onClick={() => (step === 6 ? setStep(4) : setStep(step - 1))}
+                type="button"
+              >
                 Kembali
               </button>
             )}
@@ -958,30 +857,8 @@ export default function HomePage() {
               className="primary-button"
               disabled={isPending}
               onClick={() => {
-                if (step === 5) {
-                  const definitions = DOCUMENT_DEFINITIONS[form.product]
-                  const missing = definitions.find(
-                    (document) => document.required && !documentFiles[document.label],
-                  )
-                  const invalid = definitions.find((document) => {
-                    const file = documentFiles[document.label]
-                    return (
-                      file &&
-                      (!isAcceptedDocumentType(file.type) || file.size > MAX_DOCUMENT_SIZE_BYTES)
-                    )
-                  })
-                  if (missing) {
-                    setResult({ error: `Dokumen ${missing.label} wajib diunggah.` })
-                    return
-                  }
-                  if (invalid) {
-                    setResult({ error: `Periksa tipe dan ukuran dokumen ${invalid.label}.` })
-                    return
-                  }
-                  setResult({})
-                }
                 if (step === 6) submit()
-                else setStep(step + 1)
+                else setStep(step === 4 ? 6 : step + 1)
               }}
             >
               {isPending ? 'Mengirim…' : step === 6 ? 'Kirim pengajuan' : 'Lanjut'}

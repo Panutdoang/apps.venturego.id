@@ -29,7 +29,6 @@ export type ApplicationInput = {
   coeStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'ISSUED'
   visaStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'ISSUED'
   languageLevel: 'NOT_STARTED' | 'BASIC_N5' | 'N5' | 'N4' | 'N3_PLUS'
-  trainingProgram: string
   trainingStartDate: string
   languageTrainingMonths: string
   skillTrainingMonths: string
