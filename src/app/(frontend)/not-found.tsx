@@ -1,4 +1,4 @@
-import Link from "next/link"
+import Link from 'next/link'
 
 /**
  * Custom not-found page for the frontend.
@@ -13,10 +13,7 @@ export default function NotFound() {
       <p className="mt-4 text-zinc-600">
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
-      <Link
-        className="mt-6 font-medium text-[#17158c] underline-offset-4 hover:underline"
-        href="/"
-      >
+      <Link className="mt-6 font-medium text-[#17158c] underline-offset-4 hover:underline" href="/">
         &larr; Back to Home
       </Link>
     </main>

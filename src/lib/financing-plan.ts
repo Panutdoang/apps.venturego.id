@@ -28,13 +28,10 @@ export const isFinancingAmount = (value: number): value is FinancingAmount =>
   FINANCING_OPTIONS.some((option) => option.amount === value)
 
 export function calculateWakalahPlan(principal: number): WakalahPlan {
-  const ujrahTotal = Math.round(
-    principal * UJRAH_RATE_PER_MONTH * FINANCING_TENOR_MONTHS,
-  )
+  const ujrahTotal = Math.round(principal * UJRAH_RATE_PER_MONTH * FINANCING_TENOR_MONTHS)
   const totalObligation = principal + ujrahTotal
   const monthlyInstallment = Math.round(totalObligation / FINANCING_TENOR_MONTHS)
-  const finalInstallment =
-    totalObligation - monthlyInstallment * (FINANCING_TENOR_MONTHS - 1)
+  const finalInstallment = totalObligation - monthlyInstallment * (FINANCING_TENOR_MONTHS - 1)
 
   return {
     nafaqahTotal: principal,

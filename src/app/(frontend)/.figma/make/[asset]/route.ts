@@ -3,24 +3,17 @@ import path from 'node:path'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ asset: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ asset: string }> }) {
   const { asset } = await params
 
   try {
     let contents: Buffer
     switch (asset) {
       case 'favicon.png':
-        contents = await readFile(
-          path.join(process.cwd(), '.figma', 'make', 'favicon.png'),
-        )
+        contents = await readFile(path.join(process.cwd(), '.figma', 'make', 'favicon.png'))
         break
       case 'social-image.png':
-        contents = await readFile(
-          path.join(process.cwd(), '.figma', 'make', 'social-image.png'),
-        )
+        contents = await readFile(path.join(process.cwd(), '.figma', 'make', 'social-image.png'))
         break
       default:
         return new Response('Not found', { status: 404 })
