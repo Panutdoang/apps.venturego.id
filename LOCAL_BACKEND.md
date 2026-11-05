@@ -1,8 +1,9 @@
 # Local Firebase backend
 
-Local development uses Firebase emulators for Authentication, Firestore, and
-Storage. Development credentials and project settings are not sent to the
-configured cloud Firebase project.
+Local development uses Firebase emulators for Authentication and Firestore.
+Development credentials and project settings are not sent to the configured
+cloud Firebase project. Applicant uploads go to the real shared Google Drive
+folder (`GDRIVE_KEY_B64` in `.env.local`).
 
 Requirements: Java 21 or later and the Firebase CLI.
 
@@ -14,9 +15,10 @@ Requirements: Java 21 or later and the Firebase CLI.
 4. Open `http://127.0.0.1:4000` to inspect emulator data.
 
 The emulators bind to loopback only: Auth on port 9099, Firestore on 8080,
-Storage on 9199, and the Emulator UI on 4000. Emulator data is imported at
-startup and exported when the emulator process exits into the ignored
-`.firebase-data` directory. Stop the emulator with Ctrl+C to export data.
+and the Emulator UI on 4000. Emulator data is imported at startup and
+exported when the emulator process exits into the ignored `.firebase-data`
+directory. Stop the emulator with Ctrl+C to export data.
 
-The local Firestore starts empty. New application records, anonymous Auth users,
-and uploaded files are stored in the emulators, not in the cloud project.
+The local Firestore starts empty. New application records and anonymous Auth
+users are stored in the emulators, not in the cloud project. Uploaded files
+are stored in the shared Google Drive folder, not in an emulator.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getFirebaseBucket, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
+import { downloadDriveFile } from '@/lib/gdrive'
 
 export async function GET(
   _request: Request,
@@ -11,7 +12,7 @@ export async function GET(
 
   const { id, index: indexValue } = await params
   const index = Number(indexValue)
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id) || !Number.isInteger(index) || index < 0 || index > 30) {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id) || !Number.isInteger(index) || index < 0 || index > 60) {
     return NextResponse.json({ message: 'Berkas tidak ditemukan.' }, { status: 404 })
   }
 
@@ -19,14 +20,14 @@ export async function GET(
     const application = await getFirebaseFirestore().collection('applications').doc(id).get()
     const documents = application.data()?.documents
     const document = Array.isArray(documents) ? documents[index] : null
-    const storagePath = document?.storagePath
-    if (typeof storagePath !== 'string' || !storagePath.startsWith('application-uploads/')) {
+    const fileId = document?.fileId
+    if (typeof fileId !== 'string') {
       return NextResponse.json({ message: 'Berkas tidak ditemukan.' }, { status: 404 })
     }
 
-    const [contents] = await getFirebaseBucket().file(storagePath).download()
+    const contents = await downloadDriveFile(fileId)
     const fileName = String(document.fileName ?? 'dokumen').replace(/[\r\n"\\/]/g, '_')
-    return new Response(new Uint8Array(contents), {
+    return new Response(contents as unknown as BodyInit, {
       headers: {
         'Content-Type': String(document.mimeType ?? 'application/octet-stream'),
         'Content-Disposition': `attachment; filename="${fileName}"`,

@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { ref, uploadBytes } from 'firebase/storage'
-import { getFirebaseClientAuth, getFirebaseClientStorage } from '@/lib/firebase-client'
+import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import {
   ACCEPTED_DOCUMENT_TYPES,
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
 } from '@/lib/documents'
-import { discardApplicationUploads } from '../../actions'
-import { getOwnedApplications, uploadApplicationDocument, type OwnedApplication } from './actions'
+import { uploadToDrive } from '@/lib/upload-client'
+import { getOwnedApplications, type OwnedApplication } from './actions'
 import { DashboardCard, DashboardIcon, DashboardScaffold } from '../_components/dashboard-ui'
 
 const formatSize = (size?: number) => (size ? `${(size / 1024 / 1024).toFixed(1)} MB` : '')
@@ -132,34 +131,21 @@ export default function UploadDocumentsPage() {
 
     setUploadingIndex(index)
     try {
-      const safeName = file.name.replace(/[\\/]/g, '_').slice(0, 180)
-      const currentUser = getFirebaseClientAuth().currentUser
-      if (!currentUser || currentUser.isAnonymous === false) {
-        setUploadError('Sesi unggah telah berakhir. Silakan muat ulang halaman.')
-        return
-      }
-      const storagePath = `application-uploads/${currentUser.uid}/${crypto.randomUUID()}/${safeName}`
-      await uploadBytes(ref(getFirebaseClientStorage(), storagePath), file, {
-        contentType: file.type,
-        customMetadata: { originalName: file.name },
+      await uploadToDrive({
+        token: uploadToken,
+        file,
+        documentIndex: index,
+        applicationDocId: selectedApplication.id,
       })
-
-      const result = await uploadApplicationDocument(
-        uploadToken,
-        selectedApplication.id,
-        index,
-        storagePath,
-      )
-      if (!result.ok) {
-        await discardApplicationUploads(uploadToken, [storagePath])
-        setUploadError(result.message)
-        return
-      }
 
       setSuccessMessage(`${definitions[index].label} berhasil diunggah.`)
       await loadApplications(uploadToken)
-    } catch {
-      setUploadError('Berkas belum dapat diunggah. Periksa koneksi lalu coba lagi.')
+    } catch (error) {
+      setUploadError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Berkas belum dapat diunggah. Periksa koneksi lalu coba lagi.',
+      )
     } finally {
       setUploadingIndex(null)
     }

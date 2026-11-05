@@ -3,16 +3,12 @@
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  discardApplicationUploads,
-  submitFinancingApplication,
-  type ApplicationInput,
-} from './actions'
+import { discardDriveUploads, submitFinancingApplication, type ApplicationInput } from './actions'
 import { formatRupiah } from '@/lib/financing-plan'
 import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
-import { getFirebaseClientAuth, getFirebaseClientStorage } from '@/lib/firebase-client'
+import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { signInAnonymously, signOut } from 'firebase/auth'
-import { ref, uploadBytes } from 'firebase/storage'
+import { uploadToDrive } from '@/lib/upload-client'
 
 type Product = ApplicationInput['product']
 
@@ -144,23 +140,23 @@ export default function HomePage() {
     }
     startTransition(async () => {
       let uploadToken = ''
-      const uploaded: { index: number; path: string }[] = []
+      const uploaded: { index: number; fileId: string }[] = []
       try {
         const auth = getFirebaseClientAuth()
         if (auth.currentUser && !auth.currentUser.isAnonymous) await signOut(auth)
         const user = auth.currentUser ?? (await signInAnonymously(auth)).user
         uploadToken = await user.getIdToken()
-        const storage = getFirebaseClientStorage()
         for (const [index, document] of DOCUMENT_DEFINITIONS[form.product].entries()) {
           const file = documentFiles[document.label]
           if (!file) continue
-          const fileName = file.name.replace(/[\\/]/g, '_').slice(0, 180)
-          const path = `application-uploads/${user.uid}/${crypto.randomUUID()}/${fileName}`
-          await uploadBytes(ref(storage, path), file, {
-            contentType: file.type,
-            customMetadata: { originalName: file.name },
+          const result = await uploadToDrive({
+            token: uploadToken,
+            file,
+            documentIndex: index,
+            product: form.product,
+            folderName: form.applicantName,
           })
-          uploaded.push({ index, path })
+          uploaded.push({ index, fileId: result.fileId })
         }
         const request = new FormData()
         request.set('application', JSON.stringify(form))
@@ -170,20 +166,25 @@ export default function HomePage() {
         if (response.ok) {
           router.replace('/dashboard?applicationSubmitted=1')
         } else {
-          await discardApplicationUploads(
+          await discardDriveUploads(
             uploadToken,
-            uploaded.map((item) => item.path),
+            uploaded.map((item) => item.fileId),
           )
           setResult({ error: response.message })
         }
-      } catch {
+      } catch (error) {
         if (uploadToken && uploaded.length) {
-          await discardApplicationUploads(
+          await discardDriveUploads(
             uploadToken,
-            uploaded.map((item) => item.path),
+            uploaded.map((item) => item.fileId),
           )
         }
-        setResult({ error: 'Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.' })
+        setResult({
+          error:
+            error instanceof Error && error.message
+              ? error.message
+              : 'Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.',
+        })
       }
     })
   }

@@ -3,7 +3,6 @@ import 'server-only'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
-import { getStorage } from 'firebase-admin/storage'
 
 const useEmulators = process.env.NODE_ENV === 'development'
 const localProjectId = 'demo-venturego-local'
@@ -12,11 +11,8 @@ const getAdminApp = () => {
   const projectId = useEmulators ? localProjectId : process.env.FIREBASE_PROJECT_ID
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  const storageBucket = useEmulators
-    ? `${localProjectId}.appspot.com`
-    : process.env.FIREBASE_STORAGE_BUCKET
 
-  if (!projectId || !storageBucket) {
+  if (!projectId) {
     throw new Error('Firebase project configuration is missing.')
   }
   if (!useEmulators && (!clientEmail || !privateKey)) {
@@ -32,7 +28,6 @@ const getAdminApp = () => {
     {
       ...(useEmulators ? {} : { credential: cert({ projectId, clientEmail, privateKey }) }),
       projectId,
-      storageBucket,
     },
     appName,
   )
@@ -40,7 +35,6 @@ const getAdminApp = () => {
 
 export const getFirebaseAuth = () => getAuth(getAdminApp())
 export const getFirebaseFirestore = () => getFirestore(getAdminApp())
-export const getFirebaseBucket = () => getStorage(getAdminApp()).bucket()
 
 export const isStaffEmail = (email: string | undefined) => {
   if (!email) return false

@@ -33,13 +33,14 @@ Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
 - **Cloud Firestore** — the `applications` collection (and any future app
   records). Rules deny all client access (`firestore.rules`); all reads and
   writes go through the Admin SDK in Server Actions or route handlers.
-- **Cloud Storage** — private applicant documents under
-  `application-uploads/{uid}/…` (`storage.rules`: anonymous create-only,
-  size/type limited; no client read). Staff access is proxied through
+- **Google Drive** — applicant documents are uploaded through
+  `api/applicant/uploads` (anonymous ID token verified, size/type and file
+  signature checks) into the shared `VentureGo Berkas` folder tree
+  (`GDRIVE_KEY_B64`, service account). Staff access is proxied through
   authenticated server routes.
 
-Local development uses the Auth/Firestore/Storage emulators
-(`pnpm backend:local`, ports 9099/8080/9199/4000). The client SDK connects to
+Local development uses the Auth/Firestore emulators
+(`pnpm backend:local`, ports 9099/8080/4000). The client SDK connects to
 emulators automatically when `NODE_ENV === 'development'`.
 
 ## Payload Data Integrity (applies to Firebase mutations)
@@ -73,12 +74,14 @@ This project uses Next.js App Router route groups:
 
 - `src/app/(frontend)/` - Public application pages, dashboards, admin UI
 - `src/app/api/` - Internal API routes (staff session cookie, document proxy,
-  Xendit webhook at `api/webhooks/xendit`)
+  applicant uploads at `api/applicant/uploads`, Xendit webhook at
+  `api/webhooks/xendit`)
 - `src/lib/` - Shared utilities (`firebase-client.ts`, `firebase-admin.ts`,
   `firebase-session.ts`, `firebase-data.ts`, `financing-plan.ts`,
-  `departure-financing.ts`, `documents.ts`, `xendit.ts`)
-- `firestore.rules`, `storage.rules`, `firebase.json` - Firebase security and
-  emulator configuration
+  `departure-financing.ts`, `documents.ts`, `gdrive.ts`, `upload-client.ts`,
+  `xendit.ts`)
+- `firestore.rules`, `firebase.json` - Firebase security and emulator
+  configuration
 
 ## Key Files
 
@@ -117,8 +120,8 @@ Use the lightest stack that satisfies the request:
   or route handlers.
 - Durable records, admin-managed content/data, uploads, users, bookings,
   inventory, saved preferences, or data that persists across devices/sessions:
-  Firestore via Firebase Admin SDK in Server Actions/route handlers; Cloud
-  Storage for files.
+  Firestore via Firebase Admin SDK in Server Actions/route handlers; Google
+  Drive for files via the verified upload route.
 - Explicit Supabase request: use the Supabase flow instead.
 
 ## Auth Modeling
@@ -137,8 +140,9 @@ staff access to applicant accounts, and never bypass the allowlist for
 
 ## Security Rules
 
-- Keep `firestore.rules` deny-all and `storage.rules` create-only for
-  anonymous applicants. Client code must never write Firestore directly.
+- Keep `firestore.rules` deny-all. Client code must never write Firestore
+  directly; applicant file bytes flow only through `api/applicant/uploads`
+  into the shared Google Drive folder.
 - Private document bytes are only served through authenticated server routes
   (see `src/app/api/admin/...`), never from a public URL.
 - Server-only values live in `FIREBASE_*` variables; web config lives in
@@ -221,8 +225,11 @@ These are injected by sboxd at runtime:
 Firebase variables are documented in `FIREBASE_SETUP.md`:
 
 - Server-only: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`,
-  `FIREBASE_PRIVATE_KEY`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_ADMIN_EMAILS`
+  `FIREBASE_PRIVATE_KEY`, `FIREBASE_ADMIN_EMAILS`
 - Public web config: `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_SITE_URL`
+- Google Drive (server-only): `GDRIVE_KEY_B64` (base64 service-account JSON),
+  optional `GDRIVE_ROOT_FOLDER_ID` override for the shared
+  `VentureGo Berkas` folder (resolved by name when unset)
 
 Xendit payment gateway variables are documented in `XENDIT_SETUP.md`:
 
@@ -247,7 +254,7 @@ time. Batch by dependency layer — don't write files one at a time.
 
 - The dev server must listen on `$PORT` - do not hardcode a port
 - Use `pnpm install` to add new dependencies
-- Do not weaken `firestore.rules` or `storage.rules` to make a feature work;
+- Do not weaken `firestore.rules` to make a feature work;
   route access through authenticated server code instead
 - Toolchain versions are managed by `.mise.toml`, not installed manually
 - This template is Next.js App Router + React 19 + Firebase + Tailwind CSS v4;

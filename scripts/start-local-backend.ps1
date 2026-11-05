@@ -7,7 +7,7 @@ try {
   $emulatorArguments = @(
     'emulators:start',
     '--only',
-    'auth,firestore,storage',
+    'auth,firestore',
     '--project',
     'demo-venturego-local',
     "--export-on-exit=$dataDirectory"

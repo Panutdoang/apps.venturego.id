@@ -147,7 +147,7 @@ export function AdminDashboard({
                 </p>
                 <p>
                   <span className="text-slate-500">Dokumen:</span>{' '}
-                  {application.documents.filter((doc) => doc.storagePath).length} terunggah
+                  {application.documents.filter((doc) => doc.fileId).length} terunggah
                 </p>
               </div>
               {application.product === 'DEPARTURE_BRIDGING' && (
@@ -202,7 +202,7 @@ export function AdminDashboard({
                             </option>
                           ))}
                         </select>
-                        {document.storagePath && (
+                        {document.fileId && (
                           <a
                             className="font-semibold text-[#17158c] underline"
                             href={`/api/admin/applications/${application.id}/documents/${index}`}

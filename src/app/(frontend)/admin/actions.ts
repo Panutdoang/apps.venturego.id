@@ -151,7 +151,7 @@ export async function updateApplicationStatus(
     if (
       currentDocuments.some(
         (document: Record<string, unknown>, index: number) =>
-          documentStatuses[index] !== 'NOT_UPLOADED' && typeof document.storagePath !== 'string',
+          documentStatuses[index] !== 'NOT_UPLOADED' && typeof document.fileId !== 'string',
       )
     ) {
       return { ok: false, message: 'Dokumen belum memiliki berkas untuk diverifikasi.' }

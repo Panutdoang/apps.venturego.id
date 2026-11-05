@@ -14,8 +14,6 @@ const child = spawn(
       ...process.env,
       FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
       FIREBASE_PROJECT_ID: 'demo-venturego-local',
-      FIREBASE_STORAGE_BUCKET: 'demo-venturego-local.appspot.com',
-      FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9199',
       FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
     },
   },

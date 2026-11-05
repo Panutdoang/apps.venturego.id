@@ -45,7 +45,7 @@ export type ApplicationInput = {
 export type ApplicationDocumentRecord = {
   documentType: string
   status: ApplicationDocumentStatus
-  storagePath?: string
+  fileId?: string
   fileName?: string
   mimeType?: string
   size?: number

@@ -45,3 +45,14 @@ export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024
 
 export const isAcceptedDocumentType = (mimeType: string) =>
   (ACCEPTED_DOCUMENT_TYPES as readonly string[]).includes(mimeType)
+
+export const sanitizeUploadFileName = (value: string) => value.replace(/[\\/]/g, '_').slice(0, 180)
+
+const matchesSignature = (header: Uint8Array, sequence: number[]) =>
+  sequence.every((byte, index) => header[index] === byte)
+
+export const hasValidDocumentSignature = (mimeType: string, header: Uint8Array) =>
+  (mimeType === 'application/pdf' && matchesSignature(header, [0x25, 0x50, 0x44, 0x46, 0x2d])) ||
+  (mimeType === 'image/jpeg' && matchesSignature(header, [0xff, 0xd8, 0xff])) ||
+  (mimeType === 'image/png' &&
+    matchesSignature(header, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))

@@ -1,14 +1,21 @@
 'use server'
 
 import { randomUUID } from 'node:crypto'
-import { Buffer } from 'node:buffer'
 import { FieldValue } from 'firebase-admin/firestore'
-import { getFirebaseAuth, getFirebaseBucket, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
 import {
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
+  hasValidDocumentSignature,
   isAcceptedDocumentType,
 } from '@/lib/documents'
+import {
+  deleteDriveFile,
+  getDriveFileInfo,
+  readDriveFileHead,
+  renameDriveFile,
+  sanitizeDriveFolderName,
+} from '@/lib/gdrive'
 
 export type ApplicationInput = {
   product: 'FULL_COVER' | 'DEPARTURE_BRIDGING'
@@ -202,7 +209,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
   const definitions = DOCUMENT_DEFINITIONS[input.product]
   if (!definitions) return { ok: false, message: 'Jenis pengajuan tidak valid.' }
   const serializedUploads = request.get('uploads')
-  let uploadRefs: { index: number; path: string }[]
+  let uploadRefs: { index: number; fileId: string }[]
   try {
     uploadRefs = serializedUploads ? JSON.parse(String(serializedUploads)) : []
   } catch {
@@ -222,15 +229,12 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     domicilePostalCode: cleanText(input.domicilePostalCode, 10),
   }
 
-  let cleanupPaths: string[] = []
-  let cleanupBucket: ReturnType<typeof getFirebaseBucket> | undefined
+  let cleanupFileIds: string[] = []
   const rejectUploads = async (message: string): Promise<ApplicationResult> => {
-    if (cleanupBucket && cleanupPaths.length) {
-      await Promise.allSettled(
-        cleanupPaths.map((path) => cleanupBucket?.file(path).delete({ ignoreNotFound: true })),
-      )
+    if (cleanupFileIds.length) {
+      await Promise.allSettled(cleanupFileIds.map((fileId) => deleteDriveFile(fileId)))
     }
-    cleanupPaths = []
+    cleanupFileIds = []
     return { ok: false, message }
   }
   try {
@@ -255,44 +259,54 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     const seenIndexes = new Set<number>()
     const uploadedDocuments: Record<string, unknown>[] = []
     let totalBytes = 0
-    const bucket = getFirebaseBucket()
-    cleanupBucket = bucket
+    const mappingRef = getFirebaseFirestore().collection('driveFolders').doc(identity.uid)
+    const mappingSnapshot = await mappingRef.get()
+    const mappingData = mappingSnapshot.data()
+    const ownedFolderId =
+      typeof mappingData?.folderId === 'string' && mappingData.ownerUid === identity.uid
+        ? mappingData.folderId
+        : ''
+    if (uploadRefs.length > 0 && !ownedFolderId) {
+      return rejectUploads('Sesi unggahan telah berakhir. Silakan unggah dokumen kembali.')
+    }
     for (const ref of uploadRefs) {
       if (
         !Number.isInteger(ref?.index) ||
         ref.index < 0 ||
         ref.index >= definitions.length ||
         seenIndexes.has(ref.index) ||
-        typeof ref.path !== 'string' ||
-        !ref.path.startsWith(`application-uploads/${identity.uid}/`)
+        typeof ref.fileId !== 'string' ||
+        !ref.fileId
       ) {
         return rejectUploads('Daftar dokumen yang diunggah tidak valid.')
       }
       seenIndexes.add(ref.index)
-      cleanupPaths.push(ref.path)
       const definition = definitions[ref.index]
-      const [metadata] = await bucket.file(ref.path).getMetadata()
-      const size = Number(metadata.size)
-      const mimeType = metadata.contentType ?? ''
-      const fileName = metadata.metadata?.originalName ?? 'dokumen'
+      let info: Awaited<ReturnType<typeof getDriveFileInfo>>
+      try {
+        info = await getDriveFileInfo(ref.fileId)
+      } catch {
+        return rejectUploads(`Dokumen ${definition.label} tidak dapat diverifikasi.`)
+      }
+      if (!(info.parents ?? []).includes(ownedFolderId)) {
+        return rejectUploads('Daftar dokumen yang diunggah tidak valid.')
+      }
+      cleanupFileIds.push(ref.fileId)
+      const size = Number(info.size)
+      const mimeType = info.mimeType ?? ''
       if (!Number.isFinite(size) || size <= 0 || size > MAX_DOCUMENT_SIZE_BYTES) {
         return rejectUploads(`Ukuran dokumen ${definition.label} tidak valid.`)
       }
       if (!isAcceptedDocumentType(mimeType)) {
         return rejectUploads(`Dokumen ${definition.label}: gunakan PDF, JPG, atau PNG.`)
       }
-      const [header] = await bucket.file(ref.path).download({ start: 0, end: 7 })
-      const validSignature =
-        (mimeType === 'application/pdf' && header.subarray(0, 5).toString('ascii') === '%PDF-') ||
-        (mimeType === 'image/jpeg' &&
-          header[0] === 0xff &&
-          header[1] === 0xd8 &&
-          header[2] === 0xff) ||
-        (mimeType === 'image/png' &&
-          header
-            .subarray(0, 8)
-            .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
-      if (!validSignature) {
+      let header: Uint8Array
+      try {
+        header = await readDriveFileHead(ref.fileId)
+      } catch {
+        return rejectUploads(`Isi dokumen ${definition.label} tidak dapat dibaca.`)
+      }
+      if (!hasValidDocumentSignature(mimeType, header)) {
         return rejectUploads(`Isi dokumen ${definition.label} tidak sesuai dengan tipe berkasnya.`)
       }
       totalBytes += size
@@ -302,8 +316,8 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       uploadedDocuments.push({
         documentType: definition.label,
         status: 'UPLOADED',
-        storagePath: ref.path,
-        fileName: cleanText(fileName, 180),
+        fileId: ref.fileId,
+        fileName: cleanText(String(info.name ?? ''), 180) || 'dokumen',
         mimeType,
         size,
       })
@@ -384,6 +398,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
               input.destination === 'JAPAN' ? 'AFTER_DEPARTURE' : 'NOT_CONFIGURED',
           },
       documents,
+      ...(ownedFolderId ? { driveFolderId: ownedFolderId } : {}),
       understandsWakalah: true,
       acceptsDataProcessing: true,
       status: 'SUBMITTED',
@@ -392,7 +407,20 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       updatedAt: FieldValue.serverTimestamp(),
     }
     await applicationRef.set(record)
-    cleanupPaths = []
+    if (ownedFolderId) {
+      await renameDriveFile(
+        ownedFolderId,
+        sanitizeDriveFolderName(`${applicantName} - ${applicationId}`),
+      )
+      await mappingRef
+        .update({
+          stage: 'submitted',
+          applicationId,
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+        .catch(() => {})
+    }
+    cleanupFileIds = []
     return { ok: true, applicationId }
   } catch {
     await rejectUploads('Pengajuan belum dapat dikirim. Silakan coba lagi.')
@@ -400,24 +428,38 @@ export async function submitFinancingApplication(request: FormData): Promise<App
   }
 }
 
-export async function discardApplicationUploads(
-  uploadToken: string,
-  paths: string[],
-): Promise<void> {
-  if (typeof uploadToken !== 'string' || !Array.isArray(paths) || paths.length > 12) return
+export async function discardDriveUploads(uploadToken: string, fileIds: string[]): Promise<void> {
+  if (typeof uploadToken !== 'string' || !Array.isArray(fileIds) || fileIds.length > 12) return
   try {
     const identity = await getFirebaseAuth().verifyIdToken(uploadToken)
     if (identity.firebase?.sign_in_provider !== 'anonymous') return
-    const safePaths = paths.filter(
-      (path) =>
-        typeof path === 'string' &&
-        path.length <= 500 &&
-        path.startsWith(`application-uploads/${identity.uid}/`),
+
+    const firestore = getFirebaseFirestore()
+    const ownedFolderIds = new Set<string>()
+    const mapping = await firestore.collection('driveFolders').doc(identity.uid).get()
+    const mappingFolderId = mapping.data()?.folderId
+    if (typeof mappingFolderId === 'string' && mapping.data()?.ownerUid === identity.uid) {
+      ownedFolderIds.add(mappingFolderId)
+    }
+    const applications = await firestore
+      .collection('applications')
+      .where('ownerFirebaseUid', '==', identity.uid)
+      .get()
+    applications.docs.forEach((document) => {
+      const folderId = document.data()?.driveFolderId
+      if (typeof folderId === 'string') ownedFolderIds.add(folderId)
+    })
+
+    const safeFileIds = fileIds.filter(
+      (fileId) => typeof fileId === 'string' && fileId.length <= 128,
     )
     await Promise.allSettled(
-      safePaths.map((path) => getFirebaseBucket().file(path).delete({ ignoreNotFound: true })),
+      safeFileIds.map(async (fileId) => {
+        const info = await getDriveFileInfo(fileId)
+        if ((info.parents ?? []).some((parent) => ownedFolderIds.has(parent))) {
+          await deleteDriveFile(fileId)
+        }
+      }),
     )
-  } catch {
-    // A failed cleanup leaves only an inaccessible staged object; never expose it.
-  }
+  } catch {}
 }

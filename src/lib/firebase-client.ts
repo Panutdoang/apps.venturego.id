@@ -2,7 +2,6 @@
 
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
-import { connectStorageEmulator, getStorage } from 'firebase/storage'
 
 const useEmulators = process.env.NODE_ENV === 'development'
 const localProjectId = 'demo-venturego-local'
@@ -15,9 +14,6 @@ const getFirebaseApp = () => {
       ? `${localProjectId}.firebaseapp.com`
       : process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     projectId,
-    storageBucket: useEmulators
-      ? `${localProjectId}.appspot.com`
-      : process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: useEmulators
       ? '000000000000'
       : process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
@@ -34,10 +30,8 @@ const getFirebaseApp = () => {
   const app = existingApp ? getApp() : initializeApp(config)
   if (useEmulators && !existingApp) {
     connectAuthEmulator(getAuth(app), 'http://127.0.0.1:9099', { disableWarnings: true })
-    connectStorageEmulator(getStorage(app), '127.0.0.1', 9199)
   }
   return app
 }
 
 export const getFirebaseClientAuth = () => getAuth(getFirebaseApp())
-export const getFirebaseClientStorage = () => getStorage(getFirebaseApp())
