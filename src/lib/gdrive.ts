@@ -1,11 +1,10 @@
 import 'server-only'
 
 import { Buffer } from 'node:buffer'
-import { createHash, createHmac, createSign, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 
 export const DRIVE_ROOT_FOLDER_NAME = 'VentureGo Berkas'
 
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 const DRIVE_API = 'https://www.googleapis.com'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
 const UPLOAD_TICKET_TTL_MS = 30 * 60 * 1000
@@ -21,7 +20,7 @@ export class GDriveError extends Error {
   }
 }
 
-type ServiceAccountKey = { type: string; client_email: string; private_key: string }
+type OAuthConfig = { clientId: string; clientSecret: string; refreshToken: string }
 
 export type UploadTicket = {
   v: 1
@@ -38,42 +37,23 @@ export type UploadTicket = {
 
 const FILE_ID_PATTERN = /^[A-Za-z0-9_-]{10,128}$/
 
-let cachedKey: ServiceAccountKey | null = null
-const getServiceAccountKey = (): ServiceAccountKey => {
-  if (cachedKey) return cachedKey
-  const encoded = process.env.GDRIVE_KEY_B64?.trim()
-  if (!encoded) {
+let cachedOAuthConfig: OAuthConfig | null = null
+const getOAuthConfig = (): OAuthConfig => {
+  if (cachedOAuthConfig) return cachedOAuthConfig
+  const clientId = process.env.GDRIVE_OAUTH_CLIENT_ID?.trim()
+  const clientSecret = process.env.GDRIVE_OAUTH_CLIENT_SECRET?.trim()
+  const refreshToken = process.env.GDRIVE_REFRESH_TOKEN?.trim()
+  if (!clientId || !clientSecret || !refreshToken) {
     throw new GDriveError('Layanan Google Drive belum dikonfigurasi di server.', 'NOT_CONFIGURED')
   }
-  let parsed: ServiceAccountKey | null = null
-  try {
-    parsed = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'))
-  } catch {
-    parsed = null
-  }
-  if (parsed?.type !== 'service_account' || !parsed.client_email || !parsed.private_key) {
-    throw new GDriveError('Layanan Google Drive belum dikonfigurasi di server.', 'NOT_CONFIGURED')
-  }
-  cachedKey = parsed
-  return parsed
+  cachedOAuthConfig = { clientId, clientSecret, refreshToken }
+  return cachedOAuthConfig
 }
 
 let cachedToken: { value: string; expiresAt: number } | null = null
 const getServiceAccessToken = async (): Promise<string> => {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) return cachedToken.value
-  const key = getServiceAccountKey()
-  const now = Math.floor(Date.now() / 1000)
-  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
-  const unsigned = `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode({
-    iss: key.client_email,
-    scope: DRIVE_SCOPE,
-    aud: TOKEN_ENDPOINT,
-    iat: now,
-    exp: now + 3600,
-  })}`
-  const signer = createSign('RSA-SHA256')
-  signer.update(unsigned)
-  const assertion = `${unsigned}.${signer.sign(key.private_key).toString('base64url')}`
+  const config = getOAuthConfig()
 
   let response: Response
   try {
@@ -81,19 +61,28 @@ const getServiceAccessToken = async (): Promise<string> => {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion,
+        grant_type: 'refresh_token',
+        refresh_token: config.refreshToken,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
       }),
       cache: 'no-store',
     })
   } catch {
     throw new GDriveError('Google Drive tidak dapat dihubungi.', 'UPSTREAM')
   }
-  if (!response.ok) {
-    throw new GDriveError('Autentikasi Google Drive gagal.', 'UPSTREAM')
-  }
-  const payload = (await response.json()) as { access_token?: string; expires_in?: number }
-  if (!payload.access_token) {
+  const payload = (await response.json().catch(() => null)) as {
+    access_token?: string
+    expires_in?: number
+    error?: string
+  } | null
+  if (!response.ok || !payload?.access_token) {
+    if (payload?.error === 'invalid_grant') {
+      throw new GDriveError(
+        'Akses Google Drive kedaluwarsa. Silakan setujui ulang akses aplikasi.',
+        'NOT_CONFIGURED',
+      )
+    }
     throw new GDriveError('Autentikasi Google Drive gagal.', 'UPSTREAM')
   }
   cachedToken = {
@@ -118,10 +107,7 @@ const driveJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await driveFetch(path, init)
   if (response.ok) return (await response.json()) as T
   if (response.status === 403) {
-    throw new GDriveError(
-      'Akses Google Drive ditolak. Pastikan folder sudah dibagikan ke layanan unggah.',
-      'FORBIDDEN',
-    )
+    throw new GDriveError('Akses Google Drive ditolak.', 'FORBIDDEN')
   }
   if (response.status === 404) {
     throw new GDriveError('Folder atau berkas Drive tidak ditemukan.', 'INVALID')
@@ -171,19 +157,27 @@ export const getRootFolderId = async (): Promise<string> => {
     cachedRootFolderId = configured
     return configured
   }
-  const query = `mimeType='application/vnd.google-apps.folder' and name='${escapeQueryValue(DRIVE_ROOT_FOLDER_NAME)}' and trashed=false and sharedWithMe`
+  const query = `mimeType='application/vnd.google-apps.folder' and name='${escapeQueryValue(DRIVE_ROOT_FOLDER_NAME)}' and trashed=false`
   const data = await driveJson<{ files?: { id?: string }[] }>(
     `/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&orderBy=modifiedTime desc&pageSize=1`,
   )
-  const id = data.files?.[0]?.id
-  if (!id) {
-    throw new GDriveError(
-      `Folder "${DRIVE_ROOT_FOLDER_NAME}" belum ditemukan. Buat folder itu di Google Drive lalu bagikan sebagai Editor ke ${getServiceAccountKey().client_email}.`,
-      'NOT_CONFIGURED',
-    )
+  const existing = data.files?.[0]?.id
+  if (existing) {
+    cachedRootFolderId = existing
+    return existing
   }
-  cachedRootFolderId = id
-  return id
+  const created = await driveJson<{ id?: string }>('/drive/v3/files?fields=id', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: DRIVE_ROOT_FOLDER_NAME,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: ['root'],
+    }),
+  })
+  if (!created.id) throw new GDriveError('Folder Drive gagal dibuat.', 'UPSTREAM')
+  cachedRootFolderId = created.id
+  return created.id
 }
 
 export const createResumableSession = async (options: {
@@ -331,7 +325,12 @@ export const renameDriveFile = async (fileId: string, name: string): Promise<voi
   } catch {}
 }
 
-const ticketSecret = () => createHash('sha256').update(getServiceAccountKey().private_key).digest()
+const ticketSecret = () => {
+  const config = getOAuthConfig()
+  return createHash('sha256')
+    .update(`${config.clientId}\n${config.clientSecret}\n${config.refreshToken}`)
+    .digest()
+}
 
 export const signUploadTicket = (payload: Omit<UploadTicket, 'v' | 'exp'>): string => {
   const ticket: UploadTicket = { ...payload, v: 1, exp: Date.now() + UPLOAD_TICKET_TTL_MS }

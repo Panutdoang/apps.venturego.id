@@ -35,9 +35,9 @@ Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
   writes go through the Admin SDK in Server Actions or route handlers.
 - **Google Drive** — applicant documents are uploaded through
   `api/applicant/uploads` (anonymous ID token verified, size/type and file
-  signature checks) into the shared `VentureGo Berkas` folder tree
-  (`GDRIVE_KEY_B64`, service account). Staff access is proxied through
-  authenticated server routes.
+  signature checks) into the `VentureGo Berkas` folder tree (OAuth as the Drive
+  owner via `GDRIVE_REFRESH_TOKEN`; root folder auto-created). Staff access is
+  proxied through authenticated server routes.
 
 Local development uses the Auth/Firestore emulators
 (`pnpm backend:local`, ports 9099/8080/4000). The client SDK connects to
@@ -145,9 +145,10 @@ staff access to applicant accounts, and never bypass the allowlist for
   into the shared Google Drive folder.
 - Private document bytes are only served through authenticated server routes
   (see `src/app/api/admin/...`), never from a public URL.
-- Server-only values live in `FIREBASE_*` variables; web config lives in
-  `NEXT_PUBLIC_FIREBASE_*` (public by design). Keep service-account keys out
-  of source, client bundles, and Payload-like document data.
+- Server-only values live in `FIREBASE_*` and `GDRIVE_*` variables; web config
+  lives in `NEXT_PUBLIC_FIREBASE_*` (public by design). Keep OAuth client
+  secrets, refresh tokens, and service-account keys out of source, client
+  bundles, and Payload-like document data.
 
 ## Schema Safety
 
@@ -227,9 +228,9 @@ Firebase variables are documented in `FIREBASE_SETUP.md`:
 - Server-only: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`,
   `FIREBASE_PRIVATE_KEY`, `FIREBASE_ADMIN_EMAILS`
 - Public web config: `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_SITE_URL`
-- Google Drive (server-only): `GDRIVE_KEY_B64` (base64 service-account JSON),
-  optional `GDRIVE_ROOT_FOLDER_ID` override for the shared
-  `VentureGo Berkas` folder (resolved by name when unset)
+- Google Drive (server-only): `GDRIVE_OAUTH_CLIENT_ID`,
+  `GDRIVE_OAUTH_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN` (OAuth client for Drive
+  access as the file owner; root `VentureGo Berkas` folder auto-created)
 
 Xendit payment gateway variables are documented in `XENDIT_SETUP.md`:
 

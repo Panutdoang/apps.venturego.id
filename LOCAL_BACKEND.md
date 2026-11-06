@@ -2,8 +2,8 @@
 
 Local development uses Firebase emulators for Authentication and Firestore.
 Development credentials and project settings are not sent to the configured
-cloud Firebase project. Applicant uploads go to the real shared Google Drive
-folder (`GDRIVE_KEY_B64` in `.env.local`).
+cloud Firebase project. Applicant uploads go to the real Google Drive folder
+(OAuth credentials in `.env.local`).
 
 Requirements: Java 21 or later and the Firebase CLI.
 

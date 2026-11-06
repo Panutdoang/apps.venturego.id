@@ -2,8 +2,8 @@
 
 The app uses Firebase Authentication for anonymous applicant upload sessions
 and staff email/password sign-in, and Cloud Firestore for applications.
-Private application documents are stored in a shared Google Drive folder
-through the verified upload route (service account in `GDRIVE_KEY_B64`).
+Private application documents are stored in Google Drive through the verified
+upload route (OAuth as the Drive owner's account; see step 9).
 
 ## Create Firebase services
 
@@ -24,9 +24,12 @@ through the verified upload route (service account in `GDRIVE_KEY_B64`).
    service-account credentials are private.
 8. Deploy the included Firestore rules with the Firebase CLI:
    `firebase deploy --only firestore:rules`.
-9. Create a Google Drive folder for applicant documents, share it as **Editor**
-   with the Drive service-account email (`GDRIVE_KEY_B64`), and keep that key
-   server-only in Vercel's encrypted environment variables.
+9. For Google Drive, create an OAuth client ID (type **Desktop app**) under
+   APIs & Services → Credentials, set the OAuth consent screen to **Production**,
+   and capture a one-time refresh token (`GDRIVE_REFRESH_TOKEN`). Store
+   `GDRIVE_OAUTH_CLIENT_ID`, `GDRIVE_OAUTH_CLIENT_SECRET`, and
+   `GDRIVE_REFRESH_TOKEN` as server-only encrypted variables in Vercel. The
+   root `VentureGo Berkas` folder is created automatically on first upload.
 
 ## Environment variables
 
@@ -36,8 +39,8 @@ Server-only variables:
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY` (preserve newlines or encode them as `\\n`)
 - `FIREBASE_ADMIN_EMAILS`
-- `GDRIVE_KEY_B64` (base64-encoded service-account JSON for Google Drive)
-- `GDRIVE_ROOT_FOLDER_ID` (optional; shared folder found by name when unset)
+- `GDRIVE_OAUTH_CLIENT_ID` / `GDRIVE_OAUTH_CLIENT_SECRET` (Google OAuth client)
+- `GDRIVE_REFRESH_TOKEN` (one-time consent; Drive access as the file owner)
 
 Public Web app variables:
 
