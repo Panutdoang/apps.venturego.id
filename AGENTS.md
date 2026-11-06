@@ -251,6 +251,15 @@ When writing multiple files, parallelize independent Write calls in a single
 response. Files are independent when none depends on another's output at write
 time. Batch by dependency layer — don't write files one at a time.
 
+## Workflow Documentation (mandatory)
+
+`DOKUMENTASI_ALUR_KERJA.md` is the single source of truth for applicant and
+staff workflows (including Google Drive effects and UI/UX behavior). Every
+application change — features, flows, pages, statuses, error messages, Drive
+structure, payment integration — must update that file in the same commit,
+including its "Tanggal terakhir diperbarui" header. Keep §8 (Known Caveats) in
+sync: remove caveats when they are fixed.
+
 ## Important
 
 - The dev server must listen on `$PORT` - do not hardcode a port
