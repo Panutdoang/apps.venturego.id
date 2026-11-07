@@ -1,6 +1,7 @@
 'use server'
 
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 
 export type DashboardScheduleSummary = {
   total: number
@@ -31,7 +32,7 @@ export type DashboardSummaryResult =
 const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
+  return isAllowedSignInProvider(identity.firebase?.sign_in_provider) ? identity : null
 }
 
 const readCount = (value: unknown): number | null =>

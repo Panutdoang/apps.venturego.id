@@ -15,14 +15,20 @@ export default function ProfilePage() {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState('')
-  const [account, setAccount] = useState<{ name: string; email: string } | null>(null)
+  const [account, setAccount] = useState<{
+    name: string
+    email: string
+    method: 'Google' | 'Email & Password'
+  } | null>(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), (user) => {
       if (!user) return
+      const isPassword = user.providerData.some((entry) => entry.providerId === 'password')
       setAccount({
         name: user.displayName?.trim() || 'Pengguna',
         email: user.email ?? '',
+        method: isPassword ? 'Email & Password' : 'Google',
       })
     })
     return () => unsubscribe()
@@ -64,7 +70,9 @@ export default function ProfilePage() {
           </div>
           <div className="border-l border-slate-100 p-4">
             <span className="text-[10px] text-slate-400">Metode masuk</span>
-            <strong className="mt-1 block text-xs text-slate-700">Google</strong>
+            <strong className="mt-1 block text-xs text-slate-700">
+              {account?.method ?? 'Google'}
+            </strong>
           </div>
         </div>
       </DashboardCard>

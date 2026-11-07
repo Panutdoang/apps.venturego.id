@@ -2,6 +2,7 @@
 
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 import type { FinancingApplicationRecord } from '@/lib/firebase-data'
 
 type UserFinancingApplication = Pick<
@@ -27,7 +28,7 @@ type UserSupportRequest = NonNullable<FinancingApplicationRecord['supportRequest
 const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
+  return isAllowedSignInProvider(identity.firebase?.sign_in_provider) ? identity : null
 }
 
 const isSupportRequest = (value: unknown): value is UserSupportRequest => {

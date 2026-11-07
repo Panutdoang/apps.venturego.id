@@ -2,21 +2,21 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **7 November 2026** (login penuh akun Google: akun anonim dihapus, halaman login admin dihapus, routing otomatis staf vs pemohon).
+Terakhir diperbarui: **7 November 2026** (akun dummy `demo.user@venturego.id` & `demo.admin@venturego.id` di `src/lib/demo-accounts.json`; tombol `Masuk User` & `Masuk Admin` khusus lokal, sedangkan production hanya menampilkan 1 tombol `Masuk dengan Google`).
 
 ---
 
 ## 1. Gambaran Umum
 
-| Komponen            | Teknologi                                                    | Keterangan                                                                             |
-| ------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Framework           | Next.js App Router (React 19)                                | Client Components + Server Actions                                                     |
-| Basis data          | Cloud Firestore (`applications`, `driveFolders`, `payments`) | Akses hanya via Admin SDK di server                                                    |
-| Autentikasi pemohon | Firebase Auth **Google**                                     | Dibuat saat login `Masuk/Daftar` atau saat submit; tanpa akun anonim                   |
-| Autentikasi staf    | Firebase Auth Google + allowlist `FIREBASE_ADMIN_EMAILS`     | Email utama `vworksofficial@gmail.com`; cookie sesi `venturego-admin-session` (5 hari) |
-| Penyimpanan berkas  | **Google Drive** (OAuth sebagai pemilik akun)                | Bukan Cloud Storage — tanpa biaya billing                                              |
-| Pembayaran          | **Xendit** (Virtual Account & QRIS)                          | Invoice 48 jam + webhook otomatis                                                      |
-| Gaya                | Tailwind CSS v4                                              |                                                                                        |
+| Komponen            | Teknologi                                                      | Keterangan                                                                                                                    |
+| ------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Framework           | Next.js App Router (React 19)                                  | Client Components + Server Actions                                                                                            |
+| Basis data          | Cloud Firestore (`applications`, `driveFolders`, `payments`)   | Akses hanya via Admin SDK di server                                                                                           |
+| Autentikasi pemohon | Firebase Auth **Google** (plus akun demo di lokal)             | Production hanya `Masuk dengan Google`; di lokal tersedia `Masuk User` (`demo.user@venturego.id`)                             |
+| Autentikasi staf    | Firebase Auth Google/email + allowlist `FIREBASE_ADMIN_EMAILS` | Email utama `vworksofficial@gmail.com` + admin demo `demo.admin@venturego.id`; cookie sesi `venturego-admin-session` (5 hari) |
+| Penyimpanan berkas  | **Google Drive** (OAuth sebagai pemilik akun)                  | Bukan Cloud Storage — tanpa biaya billing                                                                                     |
+| Pembayaran          | **Xendit** (Virtual Account & QRIS)                            | Invoice 48 jam + webhook otomatis                                                                                             |
+| Gaya                | Tailwind CSS v4                                                |                                                                                                                               |
 
 ### Peta Route
 
@@ -112,27 +112,27 @@ Formulir (/) → Submit → Dashboard → Unggah berkas → [Admin verifikasi & 
 
 Tombol: `Kembali` · `Lanjutkan` · `Kirim pengajuan` (saat kirim: `Mengirim…`). Deep link: `/?step=1..6`, `/?apply=true`.
 
-| Langkah                | Isi                                                                                                                                                                                                                                                                                             | Catatan UI                                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **0 — Selamat datang** | Header merek `Vworks Student Venture`, salam, tombol `Masuk/Daftar` (popup **Google**), catatan `Masuk dengan akun Google untuk melanjutkan.`                                                                                                                                                   | Login Google; email staf → `/admin`, email lain → `/dashboard`         |
-| **1 — Pilih produk**   | Dua kartu: **`VSV Full Cover`** (tag `Persiapan lengkap`) → `FULL_COVER`; **`VSV Dana Keberangkatan`** (tag `Tahap akhir`) → `DEPARTURE_BRIDGING`                                                                                                                                               | Memilih produk membersihkan file terpilih                              |
-| **2 — Kesiapan**       | Departure: checkbox pelatihan/lulus seleksi/paspor/kontrak + select `Status COE`, `Status visa`. Full Cover: checkbox pelatihan bahasa/paspor/orestu wali + select `Level bahasa Jepang`                                                                                                        | Catatan lunak bila pelatihan belum selesai                             |
-| **3 — Data diri**      | Nama (ph `Sesuai KTP`), WA (`08xxxxxxxxxx`), agama, tempat/tanggal lahir, jenis kelamin, alamat KTP + alamat korespondensi + kode pos                                                                                                                                                           | Alamat korespondensi bisa disinkronkan dengan KTP                      |
-| **4 — Program & dana** | Departure: LPK, negara, tanggal keberangkatan, sisa kewajiban LPK, nilai pembiayaan (Rp31/33/36/40 juta) + **simulasi langsung** (dana cair setelah admin 5%, ujrah 2,4%/bulan ×12, angsuran/bulan). Full Cover: LPK, negara, tanggal mulai, durasi bahasa & keterampilan, checkbox 7 kebutuhan | Panel `Mengenal akad Wakalah bil Ujrah`                                |
-| **6 — Tinjau & kirim** | Ringkasan produk + akad `Wakalah bil Ujrah`, daftar nilai (estimasi dana cair, total ujrah, biaya admin, total kewajiban, angsuran/bulan), **2 centang wajib** (paham akad + persetujuan data)                                                                                                  | Semua error server tampil di langkah ini (`<p class="error-message">`) |
+| Langkah                | Isi                                                                                                                                                                                                                                                                                                                                          | Catatan UI                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **0 — Selamat datang** | Header merek `Vworks Student Venture`, salam. Di **production**: hanya 1 tombol utama `Masuk dengan Google` + catatan `Akun baru akan dibuat secara otomatis saat pertama kali masuk.` Di **mode lokal (development)**: tombol `Masuk User` (`demo.user@venturego.id`), `Masuk Admin` (`demo.admin@venturego.id`), dan `Masuk dengan Google` | Staf → `/admin`, pemohon → `/dashboard`                                |
+| **1 — Pilih produk**   | Dua kartu: **`VSV Full Cover`** (tag `Persiapan lengkap`) → `FULL_COVER`; **`VSV Dana Keberangkatan`** (tag `Tahap akhir`) → `DEPARTURE_BRIDGING`                                                                                                                                                                                            | Memilih produk membersihkan file terpilih                              |
+| **2 — Kesiapan**       | Departure: checkbox pelatihan/lulus seleksi/paspor/kontrak + select `Status COE`, `Status visa`. Full Cover: checkbox pelatihan bahasa/paspor/orestu wali + select `Level bahasa Jepang`                                                                                                                                                     | Catatan lunak bila pelatihan belum selesai                             |
+| **3 — Data diri**      | Nama (ph `Sesuai KTP`), WA (`08xxxxxxxxxx`), agama, tempat/tanggal lahir, jenis kelamin, alamat KTP + alamat korespondensi + kode pos                                                                                                                                                                                                        | Alamat korespondensi bisa disinkronkan dengan KTP                      |
+| **4 — Program & dana** | Departure: LPK, negara, tanggal keberangkatan, sisa kewajiban LPK, nilai pembiayaan (Rp31/33/36/40 juta) + **simulasi langsung** (dana cair setelah admin 5%, ujrah 2,4%/bulan ×12, angsuran/bulan). Full Cover: LPK, negara, tanggal mulai, durasi bahasa & keterampilan, checkbox 7 kebutuhan                                              | Panel `Mengenal akad Wakalah bil Ujrah`                                |
+| **6 — Tinjau & kirim** | Ringkasan produk + akad `Wakalah bil Ujrah`, daftar nilai (estimasi dana cair, total ujrah, biaya admin, total kewajiban, angsuran/bulan), **2 centang wajib** (paham akad + persetujuan data)                                                                                                                                               | Semua error server tampil di langkah ini (`<p class="error-message">`) |
 
-**Catatan penting:** wizard **tidak memiliki langkah unggah dokumen** (langkah 5 disembunyikan). Pengajuan selalu dimulai dengan semua slot dokumen `NOT_UPLOADED`; dokumen diunggah setelahnya di `/dashboard/unggah-berkas`. Bila pengguna sudah login Google lalu membuka `/` tanpa parameter form, aplikasi otomatis mengarahkan ke `/admin` (staf) atau `/dashboard` (pemohon); deep link `/?step=1` dan `/?apply=true` tetap membuka form.
+**Catatan penting:** wizard **tidak memiliki langkah unggah dokumen** (langkah 5 disembunyikan). Pengajuan selalu dimulai dengan semua slot dokumen `NOT_UPLOADED`; dokumen diunggah setelahnya di `/dashboard/unggah-berkas`. Bila pengguna sudah login (Google atau akun demo) lalu membuka `/` tanpa parameter form, aplikasi otomatis mengarahkan ke `/admin` (staf) atau `/dashboard` (pemohon); deep link `/?step=1` dan `/?apply=true` tetap membuka form.
 
 **Efek Drive saat submit:**
 
-- Berhasil → `router.replace('/dashboard?applicationSubmitted=1')`, dashboard menampilkan toast **`Pengajuan berhasil diajukan`** (hilang otomatis 5 detik). Record `applications` dibuat: `applicationId = VSV-APP-<8 karakter UUID huruf besar>`, `status: 'SUBMITTED'`, dokumen, rencana biaya `ESTIMATED`, dll. Folder Drive di-rename (§2.1). Bila pengguna belum login, submit membuka popup Google terlebih dahulu.
+- Berhasil → `router.replace('/dashboard?applicationSubmitted=1')`, dashboard menampilkan toast **`Pengajuan berhasil diajukan`** (hilang otomatis 5 detik). Record `applications` dibuat: `applicationId = VSV-APP-<8 karakter UUID huruf besar>`, `status: 'SUBMITTED'`, dokumen, rencana biaya `ESTIMATED`, dll. Folder Drive di-rename (§2.1). Bila pengguna sudah login (Google atau akun demo), submit langsung memakai sesi tersebut; bila belum login, submit membuka popup Google terlebih dahulu.
 - Gagal → file yang baru terunggah dihapus dari Drive; pesan error ditampilkan di langkah tinjau.
 
 **Pesan error server yang bisa tampil di langkah tinjau** (contoh utama): `Lengkapi nama, nomor WhatsApp, dan nama LPK.` · `Masukkan nomor WhatsApp Indonesia yang valid.` · `Persetujuan akad dan pemrosesan data wajib dicentang.` · `Isi perkiraan tanggal keberangkatan dengan format seperti 12 Februari 2026.` · `Lengkapi tempat dan tanggal lahir dengan format seperti 12 Februari 2000.` · `Pengajuan belum dapat dikirim. Periksa koneksi lalu coba lagi.`
 
 ### 3.3 Dashboard pemohon
 
-Semua halaman dashboard memerlukan **login Google**. Tanpa sesi Google → diarahkan ke `/` (welcome). Akun staf (`vworksofficial@gmail.com` atau allowlist) → diarahkan ke `/admin`. Pemohon baru yang sudah login tetapi belum punya pengajuan tetap melihat **kartu ringkasan default** di beranda. Navigasi bawah: **Angsuran · Riwayat · Beranda · Unggah · Profil**.
+Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)**. Tanpa sesi aplikasi → diarahkan ke `/` (welcome). Akun staf (`vworksofficial@gmail.com`, `demo.admin@venturego.id`, atau allowlist) → diarahkan ke `/admin`. Pemohon baru yang sudah login tetapi belum punya pengajuan tetap melihat **kartu ringkasan default** di beranda. Navigasi bawah: **Angsuran · Riwayat · Beranda · Unggah · Profil**.
 
 #### Beranda `/dashboard`
 
@@ -182,7 +182,7 @@ Semua halaman dashboard memerlukan **login Google**. Tanpa sesi Google → diara
 #### Halaman pendukung
 
 - **Simulasi** `/dashboard/simulasi`: kalkulator klien (Rp31/33/36/40 juta → Nafaqah, ujrah 2,4%×12, total kewajiban, tenor 12 bulan) — catatan `Hasil ini merupakan simulasi. Nilai akhir mengikuti verifikasi program, kebutuhan, dan akad pembiayaan.`
-- **Profil** `/dashboard/profil`: nama & email akun **Google** yang sedang login, metode masuk `Google`, menu, tombol **`Keluar`** → keluar sesi Google & kembali ke `/`.
+- **Profil** `/dashboard/profil`: nama & email akun yang sedang login, metode masuk (`Google` atau `Email & Password`), menu, tombol **`Keluar`** → keluar sesi & kembali ke `/`.
 - **Riwayat, Dokumen, Notifikasi, Bantuan, Layanan**: **masih halaman demo/statis** (ada disclaimer `Riwayat di halaman ini adalah data demo…`) — lihat §8.
 - **VIP**: placeholder `SEDANG DIKEMBANGKAN`.
 
@@ -196,11 +196,12 @@ Semua halaman dashboard memerlukan **login Google**. Tanpa sesi Google → diara
 
 ### 4.1 Masuk `/admin`
 
-- **Tidak ada halaman login admin terpisah.** Staf masuk lewat tombol `Masuk/Daftar` di welcome `/`.
-- Login dengan `vworksofficial@gmail.com` (email staf utama) atau email lain di allowlist **`FIREBASE_ADMIN_EMAILS`** → aplikasi membuat cookie sesi `venturego-admin-session` (**httpOnly, 5 hari**) lalu langsung mengarahkan ke `/admin`.
-- Login dengan email Google lain → langsung diarahkan ke `/dashboard` (dashboard pemohon).
+- **Tidak ada halaman login admin terpisah.** Di production, staf masuk lewat tombol `Masuk dengan Google` di welcome `/`. Di mode lokal (development), staf juga dapat masuk lewat tombol `Masuk Admin` (`demo.admin@venturego.id`).
+- Tombol `Masuk User` (`demo.user@venturego.id`) dan `Masuk Admin` (`demo.admin@venturego.id`) hanya tampil di mode lokal (`NODE_ENV !== 'production'`) dan langsung login menggunakan `signInWithEmailAndPassword` dari `src/lib/demo-accounts.json` tanpa halaman sign-in.
+- Login dengan `vworksofficial@gmail.com` (email staf utama), `demo.admin@venturego.id`, atau email lain di allowlist **`FIREBASE_ADMIN_EMAILS`** → aplikasi membuat cookie sesi `venturego-admin-session` (**httpOnly, 5 hari**) lalu langsung mengarahkan ke `/admin`.
+- Login dengan akun non-staf → langsung diarahkan ke `/dashboard` (dashboard pemohon).
 - `/admin` tanpa cookie sesi staf → redirect ke `/` (welcome), bukan kartu login.
-- Pesan error API: `Akun ini tidak memiliki akses staf.` (403) · `Sesi masuk tidak valid.` · `Tidak dapat membuat sesi staf.` · popup gagal → `Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.`
+- Pesan error API: `Akun ini tidak memiliki akses staf.` (403) · `Sesi masuk tidak valid.` · `Tidak dapat membuat sesi staf.` · popup gagal → `Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.` · demo gagal → `Tidak dapat masuk sebagai user/admin demo. Silakan coba lagi.`
 - Sesi kedaluwarsa → redirect ke `/`; saat menyimpan: `Sesi staf berakhir. Silakan masuk kembali.`
 - **Dev lokal**: bypass `local-development@localhost` (lihat `LOCAL_BACKEND.md`).
 - **Efek Drive**: tidak ada — admin hanya membaca.
@@ -258,16 +259,17 @@ Setiap kartu adalah satu form; **`Simpan`** memanggil action tunggal `updateAppl
 
 ## 5. Autentikasi & Sesi
 
-| Aspek             | Pemohon                                                                                                          | Admin                                                                 |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Metode            | Firebase **Google** — popup `Masuk/Daftar` atau otomatis saat `Kirim pengajuan`                                  | Firebase **Google** — email `vworksofficial@gmail.com` atau allowlist |
-| Routing           | Email non-staf → `/dashboard`; staf → `/admin`                                                                   | Email staf → `/admin`; non-staf → `/dashboard`                        |
-| Penyimpanan       | localStorage browser (Firebase default), token otomatis refresh                                                  | Cookie `venturego-admin-session` (httpOnly, 5 hari)                   |
-| Verifikasi server | Setiap action/route memverifikasi `sign_in_provider === 'google.com'`                                            | Verifikasi ID token Google + `isStaffEmail()`                         |
-| Keluar            | Profil → `Keluar` (sign-out Firebase) → `/`                                                                      | Tombol `Keluar` (hapus cookie + sign-out) → `/`                       |
-| Pesan kedaluwarsa | `Sesi telah berakhir. Silakan masuk kembali.` · `Sesi unggah telah berakhir. Silakan muat ulang halaman.` · dll. | Redirect ke `/`; `Sesi staf berakhir. Silakan masuk kembali.`         |
+| Aspek             | Pemohon                                                                                                          | Admin                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Metode            | Production: Firebase **Google**. Lokal: Google atau demo **email/password** (`Masuk User`)                       | Production: Firebase **Google**. Lokal: Google atau demo **email/password** (`Masuk Admin`)     |
+| Akun demo         | `demo.user@venturego.id` / `UserDemo123!` (`src/lib/demo-accounts.json`, tombol khusus lokal)                    | `demo.admin@venturego.id` / `AdminDemo123!` (`src/lib/demo-accounts.json`, tombol khusus lokal) |
+| Routing           | Email non-staf → `/dashboard`; staf → `/admin`                                                                   | Email staf → `/admin`; non-staf → `/dashboard`                                                  |
+| Penyimpanan       | localStorage browser (Firebase default), token otomatis refresh                                                  | Cookie `venturego-admin-session` (httpOnly, 5 hari)                                             |
+| Verifikasi server | Production: hanya `google.com`; lokal: `google.com` atau `password`                                              | Verifikasi ID token + `isStaffEmail()`                                                          |
+| Keluar            | Profil → `Keluar` (sign-out Firebase) → `/`                                                                      | Tombol `Keluar` (hapus cookie + sign-out) → `/`                                                 |
+| Pesan kedaluwarsa | `Sesi telah berakhir. Silakan masuk kembali.` · `Sesi unggah telah berakhir. Silakan muat ulang halaman.` · dll. | Redirect ke `/`; `Sesi staf berakhir. Silakan masuk kembali.`                                   |
 
-**Konsekuensi desain:** pemohon baru yang sudah login Google tetapi belum pernah submit melihat kartu ringkasan default bernilai nol (Rp0 · 0 bulan · VA 0000000000000000). Tidak ada signup/login manual; akun dibuat otomatis oleh Google. Record lama yang dimiliki akun anonim (sebelum migrasi) tidak lagi bisa diakses pemohon — lihat §8.
+**Konsekuensi desain:** pemohon baru yang sudah login tetapi belum pernah submit melihat kartu ringkasan default bernilai nol (Rp0 · 0 bulan · VA 0000000000000000). Tidak ada halaman signup/login manual; akun demo dibuat oleh admin melalui `scripts/seed-demo-accounts.mjs`. Record lama yang dimiliki akun anonim (sebelum migrasi) tidak lagi bisa diakses pemohon — lihat §8.
 
 ---
 
@@ -310,23 +312,26 @@ Daftar ini **harus ikut diperbarui** saat caveat-nya diselesaikan:
 6. **Banner sukses/gagal pembayaran** di `/dashboard/pembayaran` hanya muncul bila parameter `?payment=` ada di URL (return URL Xendit saat ini tidak menyertakannya); andalkan `Segarkan`/webhook.
 7. **Admin tanpa filter/pencarian** — daftar datar, 100 terbaru, satu action simpan.
 8. **Tahap 5 (Pencairan dana)** pada `Alur progress` tidak pernah jadi tahap `SEKARANG`.
-9. **Tidak ada halaman login admin** — staf masuk lewat Google di welcome `/`; allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` selalu dianggap staf.
+9. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
 10. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
-11. Halaman 404 (`not-found`) masih berbahasa Inggris.
+11. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
+12. **Mode development memakai Auth/Firestore emulator.** Untuk mencoba tombol demo di lokal, jalankan `npm run backend:local`. Saat tombol `Masuk User` / `Masuk Admin` diklik, aplikasi otomatis membuat akun demo bila belum ada di Auth (atau bisa di-seed lebih dulu dengan `scripts/seed-demo-accounts.mjs`).
+13. Halaman 404 (`not-found`) masih berbahasa Inggris.
 
 ---
 
 ## 9. Peta File Sumber
 
-| Area        | File                                                                                                           |
-| ----------- | -------------------------------------------------------------------------------------------------------------- |
-| Formulir    | `src/app/(frontend)/page.tsx`, `src/app/(frontend)/actions.ts`                                                 |
-| Dashboard   | `src/app/(frontend)/dashboard/**` (page + actions per halaman, `layout.tsx` guard Google)                      |
-| Admin       | `src/app/(frontend)/admin/**` (`page.tsx`, `admin-dashboard.tsx`, `finance-terms-fields.tsx`, `actions.ts`)    |
-| Auth        | `src/lib/auth-client.ts`, `src/lib/auth-shared.ts`, `src/lib/firebase-admin.ts`, `src/lib/firebase-session.ts` |
-| Upload API  | `src/app/api/applicant/uploads/route.ts`, `src/lib/upload-client.ts`                                           |
-| Drive       | `src/lib/gdrive.ts` (OAuth, folder, resumable, ticket HMAC)                                                    |
-| Dokumen     | `src/lib/documents.ts` (daftar slot, batas, validasi tanda tangan)                                             |
-| Pembayaran  | `src/lib/xendit.ts`, `src/app/api/webhooks/xendit/route.ts`, `dashboard/pembayaran/*`                          |
-| Firebase    | `src/lib/firebase-admin.ts`, `firebase-client.ts`, `firebase-session.ts`, `firebase-data.ts`                   |
-| Admin unduh | `src/app/api/admin/applications/[id]/documents/[index]/route.ts`                                               |
+| Area        | File                                                                                                                              |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Formulir    | `src/app/(frontend)/page.tsx`, `src/app/(frontend)/actions.ts`                                                                    |
+| Dashboard   | `src/app/(frontend)/dashboard/**` (page + actions per halaman, `layout.tsx` guard akun)                                           |
+| Admin       | `src/app/(frontend)/admin/**` (`page.tsx`, `admin-dashboard.tsx`, `finance-terms-fields.tsx`, `actions.ts`)                       |
+| Auth        | `src/lib/auth-client.ts`, `src/lib/auth-shared.ts`, `src/lib/demo-accounts.{ts,json}`, `firebase-admin.ts`, `firebase-session.ts` |
+| Seed demo   | `scripts/seed-demo-accounts.mjs`                                                                                                  |
+| Upload API  | `src/app/api/applicant/uploads/route.ts`, `src/lib/upload-client.ts`                                                              |
+| Drive       | `src/lib/gdrive.ts` (OAuth, folder, resumable, ticket HMAC)                                                                       |
+| Dokumen     | `src/lib/documents.ts` (daftar slot, batas, validasi tanda tangan)                                                                |
+| Pembayaran  | `src/lib/xendit.ts`, `src/app/api/webhooks/xendit/route.ts`, `dashboard/pembayaran/*`                                             |
+| Firebase    | `src/lib/firebase-admin.ts`, `firebase-client.ts`, `firebase-session.ts`, `firebase-data.ts`                                      |
+| Admin unduh | `src/app/api/admin/applications/[id]/documents/[index]/route.ts`                                                                  |

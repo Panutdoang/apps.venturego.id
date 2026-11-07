@@ -27,15 +27,16 @@ There is no `src/payload.config.ts`, no `src/collections/`, and no
 
 Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
 
-- **Authentication** — Google sign-in for applicants and staff. There is no
-  anonymous or email/password sign-in. Staff access is gated by the built-in
-  primary email `vworksofficial@gmail.com` plus the `FIREBASE_ADMIN_EMAILS`
-  server allowlist.
+- **Authentication** — Google sign-in in production live, plus demo
+  email/password accounts (`src/lib/demo-accounts.json`) during local
+  development. There is no anonymous sign-in. Staff access is gated by the
+  built-in primary email `vworksofficial@gmail.com`, the demo admin
+  `demo.admin@venturego.id`, and the `FIREBASE_ADMIN_EMAILS` server allowlist.
 - **Cloud Firestore** — the `applications` collection (and any future app
   records). Rules deny all client access (`firestore.rules`); all reads and
   writes go through the Admin SDK in Server Actions or route handlers.
 - **Google Drive** — applicant documents are uploaded through
-  `api/applicant/uploads` (Google ID token verified, size/type and file
+  `api/applicant/uploads` (Firebase ID token verified, size/type and file
   signature checks) into the `VentureGo Berkas` folder tree (OAuth as the Drive
   owner via `GDRIVE_REFRESH_TOKEN`; root folder auto-created). Staff access is
   proxied through authenticated server routes.
@@ -53,11 +54,11 @@ through the narrow submit flow, and protect server-owned workflow fields
 so clients cannot set them directly. Enforce ownership and other durable
 invariants at the Server Action boundary, not only in UI checks.
 
-Verify the Google ID token server-side with `firebase-admin`, and only for
-users whose `sign_in_provider === 'google.com'`. Staff actions must call
-`getStaffSession()` and click `FIREBASE_ADMIN_EMAILS` / the built-in primary
-email. Never log, print, or expose tokens, service-account keys, or
-`.env.local` values.
+Verify the Firebase ID token server-side with `firebase-admin`, and only for
+users whose `sign_in_provider` is `google.com` or `password` (use
+`isAllowedSignInProvider`). Staff actions must call `getStaffSession()` and
+check `FIREBASE_ADMIN_EMAILS` / the built-in staff emails. Never log, print, or
+expose tokens, service-account keys, or `.env.local` values.
 
 Do not create placeholder Firestore collections just because Firebase is
 present. Add collections only when the user needs durable application data.
@@ -132,14 +133,19 @@ Keep three authorization concerns distinct:
 
 - Figma/Make access controls who can view or edit the Make file.
 - Staff Firebase Auth controls who can manage applications in `/admin`
-  (Google sign-in + built-in primary email / `FIREBASE_ADMIN_EMAILS` allowlist
+  (Google in production, plus `src/lib/demo-accounts.json` email/password in
+  local development + built-in staff emails / `FIREBASE_ADMIN_EMAILS` allowlist
   - session cookie). There is no admin login page; staff sign in from `/`.
-- Applicant sessions are Google Firebase Auth users tied to the upload and
-  application flow; documents and records are scoped by `ownerFirebaseUid`.
+- Applicant sessions are Google Firebase Auth users (or local demo
+  email/password users in development) tied to the upload and application flow;
+  documents and records are scoped by `ownerFirebaseUid`.
 
-Sign-in is Google-only and the welcome page routes the primary staff email to
-`/admin` and everyone else to `/dashboard`. Never grant staff access to
-applicant accounts, and never bypass the allowlist for `/admin`.
+In production live (`NODE_ENV === 'production'`), the welcome page shows only
+the single `Masuk dengan Google` button. In local development, the welcome page
+also shows `Masuk User` / `Masuk Admin` buttons that sign in directly with
+`src/lib/demo-accounts.json` (no sign-in page). Staff are routed to `/admin`
+and everyone else to `/dashboard`. Never grant staff access to applicant
+accounts, and never bypass the allowlist for `/admin`.
 
 ## Security Rules
 

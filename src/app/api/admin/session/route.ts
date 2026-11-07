@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ADMIN_SESSION_COOKIE, ADMIN_SESSION_LIFETIME_MS } from '@/lib/firebase-session'
 import { getFirebaseAuth, isStaffEmail } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +10,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Sesi masuk tidak valid.' }, { status: 400 })
     }
     const decoded = await getFirebaseAuth().verifyIdToken(idToken, true)
-    if (decoded.firebase?.sign_in_provider !== 'google.com' || !isStaffEmail(decoded.email)) {
+    if (
+      !isAllowedSignInProvider(decoded.firebase?.sign_in_provider) ||
+      !isStaffEmail(decoded.email)
+    ) {
       return NextResponse.json({ message: 'Akun ini tidak memiliki akses staf.' }, { status: 403 })
     }
     const sessionCookie = await getFirebaseAuth().createSessionCookie(idToken, {

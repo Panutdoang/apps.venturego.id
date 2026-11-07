@@ -1770,7 +1770,7 @@ body {
 .welcome-actions {
   margin-top: 24px;
   display: grid;
-  gap: 0;
+  gap: 12px;
 }
 
 .welcome-actions .welcome-primary {
@@ -1796,6 +1796,42 @@ body {
   background: #111077;
 }
 
+.welcome-actions .welcome-secondary {
+  width: 100%;
+  min-height: 58px;
+  border-radius: 999px;
+  border: 1.5px solid #dfe1e7;
+  background: #fff;
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.welcome-actions .welcome-secondary:hover {
+  background: #f7f8fc;
+}
+
+.welcome-actions .welcome-secondary:disabled,
+.welcome-actions .welcome-google-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.welcome-actions .welcome-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #4c4c68;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .welcome-actions .google-badge {
   display: inline-flex;
   align-items: center;
@@ -1812,6 +1848,16 @@ body {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+.welcome-actions .welcome-google-button .google-badge {
+  width: 24px;
+  height: 24px;
+}
+
+.welcome-actions .welcome-google-button .google-badge svg {
+  width: 14px;
+  height: 14px;
 }
 
 .welcome-note {

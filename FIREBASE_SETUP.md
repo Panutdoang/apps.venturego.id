@@ -1,16 +1,17 @@
 # Firebase setup
 
-The app uses **Google sign-in** for both applicants and staff, and Cloud
-Firestore for applications. Anonymous sign-in is not used. Private application
-documents are stored in Google Drive through the verified upload route (OAuth as
-the Drive owner's account; see step 9).
+The app uses **Google sign-in** in production live (plus **demo email/password
+accounts** in `src/lib/demo-accounts.json` during local development) for
+applicants and staff, and Cloud Firestore for applications. Anonymous sign-in is
+not used. Private application documents are stored in Google Drive through the
+verified upload route (OAuth as the Drive owner's account; see step 10).
 
 ## Create Firebase services
 
 1. Create a Firebase project and register a Web app.
-2. Enable **Google** sign-in in Authentication and disable **Anonymous**.
-   Add your production domain to Authentication → Settings → Authorized domains
-   so the Google popup can open.
+2. Enable **Google** and **Email/Password** sign-in in Authentication and
+   disable **Anonymous**. Add your production domain to Authentication →
+   Settings → Authorized domains so the Google popup can open.
 3. Create a Cloud Firestore database.
 4. Create a service account for the server runtime with Firestore read/write
    and Firebase Authentication session-cookie permissions.
@@ -18,20 +19,29 @@ the Drive owner's account; see step 9).
    key as `FIREBASE_PRIVATE_KEY`. Keep that private key server-only and configure
    it in Vercel's encrypted environment variables. Do not commit it or paste it
    into source files.
-6. Staff access uses Google accounts. `vworksofficial@gmail.com` is the built-in
-   primary staff account; add any additional staff emails to
-   `FIREBASE_ADMIN_EMAILS` as a comma-separated server-only allowlist.
-7. Configure the Web app values listed below as `NEXT_PUBLIC_*` variables in
+6. Staff access uses Google in production (and demo email/password in local
+   development). `vworksofficial@gmail.com` is the built-in primary staff
+   account and `demo.admin@venturego.id` is the demo admin; add any additional
+   staff emails to `FIREBASE_ADMIN_EMAILS` as a comma-separated server-only
+   allowlist.
+7. Create the demo accounts with
+   `node --env-file=.env.local scripts/seed-demo-accounts.mjs` (idempotent:
+   updates existing accounts and creates missing ones).
+8. Configure the Web app values listed below as `NEXT_PUBLIC_*` variables in
    Vercel. Firebase Web API keys identify the project and are public; server
    service-account credentials are private.
-8. Deploy the included Firestore rules with the Firebase CLI:
+9. Deploy the included Firestore rules with the Firebase CLI:
    `firebase deploy --only firestore:rules`.
-9. For Google Drive, create an OAuth client ID (type **Desktop app**) under
-   APIs & Services → Credentials, set the OAuth consent screen to **Production**,
-   and capture a one-time refresh token (`GDRIVE_REFRESH_TOKEN`). Store
-   `GDRIVE_OAUTH_CLIENT_ID`, `GDRIVE_OAUTH_CLIENT_SECRET`, and
-   `GDRIVE_REFRESH_TOKEN` as server-only encrypted variables in Vercel. The
-   root `VentureGo Berkas` folder is created automatically on first upload.
+10. For Google Drive, create an OAuth client ID (type **Desktop app**) under
+    APIs & Services → Credentials, set the OAuth consent screen to **Production**,
+    and capture a one-time refresh token (`GDRIVE_REFRESH_TOKEN`). Store
+    `GDRIVE_OAUTH_CLIENT_ID`, `GDRIVE_OAUTH_CLIENT_SECRET`, and
+    `GDRIVE_REFRESH_TOKEN` as server-only encrypted variables in Vercel. The
+    root `VentureGo Berkas` folder is created automatically on first upload.
+
+> Demo credentials live in `src/lib/demo-accounts.json` for local development.
+> In production live (`NODE_ENV === 'production'`), the welcome page only
+> renders the single `Masuk dengan Google` button.
 
 ## Environment variables
 

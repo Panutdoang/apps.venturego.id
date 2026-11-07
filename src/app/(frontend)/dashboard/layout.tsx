@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import { isGoogleAccount, resolveUserDestination } from '@/lib/auth-client'
+import { isAppAccount, resolveUserDestination } from '@/lib/auth-client'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
         if (!active) return
-        if (!isGoogleAccount(user)) {
+        if (!isAppAccount(user)) {
           router.replace('/')
           return
         }

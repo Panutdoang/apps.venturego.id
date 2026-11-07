@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 import { createXenditInvoice } from '@/lib/xendit'
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED'
@@ -44,7 +45,7 @@ export type CreatePaymentResult = { ok: true; invoiceUrl: string } | { ok: false
 const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
+  return isAllowedSignInProvider(identity.firebase?.sign_in_provider) ? identity : null
 }
 
 const readPaidSet = (value: unknown): Set<number> =>

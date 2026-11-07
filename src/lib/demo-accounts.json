@@ -1,0 +1,10 @@
+{
+  "user": {
+    "email": "demo.user@venturego.id",
+    "password": "UserDemo123!"
+  },
+  "admin": {
+    "email": "demo.admin@venturego.id",
+    "password": "AdminDemo123!"
+  }
+}

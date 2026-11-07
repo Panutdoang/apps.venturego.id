@@ -8,9 +8,16 @@ import { formatRupiah } from '@/lib/financing-plan'
 import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { onAuthStateChanged } from 'firebase/auth'
-import { isGoogleAccount, resolveUserDestination, signInWithGoogleAccount } from '@/lib/auth-client'
-import { isPrimaryStaffEmail } from '@/lib/auth-shared'
+import {
+  ensureApplicantAccount,
+  isAppAccount,
+  resolveUserDestination,
+  signInWithDemoAccount,
+  signInWithGoogleAccount,
+} from '@/lib/auth-client'
 import { uploadToDrive } from '@/lib/upload-client'
+
+const isLocalDemoMode = process.env.NODE_ENV !== 'production'
 
 type Product = ApplicationInput['product']
 
@@ -93,7 +100,7 @@ export default function HomePage() {
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
   const [result, setResult] = useState<{ id?: string; error?: string }>({})
   const [isPending, startTransition] = useTransition()
-  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [pendingSignIn, setPendingSignIn] = useState<'user' | 'admin' | 'google' | ''>('')
   const [signInError, setSignInError] = useState('')
 
   useEffect(() => {
@@ -111,12 +118,12 @@ export default function HomePage() {
     let unsubscribe: (() => void) | undefined
     try {
       unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
-        if (!active || !isGoogleAccount(user)) return
+        if (!active || !isAppAccount(user)) return
         const params = new URLSearchParams(window.location.search)
         const hasFormIntent =
           params.has('step') || params.get('apply') === 'true' || params.get('baru') === 'true'
-        if (hasFormIntent && !isPrimaryStaffEmail(user.email)) return
         const destination = await resolveUserDestination(user)
+        if (hasFormIntent && destination !== '/admin') return
         if (active) router.replace(destination)
       })
     } catch {
@@ -128,16 +135,21 @@ export default function HomePage() {
     }
   }, [router])
 
-  const signInWithGoogle = async () => {
+  const signInAs = async (role: 'user' | 'admin' | 'google') => {
     setSignInError('')
-    setIsSigningIn(true)
+    setPendingSignIn(role)
     try {
-      const user = await signInWithGoogleAccount()
+      const user =
+        role === 'google' ? await signInWithGoogleAccount() : await signInWithDemoAccount(role)
       const destination = await resolveUserDestination(user)
       router.push(destination)
     } catch {
-      setSignInError('Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.')
-      setIsSigningIn(false)
+      setSignInError(
+        role === 'google'
+          ? 'Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.'
+          : `Tidak dapat masuk sebagai ${role === 'admin' ? 'admin' : 'user'} demo. Silakan coba lagi.`,
+      )
+      setPendingSignIn('')
     }
   }
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
@@ -181,7 +193,7 @@ export default function HomePage() {
       let uploadToken = ''
       const uploaded: { index: number; fileId: string }[] = []
       try {
-        const user = await signInWithGoogleAccount()
+        const user = await ensureApplicantAccount()
         uploadToken = await user.getIdToken()
         for (const [index, document] of DOCUMENT_DEFINITIONS[form.product].entries()) {
           const file = documentFiles[document.label]
@@ -263,24 +275,64 @@ export default function HomePage() {
                 mudah dan terarah.
               </p>
               <div className="welcome-actions">
-                <button
-                  className="primary-button welcome-primary"
-                  disabled={isSigningIn}
-                  onClick={signInWithGoogle}
-                  type="button"
-                >
-                  <span className="google-badge" aria-hidden="true">
-                    <GoogleIcon />
-                  </span>
-                  <span>{isSigningIn ? 'Menghubungkan…' : 'Masuk/Daftar'}</span>
-                </button>
+                {isLocalDemoMode ? (
+                  <>
+                    <button
+                      className="primary-button welcome-primary"
+                      disabled={pendingSignIn !== ''}
+                      onClick={() => signInAs('user')}
+                      type="button"
+                    >
+                      <span>{pendingSignIn === 'user' ? 'Menghubungkan…' : 'Masuk User'}</span>
+                    </button>
+                    <button
+                      className="back-button welcome-secondary"
+                      disabled={pendingSignIn !== ''}
+                      onClick={() => signInAs('admin')}
+                      type="button"
+                    >
+                      <span>{pendingSignIn === 'admin' ? 'Menghubungkan…' : 'Masuk Admin'}</span>
+                    </button>
+                    <button
+                      className="welcome-google-button"
+                      disabled={pendingSignIn !== ''}
+                      onClick={() => signInAs('google')}
+                      type="button"
+                    >
+                      <span className="google-badge" aria-hidden="true">
+                        <GoogleIcon />
+                      </span>
+                      <span>
+                        {pendingSignIn === 'google' ? 'Menghubungkan…' : 'Masuk dengan Google'}
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="primary-button welcome-primary"
+                    disabled={pendingSignIn !== ''}
+                    onClick={() => signInAs('google')}
+                    type="button"
+                  >
+                    <span className="google-badge" aria-hidden="true">
+                      <GoogleIcon />
+                    </span>
+                    <span>
+                      {pendingSignIn === 'google' ? 'Menghubungkan…' : 'Masuk dengan Google'}
+                    </span>
+                  </button>
+                )}
               </div>
               {signInError && (
                 <p className="error-message" role="alert">
                   {signInError}
                 </p>
               )}
-              <p className="welcome-note">Masuk dengan akun Google untuk melanjutkan.</p>
+              <p className="welcome-note">
+                {isLocalDemoMode
+                  ? 'Tombol User dan Admin memakai akun demo. Gunakan Google untuk akun pribadi.'
+                  : 'Akun baru akan dibuat secara otomatis saat pertama kali masuk.'}
+              </p>
             </div>
           )}
 

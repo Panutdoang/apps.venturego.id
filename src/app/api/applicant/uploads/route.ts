@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 import {
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
@@ -32,7 +33,7 @@ const verifyGoogleToken = async (request: Request) => {
   if (!token || token.length > 10_000) return null
   try {
     const identity = await getFirebaseAuth().verifyIdToken(token)
-    return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
+    return isAllowedSignInProvider(identity.firebase?.sign_in_provider) ? identity : null
   } catch {
     return null
   }

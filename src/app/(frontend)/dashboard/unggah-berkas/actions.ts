@@ -2,6 +2,7 @@
 
 import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
+import { isAllowedSignInProvider } from '@/lib/auth-shared'
 
 type DocumentEntry = {
   documentType: string
@@ -27,7 +28,7 @@ export type OwnedApplicationsResult =
 const isGoogleIdentity = async (uploadToken: string) => {
   if (!uploadToken || uploadToken.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(uploadToken)
-  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
+  return isAllowedSignInProvider(identity.firebase?.sign_in_provider) ? identity : null
 }
 
 export async function getOwnedApplications(uploadToken: string): Promise<OwnedApplicationsResult> {
