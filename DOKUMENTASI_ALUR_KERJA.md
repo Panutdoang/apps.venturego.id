@@ -203,7 +203,6 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 - `/admin` tanpa cookie sesi staf → redirect ke `/` (welcome), bukan kartu login.
 - Pesan error API: `Akun ini tidak memiliki akses staf.` (403) · `Sesi masuk tidak valid.` · `Tidak dapat membuat sesi staf.` · popup gagal → `Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.` · demo gagal → `Tidak dapat masuk sebagai user/admin demo. Silakan coba lagi.`
 - Sesi kedaluwarsa → redirect ke `/`; saat menyimpan: `Sesi staf berakhir. Silakan masuk kembali.`
-- **Dev lokal**: bypass `local-development@localhost` (lihat `LOCAL_BACKEND.md`).
 - **Efek Drive**: tidak ada — admin hanya membaca.
 
 ### 4.2 Daftar pengajuan (dashboard admin)
@@ -315,7 +314,7 @@ Daftar ini **harus ikut diperbarui** saat caveat-nya diselesaikan:
 9. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
 10. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
 11. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
-12. **Mode development memakai Auth/Firestore emulator.** Untuk mencoba tombol demo di lokal, jalankan `npm run backend:local`. Saat tombol `Masuk User` / `Masuk Admin` diklik, aplikasi otomatis membuat akun demo bila belum ada di Auth (atau bisa di-seed lebih dulu dengan `scripts/seed-demo-accounts.mjs`).
+12. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
 13. Halaman 404 (`not-found`) masih berbahasa Inggris.
 
 ---

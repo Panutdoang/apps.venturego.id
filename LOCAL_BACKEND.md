@@ -1,36 +1,20 @@
 # Local Firebase backend
 
-Local development uses Firebase emulators for Authentication and Firestore.
-Development credentials and project settings are not sent to the configured
-cloud Firebase project. Applicant uploads go to the real Google Drive folder
-(OAuth credentials in `.env.local`).
+Local development (`npm run dev`) connects directly to the Firebase project
+configured in `.env.local` for Authentication and Cloud Firestore, and uses the
+Google Drive OAuth credentials in `.env.local` for applicant uploads. No local
+Firebase emulator or Java installation is required for standard development.
 
-Requirements: Java 21 or later and the Firebase CLI.
-
-1. In one terminal, run `npm run backend:local`. The first run may download
-   emulator binaries. Keep this terminal open.
-2. Optional: pre-seed the demo email/password accounts into the emulator
-   (clicking `Masuk User` / `Masuk Admin` will also auto-create them if
-   missing):
+1. Ensure `.env.local` has your `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*`
+   variables configured.
+2. Seed/update the demo email/password accounts in Firebase Auth (one-time):
 
    ```powershell
-   $env:FIREBASE_AUTH_EMULATOR_HOST='127.0.0.1:9099'
-   $env:FIREBASE_PROJECT_ID='demo-venturego-local'
    node --env-file=.env.local scripts/seed-demo-accounts.mjs
    ```
 
-3. In another terminal, run `npm run dev`.
-4. Open `http://localhost:3000`. Use `Masuk User` / `Masuk Admin` (local dev
-   only) or sign in with Google from the welcome screen. The `/admin` local
-   development bypass applies only when the app is running in development on
-   localhost or 127.0.0.1.
-5. Open `http://127.0.0.1:4000` to inspect emulator data.
-
-The emulators bind to loopback only: Auth on port 9099, Firestore on 8080,
-and the Emulator UI on 4000. Emulator data is imported at startup and
-exported when the emulator process exits into the ignored `.firebase-data`
-directory. Stop the emulator with Ctrl+C to export data.
-
-The local Firestore starts empty. New application records and email/password
-Auth users are stored in the emulators, not in the cloud project. Uploaded
-files are stored in the shared Google Drive folder, not in an emulator.
+3. Run `npm run dev` and open `http://localhost:3000`.
+4. Use `Masuk User` (`demo.user@venturego.id`), `Masuk Admin`
+   (`demo.admin@venturego.id`), or `Masuk dengan Google` from the welcome
+   screen. In production live (`NODE_ENV === 'production'`), only the single
+   `Masuk dengan Google` button is shown.

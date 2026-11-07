@@ -41,9 +41,8 @@ Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
   owner via `GDRIVE_REFRESH_TOKEN`; root folder auto-created). Staff access is
   proxied through authenticated server routes.
 
-Local development uses the Auth/Firestore emulators
-(`pnpm backend:local`, ports 9099/8080/4000). The client SDK connects to
-emulators automatically when `NODE_ENV === 'development'`.
+Local development connects directly to the Firebase project configured in
+`.env.local` (no local Auth/Firestore emulator required).
 
 ## Payload Data Integrity (applies to Firebase mutations)
 
