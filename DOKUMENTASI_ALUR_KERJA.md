@@ -2,7 +2,7 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **6 November 2026** (migrasi penyimpanan dokumen ke Google Drive via OAuth pemilik, `9cc3317` + `7b71067`).
+Terakhir diperbarui: **7 November 2026** (beranda pengguna baru menampilkan kartu ringkasan nol, bukan pesan sesi tidak ditemukan).
 
 ---
 
@@ -132,12 +132,13 @@ Tombol: `Kembali` · `Lanjutkan` · `Kirim pengajuan` (saat kirim: `Mengirim…`
 
 ### 3.3 Dashboard pemohon
 
-Semua halaman dashboard memerlukan sesi anonim; tanpa sesi → pesan `Sesi pengajuan tidak ditemukan. Ajukan pembiayaan terlebih dahulu.` + CTA. Navigasi bawah: **Angsuran · Riwayat · Beranda · Unggah · Profil**.
+Semua halaman dashboard memerlukan sesi anonim. Tanpa sesi, beranda `/dashboard` tetap menampilkan **kartu ringkasan default** (bukan pesan error); halaman dashboard lain menampilkan pesan `Sesi pengajuan tidak ditemukan…` + CTA. Navigasi bawah: **Angsuran · Riwayat · Beranda · Unggah · Profil**.
 
 #### Beranda `/dashboard`
 
 - Sapaan `Selamat datang, <nama depan>` (loading: `Memuat…`), lonceng → notifikasi (titik amber bila ada yang belum dibaca).
 - **Kartu ringkasan**: nominal (`Total kewajiban akad`/`Estimasi diajukan`), toggle sembunyikan nominal (`Rp••••••••`), **pil status**, progres bar `{x} dari {y} angsuran jatuh tempo`, `Jatuh tempo berikutnya`; bila belum ada jadwal → `Berkas terunggah {x}/{y}` + `Nomor pengajuan {VSV-APP-…}`; bila biaya masih estimasi → `Rincian biaya sedang disusun dan diverifikasi tim VentureGo.`
+- **Pengguna baru / tanpa sesi / tanpa pengajuan**: kartu ringkasan langsung tampil dengan nilai default — `Total angsuran terbayar` **Rp0**, progres 0% (`Belum ada pembayaran`, `Total kewajiban Rp0`), `Tenor` **0 bulan**, dan `Virtual Account` **0000000000000000**, dengan pil `Belum ada pengajuan`. CTA pengajuan tetap berada pada kartu `Ajukan Pembiayaan Baru` di bawah hero; hero tidak lagi menampilkan `Sesi pengajuan tidak ditemukan…`.
 - **Alur progress saat ini** — 7 tahap: `Pengajuan → Verifikasi & kelayakan → Pengumpulan berkas online → Akad pembiayaan → Pencairan dana → Program angsuran → Pelunasan`, badge `Tahap {n}/7`, tahap aktif berchip `SEKARANG`; status tertutup (Ditolak/Dibatalkan) menampilkan catatan merah.
 - Kartu `Ajukan Pembiayaan Baru` (→ `/?step=1`) dan `Layanan cepat` (Bayar angsuran, Simulasi, Ajukan baru, Bantuan, VIP).
 
@@ -263,7 +264,7 @@ Setiap kartu adalah satu form; **`Simpan`** memanggil action tunggal `updateAppl
 | Keluar            | Profil → `Keluar` → `/`                                                                                          | Tombol `Keluar` (hapus cookie)                                        |
 | Pesan kedaluwarsa | `Sesi telah berakhir. Silakan masuk kembali.` · `Sesi unggah telah berakhir. Silakan muat ulang halaman.` · dll. | Kembali ke kartu masuk / `Sesi staf berakhir. Silakan masuk kembali.` |
 
-**Konsekuensi desain:** kunjungan pertama ke `/dashboard` selalu kosong (`Sesi pengajuan tidak ditemukan…`) sampai pemohon pernah submit formulir di sesi browser yang sama. Tidak ada signup/login publik.
+**Konsekuensi desain:** kunjungan pertama ke `/dashboard` menampilkan kartu ringkasan default bernilai nol (Rp0 · 0 bulan · VA 0000000000000000) sampai pemohon pernah submit formulir di sesi browser yang sama. Tidak ada signup/login publik.
 
 ---
 

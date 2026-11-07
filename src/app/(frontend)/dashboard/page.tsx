@@ -221,7 +221,7 @@ export default function DashboardPage() {
         if (!active) return
         if (!user || !user.isAnonymous) {
           setApplication(null)
-          setError('Sesi pengajuan tidak ditemukan. Ajukan pembiayaan terlebih dahulu.')
+          setError('')
           setLoading(false)
           return
         }
@@ -318,20 +318,12 @@ export default function DashboardPage() {
               </p>
             )}
             {!loading && error && (
-              <div className="space-y-3">
-                <p
-                  className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800"
-                  role="alert"
-                >
-                  {error}
-                </p>
-                <Link
-                  className="block rounded-full bg-[var(--primary)] px-4 py-2.5 text-center text-xs font-bold text-white"
-                  href="/?step=1"
-                >
-                  Ajukan pembiayaan
-                </Link>
-              </div>
+              <p
+                className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800"
+                role="alert"
+              >
+                {error}
+              </p>
             )}
             {!loading && !error && application && (
               <>
@@ -446,18 +438,51 @@ export default function DashboardPage() {
               </>
             )}
             {!loading && !error && !application && (
-              <div className="space-y-3">
-                <p className="text-sm leading-6 text-slate-600">
-                  Belum ada pengajuan pada sesi ini. Mulai pengajuan Full Cover atau Dana
-                  Keberangkatan untuk melihat ringkasan pembiayaan Anda.
-                </p>
-                <Link
-                  className="block rounded-full bg-[var(--primary)] px-4 py-2.5 text-center text-xs font-bold text-white"
-                  href="/?step=1"
+              <>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Total angsuran terbayar</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
+                        {showBalance ? formatRupiah(0) : 'Rp••••••••'}
+                      </strong>
+                      <button
+                        aria-label={showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'}
+                        className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        onClick={() => setShowBalance((current) => !current)}
+                        type="button"
+                      >
+                        <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-bold text-slate-500">
+                    Belum ada pengajuan
+                  </span>
+                </div>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full w-0 rounded-full bg-[var(--accent)]" />
+                </div>
+                <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+                  <span>Belum ada pembayaran</span>
+                  <span>Total kewajiban Rp0</span>
+                </div>
+                <div
+                  className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
+                  style={{ gridTemplateColumns: '2fr 3fr' }}
                 >
-                  Ajukan sekarang
-                </Link>
-              </div>
+                  <div>
+                    <span className="text-[11px] text-slate-400">Tenor</span>
+                    <strong className="mt-1 block text-sm text-slate-800">0 bulan</strong>
+                  </div>
+                  <div className="border-l border-slate-100 pl-4">
+                    <span className="text-[11px] text-slate-400">Virtual Account</span>
+                    <div className="mt-1">
+                      <strong className="text-sm text-slate-800">0000000000000000</strong>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </section>
 
