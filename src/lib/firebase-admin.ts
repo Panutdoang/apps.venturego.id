@@ -3,6 +3,7 @@ import 'server-only'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { normalizeEmail, PRIMARY_STAFF_EMAIL } from './auth-shared'
 
 const useEmulators = process.env.NODE_ENV === 'development'
 const localProjectId = 'demo-venturego-local'
@@ -37,10 +38,12 @@ export const getFirebaseAuth = () => getAuth(getAdminApp())
 export const getFirebaseFirestore = () => getFirestore(getAdminApp())
 
 export const isStaffEmail = (email: string | undefined) => {
-  if (!email) return false
+  const normalized = normalizeEmail(email)
+  if (!normalized) return false
+  if (normalized === PRIMARY_STAFF_EMAIL) return true
   const allowlist = (process.env.FIREBASE_ADMIN_EMAILS ?? '')
     .split(',')
-    .map((value) => value.trim().toLowerCase())
+    .map((value) => normalizeEmail(value))
     .filter(Boolean)
-  return allowlist.includes(email.toLowerCase())
+  return allowlist.includes(normalized)
 }

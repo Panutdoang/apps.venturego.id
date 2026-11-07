@@ -41,10 +41,10 @@ export type PaymentOverviewResult =
 
 export type CreatePaymentResult = { ok: true; invoiceUrl: string } | { ok: false; message: string }
 
-const isAnonymousIdentity = async (token: string) => {
+const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'anonymous' ? identity : null
+  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
 }
 
 const readPaidSet = (value: unknown): Set<number> =>
@@ -118,7 +118,7 @@ const getReturnUrl = async () => {
 
 export async function getPaymentOverview(token: string): Promise<PaymentOverviewResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
     const db = getFirebaseFirestore()
@@ -232,7 +232,7 @@ export async function createInstallmentPayment(
   installmentNumber: number,
 ): Promise<CreatePaymentResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(applicationDocId)) {
       return { ok: false, message: 'Pengajuan tidak valid.' }
@@ -312,7 +312,7 @@ export async function createCustomPayment(
   amount: number,
 ): Promise<CreatePaymentResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(applicationDocId)) {
       return { ok: false, message: 'Pengajuan tidak valid.' }

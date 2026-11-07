@@ -24,10 +24,10 @@ export type FinancingActionResult = { ok: true } | { ok: false; message: string 
 
 type UserSupportRequest = NonNullable<FinancingApplicationRecord['supportRequests']>[number]
 
-const isAnonymousIdentity = async (token: string) => {
+const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'anonymous' ? identity : null
+  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
 }
 
 const isSupportRequest = (value: unknown): value is UserSupportRequest => {
@@ -44,7 +44,7 @@ const isSupportRequest = (value: unknown): value is UserSupportRequest => {
 
 export async function getOwnedFinancingApplications(token: string): Promise<UserFinancingResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
     const snapshot = await getFirebaseFirestore()
@@ -96,7 +96,7 @@ export async function acceptFinancingOffer(
   applicationId: string,
 ): Promise<FinancingActionResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(applicationId)) {
       return { ok: false, message: 'Pengajuan tidak valid.' }
@@ -149,7 +149,7 @@ export async function requestFinancingSupport(
   message: string,
 ): Promise<FinancingActionResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
     if (
       !/^[A-Za-z0-9_-]{1,128}$/.test(applicationId) ||

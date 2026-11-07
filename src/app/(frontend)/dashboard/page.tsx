@@ -203,6 +203,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [application, setApplication] = useState<DashboardApplication | null>(null)
+  const [accountName, setAccountName] = useState('')
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('applicationSubmitted') !== '1') return
@@ -219,12 +220,14 @@ export default function DashboardPage() {
     try {
       unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
         if (!active) return
-        if (!user || !user.isAnonymous) {
+        if (!user) {
           setApplication(null)
+          setAccountName('')
           setError('')
           setLoading(false)
           return
         }
+        setAccountName(user.displayName?.trim() ?? '')
         try {
           const idToken = await user.getIdToken()
           if (!active) return
@@ -268,7 +271,7 @@ export default function DashboardPage() {
     ? 'Memuat…'
     : application
       ? application.applicantName.split(' ')[0]
-      : 'Pengguna'
+      : accountName || 'Pengguna'
 
   return (
     <main className="dashboard-app min-h-dvh bg-[var(--canvas)]">

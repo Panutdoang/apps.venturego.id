@@ -27,12 +27,12 @@ const APPLICATION_DOC_PATTERN = /^[A-Za-z0-9_-]{1,128}$/
 const failure = (message: string, status = 400) =>
   NextResponse.json({ ok: false, message }, { status })
 
-const verifyAnonymousToken = async (request: Request) => {
+const verifyGoogleToken = async (request: Request) => {
   const token = request.headers.get('x-upload-token')
   if (!token || token.length > 10_000) return null
   try {
     const identity = await getFirebaseAuth().verifyIdToken(token)
-    return identity.firebase?.sign_in_provider === 'anonymous' ? identity : null
+    return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
   } catch {
     return null
   }
@@ -259,7 +259,7 @@ const handleChunk = async (request: Request, uid: string) => {
 }
 
 export async function POST(request: Request) {
-  const identity = await verifyAnonymousToken(request)
+  const identity = await verifyGoogleToken(request)
   if (!identity) return failure('Sesi unggah telah berakhir. Silakan muat ulang halaman.', 401)
 
   const action = request.headers.get('x-upload-action')

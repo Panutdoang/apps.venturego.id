@@ -1,14 +1,16 @@
 # Firebase setup
 
-The app uses Firebase Authentication for anonymous applicant upload sessions
-and staff email/password sign-in, and Cloud Firestore for applications.
-Private application documents are stored in Google Drive through the verified
-upload route (OAuth as the Drive owner's account; see step 9).
+The app uses **Google sign-in** for both applicants and staff, and Cloud
+Firestore for applications. Anonymous sign-in is not used. Private application
+documents are stored in Google Drive through the verified upload route (OAuth as
+the Drive owner's account; see step 9).
 
 ## Create Firebase services
 
 1. Create a Firebase project and register a Web app.
-2. Enable **Anonymous** and **Email/Password** sign-in in Authentication.
+2. Enable **Google** sign-in in Authentication and disable **Anonymous**.
+   Add your production domain to Authentication → Settings → Authorized domains
+   so the Google popup can open.
 3. Create a Cloud Firestore database.
 4. Create a service account for the server runtime with Firestore read/write
    and Firebase Authentication session-cookie permissions.
@@ -16,9 +18,9 @@ upload route (OAuth as the Drive owner's account; see step 9).
    key as `FIREBASE_PRIVATE_KEY`. Keep that private key server-only and configure
    it in Vercel's encrypted environment variables. Do not commit it or paste it
    into source files.
-6. Add the staff email addresses to `FIREBASE_ADMIN_EMAILS` as a comma-separated
-   server-only allowlist. Create those staff accounts in Firebase Authentication
-   with email/password sign-in.
+6. Staff access uses Google accounts. `vworksofficial@gmail.com` is the built-in
+   primary staff account; add any additional staff emails to
+   `FIREBASE_ADMIN_EMAILS` as a comma-separated server-only allowlist.
 7. Configure the Web app values listed below as `NEXT_PUBLIC_*` variables in
    Vercel. Firebase Web API keys identify the project and are public; server
    service-account credentials are private.
@@ -38,7 +40,7 @@ Server-only variables:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY` (preserve newlines or encode them as `\\n`)
-- `FIREBASE_ADMIN_EMAILS`
+- `FIREBASE_ADMIN_EMAILS` (additional staff emails; the primary staff email is built in)
 - `GDRIVE_OAUTH_CLIENT_ID` / `GDRIVE_OAUTH_CLIENT_SECRET` (Google OAuth client)
 - `GDRIVE_REFRESH_TOKEN` (one-time consent; Drive access as the file owner)
 

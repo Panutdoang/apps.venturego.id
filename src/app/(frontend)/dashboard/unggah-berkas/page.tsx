@@ -47,7 +47,7 @@ export default function UploadDocumentsPage() {
     try {
       unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
         if (!active) return
-        if (!user || !user.isAnonymous) {
+        if (!user) {
           setUploadToken('')
           setLoading(false)
           return

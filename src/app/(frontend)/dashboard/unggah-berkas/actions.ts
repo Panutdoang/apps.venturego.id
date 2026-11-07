@@ -24,15 +24,15 @@ export type OwnedApplicationsResult =
   | { ok: true; applications: OwnedApplication[] }
   | { ok: false; message: string }
 
-const isAnonymousIdentity = async (uploadToken: string) => {
+const isGoogleIdentity = async (uploadToken: string) => {
   if (!uploadToken || uploadToken.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(uploadToken)
-  return identity.firebase?.sign_in_provider === 'anonymous' ? identity : null
+  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
 }
 
 export async function getOwnedApplications(uploadToken: string): Promise<OwnedApplicationsResult> {
   try {
-    const identity = await isAnonymousIdentity(uploadToken)
+    const identity = await isGoogleIdentity(uploadToken)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
     const snapshot = await getFirebaseFirestore()

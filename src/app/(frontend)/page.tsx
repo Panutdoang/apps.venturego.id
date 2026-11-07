@@ -7,7 +7,9 @@ import { discardDriveUploads, submitFinancingApplication, type ApplicationInput 
 import { formatRupiah } from '@/lib/financing-plan'
 import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import { signInAnonymously, signOut } from 'firebase/auth'
+import { onAuthStateChanged } from 'firebase/auth'
+import { isGoogleAccount, resolveUserDestination, signInWithGoogleAccount } from '@/lib/auth-client'
+import { isPrimaryStaffEmail } from '@/lib/auth-shared'
 import { uploadToDrive } from '@/lib/upload-client'
 
 type Product = ApplicationInput['product']
@@ -91,6 +93,8 @@ export default function HomePage() {
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
   const [result, setResult] = useState<{ id?: string; error?: string }>({})
   const [isPending, startTransition] = useTransition()
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [signInError, setSignInError] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -101,6 +105,41 @@ export default function HomePage() {
       setStep(1)
     }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    let unsubscribe: (() => void) | undefined
+    try {
+      unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
+        if (!active || !isGoogleAccount(user)) return
+        const params = new URLSearchParams(window.location.search)
+        const hasFormIntent =
+          params.has('step') || params.get('apply') === 'true' || params.get('baru') === 'true'
+        if (hasFormIntent && !isPrimaryStaffEmail(user.email)) return
+        const destination = await resolveUserDestination(user)
+        if (active) router.replace(destination)
+      })
+    } catch {
+      return
+    }
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
+  }, [router])
+
+  const signInWithGoogle = async () => {
+    setSignInError('')
+    setIsSigningIn(true)
+    try {
+      const user = await signInWithGoogleAccount()
+      const destination = await resolveUserDestination(user)
+      router.push(destination)
+    } catch {
+      setSignInError('Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.')
+      setIsSigningIn(false)
+    }
+  }
   const set = <K extends keyof ApplicationInput>(key: K, value: ApplicationInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
   const isDeparture = form.product === 'DEPARTURE_BRIDGING'
@@ -142,9 +181,7 @@ export default function HomePage() {
       let uploadToken = ''
       const uploaded: { index: number; fileId: string }[] = []
       try {
-        const auth = getFirebaseClientAuth()
-        if (auth.currentUser && !auth.currentUser.isAnonymous) await signOut(auth)
-        const user = auth.currentUser ?? (await signInAnonymously(auth)).user
+        const user = await signInWithGoogleAccount()
         uploadToken = await user.getIdToken()
         for (const [index, document] of DOCUMENT_DEFINITIONS[form.product].entries()) {
           const file = documentFiles[document.label]
@@ -226,14 +263,24 @@ export default function HomePage() {
                 mudah dan terarah.
               </p>
               <div className="welcome-actions">
-                <Link className="primary-button welcome-primary" href="/dashboard">
+                <button
+                  className="primary-button welcome-primary"
+                  disabled={isSigningIn}
+                  onClick={signInWithGoogle}
+                  type="button"
+                >
                   <span className="google-badge" aria-hidden="true">
                     <GoogleIcon />
                   </span>
-                  <span>Masuk/Daftar</span>
-                </Link>
+                  <span>{isSigningIn ? 'Menghubungkan…' : 'Masuk/Daftar'}</span>
+                </button>
               </div>
-              <p className="welcome-note">Siapkan dokumen pendukung sebelum memulai pengajuan.</p>
+              {signInError && (
+                <p className="error-message" role="alert">
+                  {signInError}
+                </p>
+              )}
+              <p className="welcome-note">Masuk dengan akun Google untuk melanjutkan.</p>
             </div>
           )}
 

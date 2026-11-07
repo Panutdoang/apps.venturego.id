@@ -98,10 +98,10 @@ export default function PaymentPage() {
     try {
       unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
         if (!active) return
-        if (!user || !user.isAnonymous) {
+        if (!user) {
           setToken('')
           setOverview(null)
-          setError('Sesi pengajuan tidak ditemukan. Masuk kembali melalui formulir pengajuan.')
+          setError('Sesi akun tidak ditemukan. Silakan masuk kembali.')
           setLoading(false)
           return
         }

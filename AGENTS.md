@@ -27,14 +27,15 @@ There is no `src/payload.config.ts`, no `src/collections/`, and no
 
 Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
 
-- **Authentication** — anonymous sign-in for applicant upload sessions;
-  email/password for staff, gated by the `FIREBASE_ADMIN_EMAILS` server
-  allowlist.
+- **Authentication** — Google sign-in for applicants and staff. There is no
+  anonymous or email/password sign-in. Staff access is gated by the built-in
+  primary email `vworksofficial@gmail.com` plus the `FIREBASE_ADMIN_EMAILS`
+  server allowlist.
 - **Cloud Firestore** — the `applications` collection (and any future app
   records). Rules deny all client access (`firestore.rules`); all reads and
   writes go through the Admin SDK in Server Actions or route handlers.
 - **Google Drive** — applicant documents are uploaded through
-  `api/applicant/uploads` (anonymous ID token verified, size/type and file
+  `api/applicant/uploads` (Google ID token verified, size/type and file
   signature checks) into the `VentureGo Berkas` folder tree (OAuth as the Drive
   owner via `GDRIVE_REFRESH_TOKEN`; root folder auto-created). Staff access is
   proxied through authenticated server routes.
@@ -46,16 +47,17 @@ emulators automatically when `NODE_ENV === 'development'`.
 ## Payload Data Integrity (applies to Firebase mutations)
 
 For user-facing mutations, validate and allowlist every submitted field on the
-server and return structured errors the UI can display. Grant anonymous create
-only through the narrow submit flow, and protect server-owned workflow fields
+server and return structured errors the UI can display. Grant create only
+through the narrow submit flow, and protect server-owned workflow fields
 (`status`, `internalNotes`, `financialPlan`, `ownerFirebaseUid`, timestamps)
 so clients cannot set them directly. Enforce ownership and other durable
 invariants at the Server Action boundary, not only in UI checks.
 
-Verify the anonymous ID token server-side with `firebase-admin`, and only for
-users whose `sign_in_provider === 'anonymous'`. Staff actions must call
-`getStaffSession()` and check `FIREBASE_ADMIN_EMAILS`. Never log, print, or
-expose tokens, service-account keys, or `.env.local` values.
+Verify the Google ID token server-side with `firebase-admin`, and only for
+users whose `sign_in_provider === 'google.com'`. Staff actions must call
+`getStaffSession()` and click `FIREBASE_ADMIN_EMAILS` / the built-in primary
+email. Never log, print, or expose tokens, service-account keys, or
+`.env.local` values.
 
 Do not create placeholder Firestore collections just because Firebase is
 present. Add collections only when the user needs durable application data.
@@ -88,7 +90,7 @@ This project uses Next.js App Router route groups:
 - `src/app/(frontend)/layout.tsx` - Root layout component
 - `src/app/(frontend)/page.tsx` - Public financing application form
 - `src/app/(frontend)/actions.ts` - Application submit/discard Server Actions
-- `src/app/(frontend)/admin/` - Staff review panel (sign-in, applications)
+- `src/app/(frontend)/admin/` - Staff review panel (no login page; staff sign in from `/`)
 - `src/app/(frontend)/dashboard/` - Applicant dashboard pages and Server Actions
 - `src/app/(frontend)/not-found.tsx` - Custom not-found page
 - `src/app/(frontend)/styles.css` - Global styles and Tailwind CSS import
@@ -130,13 +132,14 @@ Keep three authorization concerns distinct:
 
 - Figma/Make access controls who can view or edit the Make file.
 - Staff Firebase Auth controls who can manage applications in `/admin`
-  (email/password + `FIREBASE_ADMIN_EMAILS` allowlist + session cookie).
-- Applicant sessions are anonymous Firebase Auth users tied to the upload and
+  (Google sign-in + built-in primary email / `FIREBASE_ADMIN_EMAILS` allowlist
+  - session cookie). There is no admin login page; staff sign in from `/`.
+- Applicant sessions are Google Firebase Auth users tied to the upload and
   application flow; documents and records are scoped by `ownerFirebaseUid`.
 
-Do not build public signup/login unless the user asks for it. Never grant
-staff access to applicant accounts, and never bypass the allowlist for
-`/admin`.
+Sign-in is Google-only and the welcome page routes the primary staff email to
+`/admin` and everyone else to `/dashboard`. Never grant staff access to
+applicant accounts, and never bypass the allowlist for `/admin`.
 
 ## Security Rules
 
@@ -182,7 +185,7 @@ Frontend pages live in `src/app/(frontend)/`. Pages are defined by creating
 - `src/app/(frontend)/dashboard/angsuran/page.tsx` - `/dashboard/angsuran`
 
 Staff panel is at `/admin`. Dashboard pages that need applicant data are Client
-Components: sign in anonymously with `firebase/auth`, obtain an ID token, and
+Components: sign in with Google via `firebase/auth`, obtain an ID token, and
 call a `'use server'` action that verifies the token and queries Firestore with
 the Admin SDK (see `dashboard/angsuran/actions.ts`,
 `dashboard/actions.ts`). Do not query Firestore from the client directly.

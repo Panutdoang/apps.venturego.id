@@ -59,7 +59,7 @@ friendly "not configured" message instead of failing.
 ## 5. Flow reference
 
 - Client calls `createInstallmentPayment` / `createCustomPayment`
-  (`src/app/(frontend)/dashboard/pembayaran/actions.ts`) with an anonymous
+  (`src/app/(frontend)/dashboard/pembayaran/actions.ts`) with a Google
   Firebase ID token; the action verifies ownership, writes a `PENDING` record
   in the Firestore `payments` collection, creates a Xendit invoice with
   `external_id` = the payment document ID, and returns `invoice_url` for

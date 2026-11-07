@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'firebase/auth'
+import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import {
   APPLICATION_DOCUMENT_STATUSES,
   APPLICATION_STATUSES,
@@ -49,7 +51,8 @@ export function AdminDashboard({
 
   const logout = async () => {
     await fetch('/api/admin/session', { method: 'DELETE' })
-    router.refresh()
+    await signOut(getFirebaseClientAuth()).catch(() => {})
+    router.replace('/')
   }
 
   const save = (application: FinancingApplicationRecord, formData: FormData) => {

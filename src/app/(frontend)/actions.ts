@@ -243,7 +243,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       return { ok: false, message: 'Sesi unggah tidak valid. Silakan coba lagi.' }
     }
     const identity = await getFirebaseAuth().verifyIdToken(uploadToken)
-    if (identity.firebase?.sign_in_provider !== 'anonymous') {
+    if (identity.firebase?.sign_in_provider !== 'google.com') {
       return { ok: false, message: 'Sesi unggah tidak valid. Silakan coba lagi.' }
     }
     const uploadIndexes = new Set<number>(
@@ -432,7 +432,7 @@ export async function discardDriveUploads(uploadToken: string, fileIds: string[]
   if (typeof uploadToken !== 'string' || !Array.isArray(fileIds) || fileIds.length > 12) return
   try {
     const identity = await getFirebaseAuth().verifyIdToken(uploadToken)
-    if (identity.firebase?.sign_in_provider !== 'anonymous') return
+    if (identity.firebase?.sign_in_provider !== 'google.com') return
 
     const firestore = getFirebaseFirestore()
     const ownedFolderIds = new Set<string>()

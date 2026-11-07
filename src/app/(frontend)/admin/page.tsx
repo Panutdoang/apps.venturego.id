@@ -1,5 +1,5 @@
+import { redirect } from 'next/navigation'
 import { AdminDashboard } from './admin-dashboard'
-import { AdminSignIn } from './admin-sign-in'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
 import type { FinancingApplicationRecord } from '@/lib/firebase-data'
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
   const staff = await getStaffSession()
-  if (!staff) return <AdminSignIn />
+  if (!staff) redirect('/')
 
   const snapshot = await getFirebaseFirestore()
     .collection('applications')

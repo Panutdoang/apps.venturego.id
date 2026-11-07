@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Sesi masuk tidak valid.' }, { status: 400 })
     }
     const decoded = await getFirebaseAuth().verifyIdToken(idToken, true)
-    if (!isStaffEmail(decoded.email)) {
+    if (decoded.firebase?.sign_in_provider !== 'google.com' || !isStaffEmail(decoded.email)) {
       return NextResponse.json({ message: 'Akun ini tidak memiliki akses staf.' }, { status: 403 })
     }
     const sessionCookie = await getFirebaseAuth().createSessionCookie(idToken, {

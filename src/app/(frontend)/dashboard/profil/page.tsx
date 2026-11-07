@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import {
   DashboardCard,
@@ -15,6 +15,18 @@ export default function ProfilePage() {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState('')
+  const [account, setAccount] = useState<{ name: string; email: string } | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(getFirebaseClientAuth(), (user) => {
+      if (!user) return
+      setAccount({
+        name: user.displayName?.trim() || 'Pengguna',
+        email: user.email ?? '',
+      })
+    })
+    return () => unsubscribe()
+  }, [])
 
   const logout = async () => {
     setIsLoggingOut(true)
@@ -36,8 +48,8 @@ export default function ProfilePage() {
             <DashboardIcon name="profile" className="size-8" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-slate-900">Dimas Pratama</h2>
-            <p className="mt-1 text-xs text-slate-500">Pengguna terverifikasi</p>
+            <h2 className="text-lg font-bold text-slate-900">{account?.name ?? 'Memuat…'}</h2>
+            <p className="mt-1 text-xs text-slate-500">{account?.email || 'Akun Google'}</p>
           </div>
           <span className="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-500">
             <DashboardIcon name="edit" className="size-4" />
@@ -45,12 +57,14 @@ export default function ProfilePage() {
         </div>
         <div className="grid grid-cols-2 border-t border-slate-100">
           <div className="p-4">
-            <span className="text-[10px] text-slate-400">Nomor ponsel</span>
-            <strong className="mt-1 block text-xs text-slate-700">0812 •••• 4821</strong>
+            <span className="text-[10px] text-slate-400">Email</span>
+            <strong className="mt-1 block truncate text-xs text-slate-700">
+              {account?.email || '—'}
+            </strong>
           </div>
           <div className="border-l border-slate-100 p-4">
-            <span className="text-[10px] text-slate-400">ID pengguna</span>
-            <strong className="mt-1 block text-xs text-slate-700">VSV-104821</strong>
+            <span className="text-[10px] text-slate-400">Metode masuk</span>
+            <strong className="mt-1 block text-xs text-slate-700">Google</strong>
           </div>
         </div>
       </DashboardCard>

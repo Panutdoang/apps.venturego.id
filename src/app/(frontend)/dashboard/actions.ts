@@ -28,10 +28,10 @@ export type DashboardSummaryResult =
   | { ok: true; application: DashboardApplication | null }
   | { ok: false; message: string }
 
-const isAnonymousIdentity = async (token: string) => {
+const isGoogleIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
   const identity = await getFirebaseAuth().verifyIdToken(token)
-  return identity.firebase?.sign_in_provider === 'anonymous' ? identity : null
+  return identity.firebase?.sign_in_provider === 'google.com' ? identity : null
 }
 
 const readCount = (value: unknown): number | null =>
@@ -70,7 +70,7 @@ const readSchedule = (value: unknown): DashboardScheduleSummary | null => {
 
 export async function getDashboardSummary(token: string): Promise<DashboardSummaryResult> {
   try {
-    const identity = await isAnonymousIdentity(token)
+    const identity = await isGoogleIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
     const snapshot = await getFirebaseFirestore()
