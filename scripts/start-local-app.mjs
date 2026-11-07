@@ -6,7 +6,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const nextCli = resolve(projectRoot, 'node_modules/next/dist/bin/next')
 const child = spawn(
   process.execPath,
-  [nextCli, 'dev', '--hostname', '127.0.0.1', ...process.argv.slice(2)],
+  [nextCli, 'dev', '--hostname', 'localhost', ...process.argv.slice(2)],
   {
     cwd: projectRoot,
     stdio: 'inherit',

@@ -43,6 +43,21 @@ const isSupportRequest = (value: unknown): value is UserSupportRequest => {
   )
 }
 
+const toPlainValue = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object') return value
+  if (typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toISOString()
+  }
+  if (value instanceof Date) return value.toISOString()
+  if (Array.isArray(value)) return value.map(toPlainValue)
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      toPlainValue(entry),
+    ]),
+  )
+}
+
 export async function getOwnedFinancingApplications(token: string): Promise<UserFinancingResult> {
   try {
     const identity = await isGoogleIdentity(token)
@@ -53,7 +68,7 @@ export async function getOwnedFinancingApplications(token: string): Promise<User
       .where('ownerFirebaseUid', '==', identity.uid)
       .get()
     const applications = snapshot.docs.flatMap((document) => {
-      const data = document.data()
+      const data = toPlainValue(document.data()) as Record<string, unknown>
       if (
         typeof data.applicationId !== 'string' ||
         typeof data.applicantName !== 'string' ||
@@ -71,14 +86,15 @@ export async function getOwnedFinancingApplications(token: string): Promise<User
           status: typeof data.status === 'string' ? data.status : 'SUBMITTED',
           departureDetails:
             data.departureDetails && typeof data.departureDetails === 'object'
-              ? data.departureDetails
+              ? (data.departureDetails as Record<string, unknown>)
               : null,
           financialPlan: data.financialPlan as Record<string, unknown>,
           userFinancingAcceptance:
             data.userFinancingAcceptance &&
             typeof data.userFinancingAcceptance === 'object' &&
-            typeof data.userFinancingAcceptance.acceptedAt === 'string'
-              ? data.userFinancingAcceptance
+            typeof (data.userFinancingAcceptance as { acceptedAt?: unknown }).acceptedAt ===
+              'string'
+              ? (data.userFinancingAcceptance as FinancingApplicationRecord['userFinancingAcceptance'])
               : undefined,
           supportRequests: Array.isArray(data.supportRequests)
             ? data.supportRequests.filter(isSupportRequest)

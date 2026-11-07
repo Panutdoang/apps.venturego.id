@@ -104,6 +104,12 @@ export default function HomePage() {
   const [signInError, setSignInError] = useState('')
 
   useEffect(() => {
+    if (window.location.hostname === '127.0.0.1') {
+      const nextUrl = new URL(window.location.href)
+      nextUrl.hostname = 'localhost'
+      window.location.replace(nextUrl.toString())
+      return
+    }
     const params = new URLSearchParams(window.location.search)
     const requestedStep = Number(params.get('step'))
     if (requestedStep >= 1 && requestedStep <= 6) {
@@ -143,10 +149,13 @@ export default function HomePage() {
         role === 'google' ? await signInWithGoogleAccount() : await signInWithDemoAccount(role)
       const destination = await resolveUserDestination(user)
       router.push(destination)
-    } catch {
+    } catch (error) {
+      const code = (error as { code?: string })?.code
       setSignInError(
         role === 'google'
-          ? 'Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.'
+          ? code === 'auth/unauthorized-domain'
+            ? 'Gunakan alamat http://localhost:3000 agar login Google diizinkan oleh Firebase.'
+            : 'Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.'
           : `Tidak dapat masuk sebagai ${role === 'admin' ? 'admin' : 'user'} demo. Silakan coba lagi.`,
       )
       setPendingSignIn('')

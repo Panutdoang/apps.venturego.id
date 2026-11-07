@@ -2,7 +2,7 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **7 November 2026** (akun dummy `demo.user@venturego.id` & `demo.admin@venturego.id` di `src/lib/demo-accounts.json`; tombol `Masuk User` & `Masuk Admin` khusus lokal, sedangkan production hanya menampilkan 1 tombol `Masuk dengan Google`).
+Terakhir diperbarui: **7 November 2026** (perombakan UI/UX `/admin` menjadi Backoffice dengan Sidebar Menu Kronologis 7 tahap `01`–`07`, pencarian/filter, kartu KPI, dan panel kerja terstruktur 6 tab tanpa JSON mentah).
 
 ---
 
@@ -205,17 +205,26 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 - Sesi kedaluwarsa → redirect ke `/`; saat menyimpan: `Sesi staf berakhir. Silakan masuk kembali.`
 - **Efek Drive**: tidak ada — admin hanya membaca.
 
-### 4.2 Daftar pengajuan (dashboard admin)
+### 4.2 Navigasi Sidebar Kronologis & Antrean (`/admin`)
 
-- Header: `VentureGo · Operasional` · `Pengajuan pembiayaan` · `Masuk sebagai {email}` · `Keluar`.
-- Daftar kartu **terbaru dulu, maks 100**, tanpa filter/pencarian; kosong → `Belum ada pengajuan.`
-- Per kartu: `applicationId` (ungu), nama pemohon, `{telepon} · {LPK}`, pil produk `Full Cover`/`Dana Keberangkatan`, `Tujuan: {JAPAN|TURKEY}`, `Dibuat: {tanggal}`, `Dokumen: {n} terunggah`.
-- Departure: amber `Estimasi total yang diajukan pemohon: Rp… Ini bukan total Nafaqah/Ujrah terverifikasi atau nominal akad.`
-- **`Rincian dan dokumen`** (bisa dilipat): JSON rinci (`personalDetails`, `eligibility`, `fullCoverDetails`, `departureDetails`, `fundingNeeds`, `financialPlan`, riwayat persetujuan, permohonan keringanan, riwayat perubahan biaya).
+- **Sidebar Kiri Tetap (`VentureGo VSV · Backoffice Operasional`):**
+  - Menampilkan 7 menu tahapan kronologis sistem beserta badge jumlah pengajuan di masing-masing tahap:
+    1. `01 · Ikhtisar Operasional` (kartu KPI 5 tahap utama + seluruh pengajuan)
+    2. `02 · Pengajuan & Kelayakan` (`SUBMITTED`, `ELIGIBILITY_REVIEW`)
+    3. `03 · Verifikasi Berkas` (`DOCUMENT_REVIEW`, `REVISION_REQUIRED`, atau berkas terunggah yang menunggu verifikasi)
+    4. `04 · Verifikasi Biaya` (`COST_VERIFICATION`, `APPROVED`, atau `pricingStatus: ESTIMATED`)
+    5. `05 · Persetujuan & Akad` (`CONTRACT_PREPARATION`, `pricingStatus: VERIFIED`/`AGREED`, atau sudah disetujui pemohon)
+    6. `06 · Angsuran & Pembayaran` (`ACTIVE`, `COMPLETED`, atau sudah memiliki jadwal angsuran)
+    7. `07 · Keringanan & Audit` (pengajuan dengan `supportRequests`, `REJECTED`/`CANCELLED`, atau `financialPlanHistory`)
+  - Bagian bawah sidebar: email staf aktif, tombol `Segarkan`, dan `Keluar`.
+- **Pencarian & Filter Atas:** pencarian instan (`applicationId`, nama pemohon, nomor WA, nama LPK), filter produk (`Semua Produk` / `Dana Keberangkatan` / `Full Cover`), dan filter status pengajuan (11 status).
+- **Layout Master–Detail (Antrean Kiri + Panel Kerja Kanan):**
+  - Kolom kiri menampilkan daftar antrean pengajuan sesuai tahap aktif (dilengkapi tombol `Lihat semua` untuk menampilkan lintas tahap).
+  - Kolom kanan menampilkan **Panel Kerja Terstruktur** dengan 6 tab kronologis (`02 Profil & Kelayakan`, `03 Verifikasi Berkas`, `04 Rincian Biaya`, `05 Persetujuan & Akad`, `06 Jadwal Angsuran`, `07 Keringanan & Audit`) — menggantikan tampilan `JSON.stringify` mentah. Seluruh field `Timestamp` Firestore (`createdAt`, `updatedAt`, dll.) dikonversi menjadi string ISO di server (`admin/page.tsx`) beserta maksimal 100 transaksi `payments` terbaru.
 
-### 4.3 Review & aksi (satu tombol `Simpan` per kartu)
+### 4.3 Review & aksi (satu tombol `Simpan Perubahan` per pengajuan)
 
-Setiap kartu adalah satu form; **`Simpan`** memanggil action tunggal `updateApplicationStatus` yang memperbarui sekaligus:
+Setiap pengajuan yang dipilih di panel kanan memiliki satu form terpadu (seluruh tab tetap ter-mount di DOM agar tidak ada field yang hilang saat disimpan); **`Simpan Perubahan`** memanggil action tunggal `updateApplicationStatus` yang memperbarui sekaligus:
 
 | Kontrol                                          | Pilihan / isi                                                                                                                                                                              |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -309,12 +318,12 @@ Daftar ini **harus ikut diperbarui** saat caveat-nya diselesaikan:
 4. **Ganti dokumen tidak menghapus file lama** di Drive (file lama tetap tersimpan di folder yang sama).
 5. **Halaman demo/statis**: `riwayat` (ada disclaimer demo), `dokumen`, `notifikasi`, `bantuan` (FAQ non-fungsional), `layanan`, `vip`.
 6. **Banner sukses/gagal pembayaran** di `/dashboard/pembayaran` hanya muncul bila parameter `?payment=` ada di URL (return URL Xendit saat ini tidak menyertakannya); andalkan `Segarkan`/webhook.
-7. **Admin tanpa filter/pencarian** — daftar datar, 100 terbaru, satu action simpan.
+7. **Kuota daftar admin maks 100 pengajuan & 100 pembayaran terbaru** — pencarian dan filter berjalan di klien atas 100 pengajuan terbaru.
 8. **Tahap 5 (Pencairan dana)** pada `Alur progress` tidak pernah jadi tahap `SEKARANG`.
 9. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
 10. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
 11. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
-12. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
+12. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Untuk login Google di lokal, gunakan `http://localhost:3000` (akses ke `127.0.0.1` otomatis dialihkan ke `localhost` karena Firebase hanya mengizinkan domain `localhost` secara bawaan). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
 13. Halaman 404 (`not-found`) masih berbahasa Inggris.
 
 ---

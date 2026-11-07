@@ -55,12 +55,16 @@ export type FinancingApplicationRecord = {
   id: string
   applicationId: string
   product: ApplicationProduct
+  contractScheme?: string
   applicantName: string
   phone: string
   lpkName: string
   destination: 'JAPAN' | 'TURKEY'
   status: string
   createdAt: string
+  updatedAt?: string
+  updatedBy?: string
+  paidInstallments?: number[]
   personalDetails: Record<string, unknown>
   eligibility: Record<string, unknown>
   fullCoverDetails: Record<string, unknown> | null
@@ -90,6 +94,22 @@ export type FinancingApplicationRecord = {
     response?: string
   }[]
   internalNotes?: string
+}
+
+export type AdminPaymentRecord = {
+  id: string
+  applicationDocId: string
+  applicationId: string
+  type: 'INSTALLMENT' | 'CUSTOM'
+  installmentNumber: number | null
+  amount: number
+  description: string
+  status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED'
+  invoiceUrl: string | null
+  paidAt: string | null
+  paidMethod: string | null
+  paidChannel: string | null
+  createdAt: string | null
 }
 
 export const APPLICATION_STATUSES = [
