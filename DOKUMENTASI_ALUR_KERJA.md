@@ -2,7 +2,7 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **7 November 2026** (perombakan UI/UX `/admin` menjadi Backoffice dengan Sidebar Menu Kronologis 7 tahap `01`–`07`, pencarian/filter, kartu KPI, dan panel kerja terstruktur 6 tab tanpa JSON mentah).
+Terakhir diperbarui: **7 November 2026** (perombakan UI/UX `/admin` menjadi Backoffice minimalis dengan fixed sidebar `100dvh`, 7 menu modul, tabel 1 baris multi-kolom, dan Slide-Over Drawer editor).
 
 ---
 
@@ -205,26 +205,25 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 - Sesi kedaluwarsa → redirect ke `/`; saat menyimpan: `Sesi staf berakhir. Silakan masuk kembali.`
 - **Efek Drive**: tidak ada — admin hanya membaca.
 
-### 4.2 Navigasi Sidebar Kronologis & Antrean (`/admin`)
+### 4.2 Navigasi Sidebar Fixed (`100dvh`), Tabel Multi-Kolom, & Slide-Over Drawer (`/admin`)
 
-- **Sidebar Kiri Tetap (`VentureGo VSV · Backoffice Operasional`):**
-  - Menampilkan 7 menu tahapan kronologis sistem beserta badge jumlah pengajuan di masing-masing tahap:
-    1. `01 · Ikhtisar Operasional` (kartu KPI 5 tahap utama + seluruh pengajuan)
-    2. `02 · Pengajuan & Kelayakan` (`SUBMITTED`, `ELIGIBILITY_REVIEW`)
-    3. `03 · Verifikasi Berkas` (`DOCUMENT_REVIEW`, `REVISION_REQUIRED`, atau berkas terunggah yang menunggu verifikasi)
-    4. `04 · Verifikasi Biaya` (`COST_VERIFICATION`, `APPROVED`, atau `pricingStatus: ESTIMATED`)
-    5. `05 · Persetujuan & Akad` (`CONTRACT_PREPARATION`, `pricingStatus: VERIFIED`/`AGREED`, atau sudah disetujui pemohon)
-    6. `06 · Angsuran & Pembayaran` (`ACTIVE`, `COMPLETED`, atau sudah memiliki jadwal angsuran)
-    7. `07 · Keringanan & Audit` (pengajuan dengan `supportRequests`, `REJECTED`/`CANCELLED`, atau `financialPlanHistory`)
+- **Sidebar Kiri Fixed (`100dvh`, `VentureGo VSV · Admin Backoffice`):**
+  - Tinggi dikunci 1 layar penuh (`lg:h-dvh lg:overflow-hidden`) dengan item menu ringkas 1 baris berikon SVG sehingga tidak pernah offside ke bawah:
+    1. **`Dashboard`** — 4 kartu KPI utama + tabel 8 pengajuan terbaru
+    2. **`Pengajuan`** — tabel 1 baris 10 kolom (`ID Pengajuan`, `Tgl Masuk`, `Nama Siswa`, `LPK Mitra`, `Tujuan`, `Produk`, `Berkas`, `Status Biaya`, `Status Pengajuan`, `Aksi`)
+    3. **`Data Siswa`** — direktori siswa 1 baris 9 kolom (`Nama Siswa`, `No. WhatsApp`, `TTL & Gender`, `LPK & Negara`, `Status COE / Visa`, `Est. Keberangkatan`, `Berkas Terunggah`, `Diverifikasi`, `Aksi Biodata/Berkas`)
+    4. **`Draft & Akad`** — tabel skema pembiayaan 1 baris 10 kolom (`ID Pengajuan`, `Nama Siswa`, `Produk & Skema`, `Pengajuan Awal`, `Nafaqah + Ujrah`, `Total Akad`, `Status Biaya`, `Persetujuan Siswa`, `Referensi Akad`, `Aksi Susun Akad`)
+    5. **`Angsuran & Kas`** — tabel pemantauan cicilan 1 baris 9 kolom (`ID Pengajuan`, `Nama Siswa`, `Total Kewajiban`, `Tenor`, `Progres Cicilan`, `Total Terbayar`, `Sisa Kewajiban`, `Keringanan`, `Aksi Rincian`)
+    6. **`Statistik`** — analitik portofolio produk/negara tujuan & tabel rekapitulasi per **LPK Mitra**
+    7. **`Log Audit`** — tabel riwayat perubahan rincian biaya (`financialPlanHistory`) lintas pengajuan
   - Bagian bawah sidebar: email staf aktif, tombol `Segarkan`, dan `Keluar`.
-- **Pencarian & Filter Atas:** pencarian instan (`applicationId`, nama pemohon, nomor WA, nama LPK), filter produk (`Semua Produk` / `Dana Keberangkatan` / `Full Cover`), dan filter status pengajuan (11 status).
-- **Layout Master–Detail (Antrean Kiri + Panel Kerja Kanan):**
-  - Kolom kiri menampilkan daftar antrean pengajuan sesuai tahap aktif (dilengkapi tombol `Lihat semua` untuk menampilkan lintas tahap).
-  - Kolom kanan menampilkan **Panel Kerja Terstruktur** dengan 6 tab kronologis (`02 Profil & Kelayakan`, `03 Verifikasi Berkas`, `04 Rincian Biaya`, `05 Persetujuan & Akad`, `06 Jadwal Angsuran`, `07 Keringanan & Audit`) — menggantikan tampilan `JSON.stringify` mentah. Seluruh field `Timestamp` Firestore (`createdAt`, `updatedAt`, dll.) dikonversi menjadi string ISO di server (`admin/page.tsx`) beserta maksimal 100 transaksi `payments` terbaru.
+- **Pencarian & Filter Atas (Sticky Header):** pencarian instan (`applicationId`, nama siswa, nomor WA, nama LPK), filter produk (`Semua Produk` / `Dana Keberangkatan` / `Full Cover`), dan filter status pengajuan (11 status).
+- **Slide-Over Drawer (`ApplicationDrawerForm`):**
+  - Saat tombol aksi (`Kelola`, `Biodata`, `Berkas`, `Susun Akad`, `Rincian`, `Detail`) diklik pada baris tabel, drawer kanan terbuka dengan 6 tab (`Profil & Kelayakan`, `Berkas Dokumen`, `Draft Biaya & Akad`, `Status Persetujuan`, `Jadwal Angsuran`, `Keringanan & Audit`). Seluruh tab tetap ter-mount di DOM agar penyimpanan form utuh.
 
-### 4.3 Review & aksi (satu tombol `Simpan Perubahan` per pengajuan)
+### 4.3 Review & aksi (tombol `Simpan` di Slide-Over Drawer)
 
-Setiap pengajuan yang dipilih di panel kanan memiliki satu form terpadu (seluruh tab tetap ter-mount di DOM agar tidak ada field yang hilang saat disimpan); **`Simpan Perubahan`** memanggil action tunggal `updateApplicationStatus` yang memperbarui sekaligus:
+Setiap pengajuan yang dibuka di Slide-Over Drawer memiliki satu form terpadu; **`Simpan`** memanggil action tunggal `updateApplicationStatus` yang memperbarui sekaligus:
 
 | Kontrol                                          | Pilihan / isi                                                                                                                                                                              |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
