@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import {
   DashboardCard,
   DashboardIcon,
@@ -5,7 +8,28 @@ import {
   DashboardScaffold,
 } from '../_components/dashboard-ui'
 
+const FAQ_ITEMS = [
+  {
+    q: 'Bagaimana cara membayar angsuran?',
+    a: 'Buka menu Bayar Angsuran (/dashboard/pembayaran), pilih jadwal angsuran yang ingin dibayar, lalu selesaikan pembayaran melalui Virtual Account (BCA, Mandiri, BNI, BRI) atau QRIS di halaman Xendit.',
+  },
+  {
+    q: 'Kapan pembayaran saya diverifikasi?',
+    a: 'Pembayaran melalui Virtual Account dan QRIS Xendit dikonfirmasi secara otomatis oleh sistem segera setelah transaksi berhasil.',
+  },
+  {
+    q: 'Bagaimana melihat rincian akad dan dokumen saya?',
+    a: 'Rincian biaya Nafaqah, Ujrah, dan jadwal angsuran tersedia di menu Angsuran (/dashboard/angsuran), sedangkan arsip berkas dan bukti bayar dapat dilihat di menu Dokumen Saya (/dashboard/dokumen).',
+  },
+  {
+    q: 'Bagaimana jika saya membutuhkan keringanan pembayaran?',
+    a: 'Pada menu Angsuran (/dashboard/angsuran), Anda dapat mengajukan permohonan keringanan beserta alasannya untuk ditinjau langsung oleh tim operasional VentureGo.',
+  },
+]
+
 export default function HelpPage() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
+
   return (
     <DashboardScaffold active="home" subtitle="Kami siap membantu" title="Pusat bantuan">
       <DashboardCard className="bg-[var(--primary)] p-5 text-white ring-0">
@@ -14,24 +38,24 @@ export default function HelpPage() {
         </span>
         <h2 className="mt-4 text-xl font-bold">Ada yang bisa kami bantu?</h2>
         <p className="mt-2 text-xs leading-5 text-indigo-100">
-          Temukan jawaban atau hubungi tim layanan VSV pada jam operasional.
+          Temukan jawaban cepat atau hubungi tim layanan VSV pada jam operasional.
         </p>
       </DashboardCard>
 
       <section>
-        <h2 className="mb-3 text-sm font-bold text-slate-900">Hubungi kami</h2>
+        <h2 className="mb-3 text-sm font-bold text-slate-900">Akses bantuan</h2>
         <DashboardCard>
           <DashboardMenuRow
-            detail="Senin–Jumat, 08.00–17.00 WIB"
-            href="/dashboard/bantuan"
+            detail="Ajukan keringanan jadwal di menu Angsuran"
+            href="/dashboard/angsuran"
             icon="phone"
-            title="WhatsApp layanan"
+            title="Permohonan keringanan cicilan"
           />
           <DashboardMenuRow
-            detail="support@venturego.id"
-            href="/dashboard/bantuan"
+            detail="vworksofficial@gmail.com"
+            href="mailto:vworksofficial@gmail.com"
             icon="mail"
-            title="Kirim email"
+            title="Kirim email layanan"
           />
         </DashboardCard>
       </section>
@@ -39,20 +63,27 @@ export default function HelpPage() {
       <section>
         <h2 className="mb-3 text-sm font-bold text-slate-900">Pertanyaan populer</h2>
         <DashboardCard>
-          {[
-            'Bagaimana cara membayar angsuran?',
-            'Kapan pembayaran saya diverifikasi?',
-            'Bagaimana mengunduh dokumen akad?',
-            'Apa yang terjadi jika terlambat membayar?',
-          ].map((question) => (
-            <div
-              className="flex items-center justify-between border-b border-slate-100 p-4 text-sm font-semibold text-slate-700 last:border-0"
-              key={question}
-            >
-              <span>{question}</span>
-              <DashboardIcon name="chevron" className="size-5 shrink-0 text-slate-300" />
-            </div>
-          ))}
+          {FAQ_ITEMS.map((item, idx) => {
+            const isOpen = openIndex === idx
+            return (
+              <div className="border-b border-slate-100 last:border-0" key={item.q}>
+                <button
+                  className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-slate-700"
+                  onClick={() => setOpenIndex(isOpen ? null : idx)}
+                  type="button"
+                >
+                  <span>{item.q}</span>
+                  <DashboardIcon
+                    name="chevron"
+                    className={`size-5 shrink-0 text-slate-400 transition-transform ${
+                      isOpen ? 'rotate-90' : ''
+                    }`}
+                  />
+                </button>
+                {isOpen && <p className="px-4 pb-4 text-xs leading-5 text-slate-500">{item.a}</p>}
+              </div>
+            )
+          })}
         </DashboardCard>
       </section>
     </DashboardScaffold>

@@ -11,7 +11,12 @@ import {
   type PaymentApplication,
   type PaymentOverviewResult,
 } from './actions'
-import { DashboardCard, DashboardIcon, DashboardScaffold } from '../_components/dashboard-ui'
+import {
+  DashboardCard,
+  DashboardCardSkeleton,
+  DashboardIcon,
+  DashboardScaffold,
+} from '../_components/dashboard-ui'
 
 type Overview = Extract<PaymentOverviewResult, { ok: true }>
 
@@ -199,7 +204,12 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {loading && <p className="text-sm text-slate-500">Memuat pembayaran…</p>}
+      {loading && (
+        <>
+          <DashboardCardSkeleton rows={4} />
+          <DashboardCardSkeleton rows={3} />
+        </>
+      )}
 
       {!loading && error && (
         <p className="rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800" role="alert">

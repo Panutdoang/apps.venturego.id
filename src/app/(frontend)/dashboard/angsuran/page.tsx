@@ -10,7 +10,11 @@ import {
   requestFinancingSupport,
   type UserFinancingResult,
 } from './actions'
-import { DashboardCard, DashboardScaffold } from '../_components/dashboard-ui'
+import {
+  DashboardCard,
+  DashboardCardSkeleton,
+  DashboardScaffold,
+} from '../_components/dashboard-ui'
 
 type UserApplication = Extract<UserFinancingResult, { ok: true }>['applications'][number]
 
@@ -424,7 +428,12 @@ export default function InstallmentsPage() {
 
   return (
     <DashboardScaffold active="angsuran" subtitle="Rincian sesuai akad" title="Angsuran saya">
-      {loading && <p className="text-sm text-slate-500">Memuat rincian pembiayaan…</p>}
+      {loading && (
+        <>
+          <DashboardCardSkeleton rows={3} />
+          <DashboardCardSkeleton rows={4} />
+        </>
+      )}
       {error && (
         <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800" role="alert">
           {error}

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import { DashboardBottomNav } from './_components/dashboard-ui'
+import { DashboardBottomNav, SkeletonBlock } from './_components/dashboard-ui'
 import { getDashboardSummary, type DashboardApplication } from './actions'
 
 type IconName =
@@ -268,7 +268,7 @@ export default function DashboardPage() {
       : 'Estimasi diajukan'
   const statusLabel = application ? (STATUS_LABELS[application.status] ?? application.status) : ''
   const greetingName = loading
-    ? 'Memuat…'
+    ? ''
     : application
       ? application.applicantName.split(' ')[0]
       : accountName || 'Pengguna'
@@ -296,7 +296,11 @@ export default function DashboardPage() {
               </span>
               <div>
                 <p className="text-xs text-indigo-100">Selamat datang,</p>
-                <h1 className="mt-0.5 text-base font-bold tracking-tight">{greetingName}</h1>
+                {loading ? (
+                  <SkeletonBlock className="mt-2 h-4 w-32 bg-white/25" />
+                ) : (
+                  <h1 className="mt-0.5 text-base font-bold tracking-tight">{greetingName}</h1>
+                )}
               </div>
             </div>
             <Link
@@ -305,7 +309,9 @@ export default function DashboardPage() {
               href="/dashboard/notifikasi"
             >
               <Icon name="bell" />
-              <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-amber-300 ring-2 ring-[var(--primary)]" />
+              {application && (
+                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-amber-300 ring-2 ring-[var(--primary)]" />
+              )}
             </Link>
           </div>
         </header>
@@ -316,9 +322,21 @@ export default function DashboardPage() {
             id="ringkasan"
           >
             {loading && (
-              <p className="text-sm text-slate-500" role="status">
-                Memuat ringkasan pengajuan…
-              </p>
+              <div aria-label="Memuat ringkasan pengajuan" className="space-y-5" role="status">
+                <span className="sr-only">Memuat ringkasan pengajuan…</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <SkeletonBlock className="h-3 w-28" />
+                    <SkeletonBlock className="h-8 w-40" />
+                  </div>
+                  <SkeletonBlock className="h-7 w-24 rounded-full" />
+                </div>
+                <SkeletonBlock className="h-2 w-full rounded-full" />
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                  <SkeletonBlock className="h-10 w-full" />
+                  <SkeletonBlock className="h-10 w-full" />
+                </div>
+              </div>
             )}
             {!loading && error && (
               <p
@@ -371,17 +389,17 @@ export default function DashboardPage() {
                       <div
                         className="h-full rounded-full bg-[var(--accent)]"
                         style={{
-                          width: `${Math.round((schedule.dueByToday / schedule.total) * 100)}%`,
+                          width: `${Math.round((schedule.paidCount / schedule.total) * 100)}%`,
                         }}
                       />
                     </div>
                     <div className="mt-2 flex justify-between text-[11px] text-slate-500">
                       <span>
-                        {schedule.dueByToday} dari {schedule.total} angsuran jatuh tempo
+                        {schedule.paidCount} dari {schedule.total} angsuran lunas
                       </span>
                       <span>
                         {application.totalObligation !== null
-                          ? `Total kewajiban ${formatRupiah(application.totalObligation)}`
+                          ? `Terbayar ${formatRupiah(schedule.paidAmount)}`
                           : `${PRODUCT_LABELS[application.product]}`}
                       </span>
                     </div>
@@ -392,7 +410,7 @@ export default function DashboardPage() {
                       <div>
                         <span className="text-[11px] text-slate-400">Sisa angsuran</span>
                         <strong className="mt-1 block text-sm text-slate-800">
-                          {schedule.total - schedule.dueByToday} kali
+                          {schedule.total - schedule.paidCount} kali
                         </strong>
                       </div>
                       <div className="border-l border-slate-100 pl-4">
@@ -405,7 +423,7 @@ export default function DashboardPage() {
                                     ? ` · ${formatRupiah(schedule.nextDueAmount)}`
                                     : ''
                                 }`
-                              : 'Semua angsuran jatuh tempo'}
+                              : 'Seluruh angsuran telah lunas'}
                           </strong>
                         </div>
                       </div>
@@ -420,6 +438,9 @@ export default function DashboardPage() {
                       <span className="text-[11px] text-slate-400">Berkas terunggah</span>
                       <strong className="mt-1 block text-sm text-slate-800">
                         {application.documentsUploaded}/{application.documentsTotal}
+                        {application.documentsVerified > 0
+                          ? ` (${application.documentsVerified} ✓)`
+                          : ''}
                       </strong>
                     </div>
                     <div className="border-l border-slate-100 pl-4">
@@ -431,6 +452,12 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
+                )}
+                {application.documentsRevision > 0 && (
+                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800">
+                    {application.documentsRevision} dokumen memerlukan perbaikan. Silakan periksa
+                    menu Unggah Berkas.
+                  </p>
                 )}
                 {application.pricingStatus === 'ESTIMATED' && !schedule && (
                   <p className="mt-4 text-[11px] leading-4 text-slate-400">
@@ -545,15 +572,22 @@ export default function DashboardPage() {
                 Alur progress saat ini
               </h2>
               <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-[var(--primary)]">
-                {loading
-                  ? 'Memuat…'
-                  : application
-                    ? allDone
-                      ? 'Selesai 7/7'
-                      : currentStep > 0
-                        ? `Tahap ${currentStep}/7`
-                        : 'Tidak aktif'
-                    : 'Belum memulai'}
+                {loading ? (
+                  <span
+                    aria-hidden="true"
+                    className="block h-3 w-16 animate-pulse rounded-full bg-indigo-200"
+                  />
+                ) : application ? (
+                  allDone ? (
+                    'Selesai 7/7'
+                  ) : currentStep > 0 ? (
+                    `Tahap ${currentStep}/7`
+                  ) : (
+                    'Tidak aktif'
+                  )
+                ) : (
+                  'Belum memulai'
+                )}
               </span>
             </div>
             {closed && application && (
@@ -563,81 +597,96 @@ export default function DashboardPage() {
               </p>
             )}
             <div className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-              <ol className="relative space-y-0">
-                {progressSteps.map((item, idx, arr) => {
-                  const done = Boolean(application) && (allDone || item.step < currentStep)
-                  const active =
-                    Boolean(application) && !allDone && item.step === currentStep && !closed
-                  return (
-                    <li key={item.step} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={[
-                            'grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ring-2',
-                            done
-                              ? 'bg-[var(--primary)] text-white ring-[var(--primary)]'
-                              : active
-                                ? 'bg-white text-[var(--primary)] ring-[var(--primary)]'
-                                : 'bg-slate-100 text-slate-400 ring-slate-200',
-                          ].join(' ')}
-                        >
-                          {done ? (
-                            <svg
-                              className="size-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          ) : (
-                            item.step
-                          )}
-                        </span>
-                        {idx < arr.length - 1 && (
+              {loading ? (
+                <div aria-label="Memuat alur pengajuan" className="space-y-5" role="status">
+                  <span className="sr-only">Memuat alur pengajuan…</span>
+                  {progressSteps.map((item) => (
+                    <div className="flex items-center gap-4" key={item.step}>
+                      <SkeletonBlock className="size-8 shrink-0 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <SkeletonBlock className="h-3 w-2/5" />
+                        <SkeletonBlock className="h-2.5 w-4/5" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ol className="relative space-y-0">
+                  {progressSteps.map((item, idx, arr) => {
+                    const done = Boolean(application) && (allDone || item.step < currentStep)
+                    const active =
+                      Boolean(application) && !allDone && item.step === currentStep && !closed
+                    return (
+                      <li key={item.step} className="flex gap-4">
+                        <div className="flex flex-col items-center">
                           <span
                             className={[
-                              'mt-1 w-0.5 flex-1 rounded-full',
-                              done ? 'bg-[var(--primary)]' : 'bg-slate-200',
+                              'grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ring-2',
+                              done
+                                ? 'bg-[var(--primary)] text-white ring-[var(--primary)]'
+                                : active
+                                  ? 'bg-white text-[var(--primary)] ring-[var(--primary)]'
+                                  : 'bg-slate-100 text-slate-400 ring-slate-200',
                             ].join(' ')}
-                            style={{ minHeight: '28px' }}
-                          />
-                        )}
-                      </div>
-                      <div className={['pb-5', idx === arr.length - 1 ? 'pb-0' : ''].join(' ')}>
-                        <p
-                          className={[
-                            'text-sm font-bold leading-tight',
-                            active
-                              ? 'text-[var(--primary)]'
-                              : done
-                                ? 'text-slate-800'
-                                : 'text-slate-400',
-                          ].join(' ')}
-                        >
-                          {item.label}
-                          {active && (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700">
-                              SEKARANG
-                            </span>
+                          >
+                            {done ? (
+                              <svg
+                                className="size-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M20 6 9 17l-5-5" />
+                              </svg>
+                            ) : (
+                              item.step
+                            )}
+                          </span>
+                          {idx < arr.length - 1 && (
+                            <span
+                              className={[
+                                'mt-1 w-0.5 flex-1 rounded-full',
+                                done ? 'bg-[var(--primary)]' : 'bg-slate-200',
+                              ].join(' ')}
+                              style={{ minHeight: '28px' }}
+                            />
                           )}
-                        </p>
-                        <p
-                          className={[
-                            'mt-0.5 text-[11px]',
-                            done || active ? 'text-slate-400' : 'text-slate-300',
-                          ].join(' ')}
-                        >
-                          {item.sub}
-                        </p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
+                        </div>
+                        <div className={['pb-5', idx === arr.length - 1 ? 'pb-0' : ''].join(' ')}>
+                          <p
+                            className={[
+                              'text-sm font-bold leading-tight',
+                              active
+                                ? 'text-[var(--primary)]'
+                                : done
+                                  ? 'text-slate-800'
+                                  : 'text-slate-400',
+                            ].join(' ')}
+                          >
+                            {item.label}
+                            {active && (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700">
+                                SEKARANG
+                              </span>
+                            )}
+                          </p>
+                          <p
+                            className={[
+                              'mt-0.5 text-[11px]',
+                              done || active ? 'text-slate-400' : 'text-slate-300',
+                            ].join(' ')}
+                          >
+                            {item.sub}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
             </div>
           </section>
 

@@ -284,6 +284,71 @@ export function DashboardCard({
   )
 }
 
+export function SkeletonBlock({ className = '' }: { className?: string }) {
+  return <div aria-hidden="true" className={`animate-pulse rounded-lg bg-slate-200 ${className}`} />
+}
+
+export function DashboardCardSkeleton({
+  rows = 3,
+  className = '',
+}: {
+  rows?: number
+  className?: string
+}) {
+  return (
+    <section
+      aria-label="Memuat konten"
+      aria-live="polite"
+      className={`overflow-hidden rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100 ${className}`}
+      role="status"
+    >
+      <span className="sr-only">Memuat konten…</span>
+      <div className="mb-4 flex items-center gap-3">
+        <SkeletonBlock className="size-10 shrink-0 rounded-2xl" />
+        <div className="flex-1 space-y-2">
+          <SkeletonBlock className="h-3 w-2/5" />
+          <SkeletonBlock className="h-2.5 w-3/5" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: rows }, (_, index) => (
+          <div className="flex items-center gap-3" key={index}>
+            <SkeletonBlock className="size-8 shrink-0 rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <SkeletonBlock className={`h-2.5 ${index % 2 ? 'w-3/5' : 'w-4/5'}`} />
+              <SkeletonBlock className={`h-2 ${index % 2 ? 'w-2/5' : 'w-1/2'}`} />
+            </div>
+            <SkeletonBlock className="h-3 w-14" />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function DashboardPageSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <main className="dashboard-app min-h-dvh bg-[var(--canvas)]">
+      <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-[#f8f9fd] px-5 py-6">
+        <div aria-label="Memuat akun" className="space-y-6" role="status">
+          <span className="sr-only">Memuat akun…</span>
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+            <SkeletonBlock className="size-11 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <SkeletonBlock className="h-2.5 w-24" />
+              <SkeletonBlock className="h-4 w-40" />
+            </div>
+          </div>
+          <SkeletonBlock className="h-32 rounded-3xl" />
+          {Array.from({ length: rows }, (_, index) => (
+            <DashboardCardSkeleton key={index} rows={2} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
 export function DashboardMenuRow({
   href,
   icon,

@@ -2,7 +2,7 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **7 November 2026** (perombakan UI/UX `/admin` menjadi Backoffice minimalis dengan fixed sidebar `100dvh`, 7 menu modul, tabel 1 baris multi-kolom, dan Slide-Over Drawer editor).
+Terakhir diperbarui: **7 November 2026** (seluruh halaman pemohon dengan state loading menggunakan skeleton sesuai bentuk konten, termasuk guard sesi, beranda, angsuran, pembayaran, berkas, riwayat, dokumen, notifikasi, dan profil).
 
 ---
 
@@ -20,19 +20,19 @@ Terakhir diperbarui: **7 November 2026** (perombakan UI/UX `/admin` menjadi Back
 
 ### Peta Route
 
-| Route                                                                         | Fungsi                                                          |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `/`                                                                           | Welcome + form pengajuan; login Google dan routing staf/pemohon |
-| `/dashboard`                                                                  | Beranda dashboard pemohon                                       |
-| `/dashboard/unggah-berkas`                                                    | Unggah/ganti dokumen pengajuan                                  |
-| `/dashboard/angsuran`                                                         | Rincian biaya, jadwal, persetujuan penawaran, keringanan        |
-| `/dashboard/pembayaran`                                                       | Bayar angsuran & pembayaran bebas via Xendit                    |
-| `/dashboard/{riwayat,dokumen,profil,bantuan,notifikasi,simulasi,layanan,vip}` | Halaman pendukung (sebagian masih demo/statis — lihat §8)       |
-| `/admin`                                                                      | Panel staf (tanpa halaman login; non-staf diarahkan ke `/`)     |
-| `POST /api/applicant/uploads`                                                 | Endpoint unggah dokumen (init + chunk) ke Google Drive          |
-| `GET /api/admin/applications/[id]/documents/[index]`                          | Unduh dokumen oleh staf (proxy Drive)                           |
-| `POST/DELETE /api/admin/session`                                              | Buat/hapus cookie sesi staf                                     |
-| `POST /api/webhooks/xendit`                                                   | Webhook status pembayaran Xendit                                |
+| Route                                                                         | Fungsi                                                                                                   |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/`                                                                           | Welcome + form pengajuan; login Google dan routing staf/pemohon                                          |
+| `/dashboard`                                                                  | Beranda dashboard pemohon                                                                                |
+| `/dashboard/unggah-berkas`                                                    | Unggah/ganti dokumen pengajuan                                                                           |
+| `/dashboard/angsuran`                                                         | Rincian biaya, jadwal, persetujuan penawaran, keringanan                                                 |
+| `/dashboard/pembayaran`                                                       | Bayar angsuran & pembayaran bebas via Xendit                                                             |
+| `/dashboard/{riwayat,dokumen,profil,bantuan,notifikasi,simulasi,layanan,vip}` | Halaman aktivitas, dokumen, profil, notifikasi, simulasi, dan bantuan (terhubung ke data riil Firestore) |
+| `/admin`                                                                      | Panel staf (tanpa halaman login; non-staf diarahkan ke `/`)                                              |
+| `POST /api/applicant/uploads`                                                 | Endpoint unggah dokumen (init + chunk) ke Google Drive                                                   |
+| `GET /api/admin/applications/[id]/documents/[index]`                          | Unduh dokumen oleh staf (proxy Drive)                                                                    |
+| `POST/DELETE /api/admin/session`                                              | Buat/hapus cookie sesi staf                                                                              |
+| `POST /api/webhooks/xendit`                                                   | Webhook status pembayaran Xendit                                                                         |
 
 ---
 
@@ -136,8 +136,9 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 
 #### Beranda `/dashboard`
 
-- Sapaan `Selamat datang, <nama depan>` (dari nama pemohon atau nama akun Google; loading: `Memuat…`), lonceng → notifikasi (titik amber bila ada yang belum dibaca).
-- **Kartu ringkasan**: nominal (`Total kewajiban akad`/`Estimasi diajukan`), toggle sembunyikan nominal (`Rp••••••••`), **pil status**, progres bar `{x} dari {y} angsuran jatuh tempo`, `Jatuh tempo berikutnya`; bila belum ada jadwal → `Berkas terunggah {x}/{y}` + `Nomor pengajuan {VSV-APP-…}`; bila biaya masih estimasi → `Rincian biaya sedang disusun dan diverifikasi tim VentureGo.`
+- Sapaan `Selamat datang, <nama depan>` (dari nama pemohon atau nama akun Google; loading: `Memuat…`), lonceng → notifikasi (titik amber tampil bila ada pengajuan aktif).
+- **Kartu ringkasan**: nominal (`Total kewajiban akad`/`Estimasi diajukan`), toggle sembunyikan nominal (`Rp••••••••`), **pil status**, progres bar `{paidCount} dari {total} angsuran lunas` + `Terbayar Rp…`, `Sisa angsuran: {total - paidCount} kali`, `Jatuh tempo berikutnya`; bila belum ada jadwal → `Berkas terunggah {x}/{y} ({verified} ✓)` + `Nomor pengajuan {VSV-APP-…}` (+ peringatan kuning bila ada dokumen berstatus `Perlu perbaikan`); bila biaya masih estimasi → `Rincian biaya sedang disusun dan diverifikasi tim VentureGo.`
+- Saat sesi atau ringkasan Firestore sedang dimuat, nama akun, kartu ringkasan, badge progres, dan daftar tahap menampilkan skeleton pulse; tidak ada teks loading yang menggantikan susunan kartu.
 - **Pengguna baru (sudah login Google) / tanpa pengajuan**: kartu ringkasan langsung tampil dengan nilai default — `Total angsuran terbayar` **Rp0**, progres 0% (`Belum ada pembayaran`, `Total kewajiban Rp0`), `Tenor` **0 bulan**, dan `Virtual Account` **0000000000000000**, dengan pil `Belum ada pengajuan`. CTA pengajuan tetap berada pada kartu `Ajukan Pembiayaan Baru` di bawah hero.
 - **Alur progress saat ini** — 7 tahap: `Pengajuan → Verifikasi & kelayakan → Pengumpulan berkas online → Akad pembiayaan → Pencairan dana → Program angsuran → Pelunasan`, badge `Tahap {n}/7`, tahap aktif berchip `SEKARANG`; status tertutup (Ditolak/Dibatalkan) menampilkan catatan merah.
 - Kartu `Ajukan Pembiayaan Baru` (→ `/?step=1`) dan `Layanan cepat` (Bayar angsuran, Simulasi, Ajukan baru, Bantuan, VIP).
@@ -146,10 +147,9 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 
 - Banner: `Unggah dokumen PDF, JPG, atau PNG. Maksimal 10 MB untuk setiap berkas.`
 - Pemilih pengajuan bila >1 (`{VSV-APP-…} · {nama}`); dua grup: **Dokumen utama** dan **Dokumen pendukung**.
-- Per slot: label (+ bintang merah untuk wajib), status `Belum diunggah` atau `{nama file} · {x,x} MB`, tombol **`Unggah`** / **`Ganti`** / `Mengunggah…` / `Belum aktif` (tanpa pengajuan).
+- Per slot: label (+ bintang merah untuk wajib), lencana status riil (`Sudah diunggah`, `Diverifikasi`, atau `Perlu perbaikan`), `{nama file} · {x,x} MB` atau `Belum diunggah`, tombol **`Unggah`** / **`Ganti`** / **`Perbaiki`** / `Mengunggah…` / `Belum aktif` (tanpa pengajuan).
 - Sukses: `{label} berhasil diunggah.` (hijau) → daftar dimuat ulang. Gagal: pesan server / `Berkas belum dapat diunggah. Periksa koneksi lalu coba lagi.`
-- **Efek Drive**: file baru masuk ke folder `<Nama> - <VSV-APP-…>`; entri `documents[index]` di Firestore diganti (status kembali `UPLOADED`).
-- **Keadaan khusus**: status dokumen yang ditandai admin `Diverifikasi`/`Perlu perbaikan` **tidak tampil** di UI pemohon (kembali `Belum diunggah`) — lihat §8.
+- **Efek Drive**: file baru masuk ke folder `<Nama> - <VSV-APP-…>`; entri `documents[index]` di Firestore diganti (status menjadi `UPLOADED`).
 
 **Daftar dokumen per produk** (`src/lib/documents.ts`):
 
@@ -179,11 +179,15 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
   - Tanpa konfigurasi server: `Pembayaran daring belum dikonfigurasi di server. Hubungi tim VentureGo untuk info pembayaran.`
   - Invoice yang sama tidak dibuat ulang (dipakai ulang selama belum kedaluwarsa).
 
-#### Halaman pendukung
+#### Halaman aktivitas, dokumen, notifikasi, profil, & pendukung
 
+- **Riwayat** `/dashboard/riwayat`: menampilkan riwayat transaksi & aktivitas riil dari Firestore (`payments` Xendit, pengajuan `applications`, dan berkas `documents`) dengan filter interaktif `Semua`, `Pembayaran`, dan `Dokumen`.
+- **Dokumen** `/dashboard/dokumen`: menampilkan arsip akad pembiayaan (`pricingStatus`, nilai kewajiban, referensi akad final), daftar berkas persyaratan yang telah diunggah beserta status verifikasinya (`Sudah diunggah`, `Diverifikasi`, `Perlu perbaikan`), serta daftar bukti pembayaran lunas (`payments` berstatus `PAID`).
+- **Notifikasi** `/dashboard/notifikasi`: menghasilkan pemberitahuan riil dari data pengguna (pengingat jatuh tempo angsuran berikutnya, rincian biaya `VERIFIED` yang menunggu persetujuan, berkas `REVISION_REQUIRED` yang perlu diperbaiki, tanggapan permohonan keringanan dari staf, status invoice Xendit, dan status pengajuan) + tombol `Tandai sudah dibaca`.
+- **Profil** `/dashboard/profil`: menampilkan nama, email, metode masuk (`Google` atau `Email & Password`), serta rincian identitas pengajuan riil dari Firestore (`phone`, `lpkName`, `destination`, tempat/tanggal lahir, alamat korespondensi) dan tombol **`Keluar`**.
+- Saat data halaman-halaman tersebut dimuat, skeleton kartu/baris menggantikan teks `Memuat…`; bentuk skeleton mengikuti struktur konten yang akan tampil setelah data tersedia.
+- **Bantuan** `/dashboard/bantuan`: FAQ interaktif (buka/tutup jawaban) + tautan ke permohonan keringanan dan email layanan.
 - **Simulasi** `/dashboard/simulasi`: kalkulator klien (Rp31/33/36/40 juta → Nafaqah, ujrah 2,4%×12, total kewajiban, tenor 12 bulan) — catatan `Hasil ini merupakan simulasi. Nilai akhir mengikuti verifikasi program, kebutuhan, dan akad pembiayaan.`
-- **Profil** `/dashboard/profil`: nama & email akun yang sedang login, metode masuk (`Google` atau `Email & Password`), menu, tombol **`Keluar`** → keluar sesi & kembali ke `/`.
-- **Riwayat, Dokumen, Notifikasi, Bantuan, Layanan**: **masih halaman demo/statis** (ada disclaimer `Riwayat di halaman ini adalah data demo…`) — lihat §8.
 - **VIP**: placeholder `SEDANG DIKEMBANGKAN`.
 
 ### 3.4 Label status (sisi pemohon)
@@ -252,15 +256,15 @@ Setiap pengajuan yang dibuka di Slide-Over Drawer memiliki satu form terpadu; **
 
 ### 4.4 Efek lintas sisi (admin → pemohon → Drive)
 
-| Aksi admin                                             | Efek ke pemohon (UI)                                                                                       | Efek ke Drive                        |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Ubah **Status pengajuan**                              | Pil status + tahap `Alur progress` di beranda berubah (mis. `DOCUMENT_REVIEW` → tahap 3 + chip `SEKARANG`) | Tidak ada                            |
-| Tandai dokumen `Diverifikasi`/`Perlu perbaikan`        | ⚠️ Di unggah-berkas pemohon slot kembali tampil `Belum diunggah` (hanya `UPLOADED` yang dihitung — §8)     | Tidak ada (hanya status Firestore)   |
-| `Status biaya` → `Terverifikasi`                       | Halaman angsuran menampilkan rincian + tombol `Saya menyetujui rincian terverifikasi`                      | Tidak ada                            |
-| `Status biaya` → `Disepakati` (setelah pemohon setuju) | Catatan hijau `Akad final tercatat disepakati…`; jadwal & total terkunci                                   | Tidak ada                            |
-| Tanggapi permohonan keringanan                         | Tampil `Tanggapan tim: …` di halaman angsuran                                                              | Tidak ada                            |
-| Unduh dokumen                                          | —                                                                                                          | Stream dari Drive (tanpa URL publik) |
-| Ubah jadwal/biaya baru                                 | Persetujuan pemohon lama **dihapus** → tombol persetujuan muncul lagi                                      | Tidak ada                            |
+| Aksi admin                                             | Efek ke pemohon (UI)                                                                                                                                                   | Efek ke Drive                        |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Ubah **Status pengajuan**                              | Pil status + tahap `Alur progress` di beranda berubah (mis. `DOCUMENT_REVIEW` → tahap 3 + chip `SEKARANG`)                                                             | Tidak ada                            |
+| Tandai dokumen `Diverifikasi`/`Perlu perbaikan`        | Di `/dashboard/unggah-berkas`, `/dashboard/dokumen`, `/dashboard/notifikasi`, dan `/dashboard` langsung tampil status `Diverifikasi` atau peringatan `Perlu perbaikan` | Tidak ada (hanya status Firestore)   |
+| `Status biaya` → `Terverifikasi`                       | Halaman angsuran menampilkan rincian + tombol `Saya menyetujui rincian terverifikasi`                                                                                  | Tidak ada                            |
+| `Status biaya` → `Disepakati` (setelah pemohon setuju) | Catatan hijau `Akad final tercatat disepakati…`; jadwal & total terkunci                                                                                               | Tidak ada                            |
+| Tanggapi permohonan keringanan                         | Tampil `Tanggapan tim: …` di halaman angsuran                                                                                                                          | Tidak ada                            |
+| Unduh dokumen                                          | —                                                                                                                                                                      | Stream dari Drive (tanpa URL publik) |
+| Ubah jadwal/biaya baru                                 | Persetujuan pemohon lama **dihapus** → tombol persetujuan muncul lagi                                                                                                  | Tidak ada                            |
 
 ---
 
@@ -313,17 +317,16 @@ Daftar ini **harus ikut diperbarui** saat caveat-nya diselesaikan:
 
 1. **Form tanpa unggah dokumen** — semua dokumen diunggah setelah submit di `/dashboard/unggah-berkas`; pengajuan baru selalu mulai `NOT_UPLOADED`.
 2. **Dokumen wajib (Dana Keberangkatan) tidak memblokir submit** — penanda `*` bersifat advisory; validasi server hanya berjalan untuk Full Cover (yang tidak punya dokumen wajib).
-3. **Status dokumen admin tidak tampil ke pemohon** — hanya `UPLOADED` yang dihitung; `VERIFIED`/`REVISION_REQUIRED` tampil `Belum diunggah` di unggah-berkas.
-4. **Ganti dokumen tidak menghapus file lama** di Drive (file lama tetap tersimpan di folder yang sama).
-5. **Halaman demo/statis**: `riwayat` (ada disclaimer demo), `dokumen`, `notifikasi`, `bantuan` (FAQ non-fungsional), `layanan`, `vip`.
-6. **Banner sukses/gagal pembayaran** di `/dashboard/pembayaran` hanya muncul bila parameter `?payment=` ada di URL (return URL Xendit saat ini tidak menyertakannya); andalkan `Segarkan`/webhook.
-7. **Kuota daftar admin maks 100 pengajuan & 100 pembayaran terbaru** — pencarian dan filter berjalan di klien atas 100 pengajuan terbaru.
-8. **Tahap 5 (Pencairan dana)** pada `Alur progress` tidak pernah jadi tahap `SEKARANG`.
-9. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
-10. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
-11. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
-12. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Untuk login Google di lokal, gunakan `http://localhost:3000` (akses ke `127.0.0.1` otomatis dialihkan ke `localhost` karena Firebase hanya mengizinkan domain `localhost` secara bawaan). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
-13. Halaman 404 (`not-found`) masih berbahasa Inggris.
+3. **Ganti dokumen tidak menghapus file lama** di Drive (file lama tetap tersimpan di folder yang sama).
+4. **Halaman VIP (`/dashboard/vip`)** masih berupa placeholder `SEDANG DIKEMBANGKAN`.
+5. **Banner sukses/gagal pembayaran** di `/dashboard/pembayaran` hanya muncul bila parameter `?payment=` ada di URL (return URL Xendit saat ini tidak menyertakannya); andalkan `Segarkan`/webhook.
+6. **Kuota daftar admin maks 100 pengajuan & 100 pembayaran terbaru** — pencarian dan filter berjalan di klien atas 100 pengajuan terbaru.
+7. **Tahap 5 (Pencairan dana)** pada `Alur progress` tidak pernah jadi tahap `SEKARANG`.
+8. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
+9. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
+10. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
+11. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Untuk login Google di lokal, gunakan `http://localhost:3000` (akses ke `127.0.0.1` otomatis dialihkan ke `localhost` karena Firebase hanya mengizinkan domain `localhost` secara bawaan). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
+12. Halaman 404 (`not-found`) masih berbahasa Inggris.
 
 ---
 

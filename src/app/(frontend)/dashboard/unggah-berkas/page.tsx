@@ -10,7 +10,12 @@ import {
 } from '@/lib/documents'
 import { uploadToDrive } from '@/lib/upload-client'
 import { getOwnedApplications, type OwnedApplication } from './actions'
-import { DashboardCard, DashboardIcon, DashboardScaffold } from '../_components/dashboard-ui'
+import {
+  DashboardCard,
+  DashboardCardSkeleton,
+  DashboardIcon,
+  DashboardScaffold,
+} from '../_components/dashboard-ui'
 
 const formatSize = (size?: number) => (size ? `${(size / 1024 / 1024).toFixed(1)} MB` : '')
 
@@ -98,7 +103,8 @@ export default function UploadDocumentsPage() {
   const uploadedBytes = useMemo(
     () =>
       selectedApplication?.documents.reduce(
-        (total, document) => total + (document.status === 'UPLOADED' ? (document.size ?? 0) : 0),
+        (total, document) =>
+          total + (document.status !== 'NOT_UPLOADED' ? (document.size ?? 0) : 0),
         0,
       ) ?? 0,
     [selectedApplication],
@@ -117,7 +123,7 @@ export default function UploadDocumentsPage() {
       return
     }
     const previousSize =
-      selectedApplication.documents[index]?.status === 'UPLOADED'
+      selectedApplication.documents[index]?.status !== 'NOT_UPLOADED'
         ? (selectedApplication.documents[index]?.size ?? 0)
         : 0
     if (uploadedBytes - previousSize + file.size > 60 * 1024 * 1024) {
@@ -160,7 +166,13 @@ export default function UploadDocumentsPage() {
         </p>
       </div>
 
-      {loading && <p className="py-8 text-center text-sm text-slate-500">Memuat pengajuan…</p>}
+      {loading && (
+        <>
+          <DashboardCardSkeleton rows={2} />
+          <DashboardCardSkeleton rows={5} />
+          <DashboardCardSkeleton rows={4} />
+        </>
+      )}
       {!loading && loadingError && (
         <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700" role="alert">
           <p>{loadingError}</p>
@@ -232,8 +244,18 @@ export default function UploadDocumentsPage() {
               <DashboardCard>
                 {group.documents.map(({ document, index }, groupIndex) => {
                   const uploadedDocument = selectedApplication?.documents[index]
-                  const isUploaded = uploadedDocument?.status === 'UPLOADED'
+                  const status = uploadedDocument?.status ?? 'NOT_UPLOADED'
+                  const isUploaded = status !== 'NOT_UPLOADED'
+                  const isVerified = status === 'VERIFIED'
+                  const needsRevision = status === 'REVISION_REQUIRED'
                   const isUploading = uploadingIndex === index
+                  const statusBadge = isVerified
+                    ? 'Diverifikasi'
+                    : needsRevision
+                      ? 'Perlu perbaikan'
+                      : isUploaded
+                        ? 'Sudah diunggah'
+                        : ''
                   return (
                     <div
                       className={`flex items-center gap-3 p-4 ${
@@ -243,44 +265,71 @@ export default function UploadDocumentsPage() {
                     >
                       <span
                         className={`grid size-10 shrink-0 place-items-center rounded-xl ${
-                          isUploaded
+                          isVerified
                             ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-indigo-50 text-[var(--primary)]'
+                            : needsRevision
+                              ? 'bg-amber-50 text-amber-700'
+                              : isUploaded
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'bg-indigo-50 text-[var(--primary)]'
                         }`}
                       >
                         <DashboardIcon
-                          name={isUploaded ? 'check' : 'document'}
+                          name={isVerified ? 'check' : needsRevision ? 'info' : 'document'}
                           className="size-5"
                         />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-xs font-bold text-slate-800">
-                          {document.label}
-                          {document.required && (
-                            <span aria-label="wajib diunggah" className="ml-1 text-red-500">
-                              *
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <h3 className="text-xs font-bold text-slate-800">
+                            {document.label}
+                            {document.required && (
+                              <span aria-label="wajib diunggah" className="ml-1 text-red-500">
+                                *
+                              </span>
+                            )}
+                          </h3>
+                          {statusBadge && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                isVerified
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : needsRevision
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-50 text-blue-700'
+                              }`}
+                            >
+                              {statusBadge}
                             </span>
                           )}
-                        </h3>
+                        </div>
                         <p className="mt-1 truncate text-[10px] text-slate-400">
                           {isUploaded
-                            ? `${uploadedDocument.fileName ?? 'Berkas'} · ${formatSize(uploadedDocument.size)}`
+                            ? `${uploadedDocument?.fileName ?? 'Berkas'}${
+                                uploadedDocument?.size
+                                  ? ` · ${formatSize(uploadedDocument.size)}`
+                                  : ''
+                              }`
                             : 'Belum diunggah'}
                         </p>
                       </div>
                       <label
                         className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold text-white ${
                           selectedApplication
-                            ? 'cursor-pointer bg-[var(--primary)]'
+                            ? needsRevision
+                              ? 'cursor-pointer bg-amber-600'
+                              : 'cursor-pointer bg-[var(--primary)]'
                             : 'cursor-not-allowed bg-slate-300'
                         }`}
                       >
                         {selectedApplication
                           ? isUploading
                             ? 'Mengunggah…'
-                            : isUploaded
-                              ? 'Ganti'
-                              : 'Unggah'
+                            : needsRevision
+                              ? 'Perbaiki'
+                              : isUploaded
+                                ? 'Ganti'
+                                : 'Unggah'
                           : 'Belum aktif'}
                         <input
                           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
