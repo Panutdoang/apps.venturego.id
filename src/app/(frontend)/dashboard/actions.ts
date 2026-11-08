@@ -3,6 +3,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
 import { isAllowedSignInProvider } from '@/lib/auth-shared'
+import { ensureStudentNumber } from '@/lib/student-number'
 
 export type DashboardScheduleSummary = {
   total: number
@@ -211,51 +212,15 @@ const readTimestampMillis = (value: unknown): number | null => {
   return null
 }
 
-const getJakartaYear = () =>
-  new Intl.DateTimeFormat('en', { timeZone: 'Asia/Jakarta', year: 'numeric' }).format(new Date())
-
 export async function getOrCreateStudentNumber(token: string): Promise<StudentNumberResult> {
   try {
     const identity = await verifyUserIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
-    const firestore = getFirebaseFirestore()
-    const year = getJakartaYear()
-    const profileRef = firestore.collection('studentProfiles').doc(identity.uid)
-    const counterRef = firestore.collection('systemCounters').doc(`student-numbers-${year}`)
-
-    const studentNumber = await firestore.runTransaction(async (transaction) => {
-      const profile = await transaction.get(profileRef)
-      const existingNumber = profile.data()?.studentNumber
-      if (typeof existingNumber === 'string' && /^VSV-\d{4,}-\d{4}$/.test(existingNumber)) {
-        return existingNumber
-      }
-
-      const counter = await transaction.get(counterRef)
-      const previous = counter.data()?.lastIssued
-      const nextSequence =
-        typeof previous === 'number' && Number.isSafeInteger(previous) && previous >= 0
-          ? previous + 1
-          : 1
-      const nextNumber = `VSV-${String(nextSequence).padStart(4, '0')}-${year}`
-
-      transaction.set(counterRef, {
-        year: Number(year),
-        lastIssued: nextSequence,
-        updatedAt: FieldValue.serverTimestamp(),
-      })
-      transaction.set(
-        profileRef,
-        {
-          ownerFirebaseUid: identity.uid,
-          studentNumber: nextNumber,
-          issuedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      )
-
-      return nextNumber
-    })
+    const studentNumber = await ensureStudentNumber(identity.uid)
+    if (!studentNumber) {
+      return { ok: false, message: 'Nomor induk siswa belum dapat dimuat. Silakan coba lagi.' }
+    }
 
     return { ok: true, studentNumber }
   } catch {

@@ -2,15 +2,9 @@ import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
-import { hasValidDocumentSignature } from '@/lib/documents'
-import {
-  deleteDriveFile,
-  downloadDriveFile,
-  getOrCreateChildFolder,
-  getRootFolderId,
-  sanitizeDriveFolderName,
-  uploadDriveFile,
-} from '@/lib/gdrive'
+import { buildDocumentFileName, hasValidDocumentSignature } from '@/lib/documents'
+import { ensureApplicationDriveFolder } from '@/lib/drive-folders'
+import { deleteDriveFile, downloadDriveFile, uploadDriveFile } from '@/lib/gdrive'
 
 const APPLICATION_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/
 const MAX_AGREEMENT_SIZE_BYTES = 4 * 1024 * 1024
@@ -64,27 +58,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return errorResponse('PDF akad final hanya dapat diunggah setelah akad disepakati.', 409)
     }
 
-    const encodedFileName = request.headers.get('x-agreement-file-name') ?? ''
-    let requestedFileName = ''
-    try {
-      requestedFileName = decodeURIComponent(encodedFileName)
-    } catch {
-      return errorResponse('Nama berkas tidak valid.')
-    }
-    const sanitizedFileName = safeFileName(requestedFileName)
-    const fileName = sanitizedFileName.toLowerCase().endsWith('.pdf')
-      ? sanitizedFileName
-      : `${sanitizedFileName || id}-akad-wakalah-bil-ujrah.pdf`
+    const applicantName =
+      typeof application?.applicantName === 'string' ? application.applicantName : ''
+    const fileName = applicantName.trim()
+      ? buildDocumentFileName('Akad Wakalah bil Ujrah', applicantName, '.pdf')
+      : `${id}-akad-wakalah-bil-ujrah.pdf`
     const existingFolderId =
       typeof application?.driveFolderId === 'string' ? application.driveFolderId : ''
-    const folderId =
-      existingFolderId ||
-      (await getOrCreateChildFolder(
-        await getRootFolderId(),
-        sanitizeDriveFolderName(
-          `${String(application?.applicantName ?? 'Pemohon')} - ${String(application?.applicationId ?? id)}`,
-        ),
-      ))
+    const folderId = existingFolderId || (await ensureApplicationDriveFolder(application ?? {}))
 
     const uploaded = await uploadDriveFile({
       parentFolderId: folderId,

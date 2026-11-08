@@ -3,7 +3,10 @@ import 'server-only'
 import { Buffer } from 'node:buffer'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
-export const DRIVE_ROOT_FOLDER_NAME = 'VentureGo Berkas'
+export const DRIVE_ROOT_FOLDER_NAME = 'VSV.VentureGo.id [database]'
+export const DRIVE_ROOT_FOLDER_LEGACY_NAME = 'VentureGo Berkas'
+export const DRIVE_FOLDER_COLOR_DRAFT = '#ff0000'
+export const DRIVE_FOLDER_COLOR_ACTIVE = '#00ff00'
 
 const DRIVE_API = 'https://www.googleapis.com'
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token'
@@ -133,9 +136,34 @@ const findChildFolder = async (parentId: string, name: string): Promise<string |
   return typeof id === 'string' ? id : null
 }
 
-export const getOrCreateChildFolder = async (parentId: string, name: string): Promise<string> => {
-  const existing = await findChildFolder(parentId, name)
-  if (existing) return existing
+export const setDriveFolderColor = async (folderId: string, colorRgb: string): Promise<void> => {
+  if (!FILE_ID_PATTERN.test(folderId) || !/^#[0-9a-fA-F]{6}$/.test(colorRgb)) return
+  try {
+    await driveFetch(`/drive/v3/files/${folderId}?fields=id,folderColorRgb`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderColorRgb: colorRgb }),
+    })
+  } catch {}
+}
+
+export type ChildFolderOptions = {
+  colorRgb?: string
+  createOnly?: boolean
+}
+
+export const getOrCreateChildFolder = async (
+  parentId: string,
+  name: string,
+  options: ChildFolderOptions = {},
+): Promise<string> => {
+  if (!options.createOnly) {
+    const existing = await findChildFolder(parentId, name)
+    if (existing) {
+      if (options.colorRgb) await setDriveFolderColor(existing, options.colorRgb)
+      return existing
+    }
+  }
   const created = await driveJson<{ id?: string }>('/drive/v3/files?fields=id', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -143,10 +171,20 @@ export const getOrCreateChildFolder = async (parentId: string, name: string): Pr
       name,
       mimeType: 'application/vnd.google-apps.folder',
       parents: [parentId],
+      ...(options.colorRgb ? { folderColorRgb: options.colorRgb } : {}),
     }),
   })
   if (!created.id) throw new GDriveError('Folder Drive gagal dibuat.', 'UPSTREAM')
   return created.id
+}
+
+const findRootFolderByName = async (name: string): Promise<string | null> => {
+  const query = `mimeType='application/vnd.google-apps.folder' and name='${escapeQueryValue(name)}' and trashed=false`
+  const data = await driveJson<{ files?: { id?: string }[] }>(
+    `/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&orderBy=modifiedTime desc&pageSize=1`,
+  )
+  const id = data.files?.[0]?.id
+  return typeof id === 'string' ? id : null
 }
 
 let cachedRootFolderId: string | null = null
@@ -157,14 +195,16 @@ export const getRootFolderId = async (): Promise<string> => {
     cachedRootFolderId = configured
     return configured
   }
-  const query = `mimeType='application/vnd.google-apps.folder' and name='${escapeQueryValue(DRIVE_ROOT_FOLDER_NAME)}' and trashed=false`
-  const data = await driveJson<{ files?: { id?: string }[] }>(
-    `/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&orderBy=modifiedTime desc&pageSize=1`,
-  )
-  const existing = data.files?.[0]?.id
+  const existing = await findRootFolderByName(DRIVE_ROOT_FOLDER_NAME)
   if (existing) {
     cachedRootFolderId = existing
     return existing
+  }
+  const legacy = await findRootFolderByName(DRIVE_ROOT_FOLDER_LEGACY_NAME)
+  if (legacy) {
+    await renameDriveFile(legacy, DRIVE_ROOT_FOLDER_NAME)
+    cachedRootFolderId = legacy
+    return legacy
   }
   const created = await driveJson<{ id?: string }>('/drive/v3/files?fields=id', {
     method: 'POST',

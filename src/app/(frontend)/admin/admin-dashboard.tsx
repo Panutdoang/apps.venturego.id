@@ -446,6 +446,17 @@ function ApplicationDrawerForm({
                 {PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
                   pricingStatus}
               </span>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+                  application.status === 'ACTIVE' || application.status === 'COMPLETED'
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                    : 'bg-red-50 text-red-600 ring-red-200'
+                }`}
+              >
+                {application.status === 'ACTIVE' || application.status === 'COMPLETED'
+                  ? 'Folder siswa resmi'
+                  : 'Folder draft'}
+              </span>
             </div>
             <h2 className="mt-1.5 text-lg font-bold text-slate-900">{application.applicantName}</h2>
             <p className="text-xs text-slate-500">

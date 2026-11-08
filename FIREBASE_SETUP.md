@@ -37,7 +37,7 @@ verified upload route (OAuth as the Drive owner's account; see step 10).
     and capture a one-time refresh token (`GDRIVE_REFRESH_TOKEN`). Store
     `GDRIVE_OAUTH_CLIENT_ID`, `GDRIVE_OAUTH_CLIENT_SECRET`, and
     `GDRIVE_REFRESH_TOKEN` as server-only encrypted variables in Vercel. The
-    root `VentureGo Berkas` folder is created automatically on first upload.
+    root `VSV.VentureGo.id [database]` folder is created automatically on first upload.
 
 > Demo credentials live in `src/lib/demo-accounts.json` for local development.
 > In production live (`NODE_ENV === 'production'`), the welcome page only

@@ -27,7 +27,7 @@ export const DOCUMENT_DEFINITIONS: Record<DocumentProduct, DocumentDefinition[]>
     { label: 'Scan Surat Nikah Orang Tua', required: false },
   ],
   FULL_COVER: [
-    { label: 'KTP siswa', required: false },
+    { label: 'KTP siswa', required: true },
     { label: 'Kartu Keluarga', required: false },
     { label: 'Persetujuan orang tua', required: false },
     { label: 'Rekomendasi LPK', required: false },
@@ -47,6 +47,31 @@ export const isAcceptedDocumentType = (mimeType: string) =>
   (ACCEPTED_DOCUMENT_TYPES as readonly string[]).includes(mimeType)
 
 export const sanitizeUploadFileName = (value: string) => value.replace(/[\\/]/g, '_').slice(0, 180)
+
+const KTP_LABEL_PATTERN = /^(scan ktp$|ktp\b)/i
+
+export const getKtpDocumentIndex = (product: DocumentProduct): number =>
+  DOCUMENT_DEFINITIONS[product].findIndex((definition) => KTP_LABEL_PATTERN.test(definition.label))
+
+export const documentFileBaseName = (label: string): string =>
+  label
+    .replace(/^Scan\s+/i, '')
+    .split('/')[0]
+    .replace(/\s+siswa$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+export const buildDocumentFileName = (
+  label: string,
+  ownerName: string,
+  originalFileName: string,
+): string => {
+  const base = documentFileBaseName(label)
+  const owner = ownerName.replace(/\s+/g, ' ').trim()
+  const extension = (originalFileName.match(/\.[A-Za-z0-9]{1,10}$/)?.[0] ?? '').toLowerCase()
+  if (!base || !owner) return sanitizeUploadFileName(originalFileName)
+  return sanitizeUploadFileName(`${base} - ${owner}${extension}`)
+}
 
 const matchesSignature = (header: Uint8Array, sequence: number[]) =>
   sequence.every((byte, index) => header[index] === byte)

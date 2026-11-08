@@ -7,16 +7,11 @@ import { isAllowedSignInProvider } from '@/lib/auth-shared'
 import {
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
+  getKtpDocumentIndex,
   hasValidDocumentSignature,
   isAcceptedDocumentType,
 } from '@/lib/documents'
-import {
-  deleteDriveFile,
-  getDriveFileInfo,
-  readDriveFileHead,
-  renameDriveFile,
-  sanitizeDriveFolderName,
-} from '@/lib/gdrive'
+import { deleteDriveFile, getDriveFileInfo, readDriveFileHead } from '@/lib/gdrive'
 
 export type ApplicationInput = {
   product: 'FULL_COVER' | 'DEPARTURE_BRIDGING'
@@ -250,6 +245,10 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     const uploadIndexes = new Set<number>(
       uploadRefs.filter((ref) => Number.isInteger(ref?.index)).map((ref) => ref.index),
     )
+    const ktpIndex = getKtpDocumentIndex(input.product)
+    if (ktpIndex >= 0 && !uploadIndexes.has(ktpIndex)) {
+      return { ok: false, message: `Dokumen ${definitions[ktpIndex].label} wajib diunggah.` }
+    }
     const missingRequired =
       input.product === 'FULL_COVER'
         ? definitions.find((definition, index) => definition.required && !uploadIndexes.has(index))
@@ -409,10 +408,6 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     }
     await applicationRef.set(record)
     if (ownedFolderId) {
-      await renameDriveFile(
-        ownedFolderId,
-        sanitizeDriveFolderName(`${applicantName} - ${applicationId}`),
-      )
       await mappingRef
         .update({
           stage: 'submitted',

@@ -5,11 +5,14 @@ import { isAllowedSignInProvider } from '@/lib/auth-shared'
 import {
   DOCUMENT_DEFINITIONS,
   MAX_DOCUMENT_SIZE_BYTES,
+  buildDocumentFileName,
   hasValidDocumentSignature,
   isAcceptedDocumentType,
   sanitizeUploadFileName,
 } from '@/lib/documents'
+import { buildDraftFolderName, ensureApplicationDriveFolder } from '@/lib/drive-folders'
 import {
+  DRIVE_FOLDER_COLOR_DRAFT,
   GDriveError,
   abortResumableSession,
   createResumableSession,
@@ -60,14 +63,16 @@ const handleInit = async (request: Request, uid: string) => {
     return failure('Data unggahan tidak valid.')
   }
 
-  const fileName = sanitizeUploadFileName(typeof body.fileName === 'string' ? body.fileName : '')
+  const requestedFileName = sanitizeUploadFileName(
+    typeof body.fileName === 'string' ? body.fileName : '',
+  )
   const size = typeof body.size === 'number' ? body.size : Number.NaN
   const mimeType = typeof body.mimeType === 'string' ? body.mimeType : ''
   const documentIndex =
     typeof body.documentIndex === 'number' && Number.isSafeInteger(body.documentIndex)
       ? body.documentIndex
       : -1
-  if (!fileName) return failure('Nama berkas tidak valid.')
+  if (!requestedFileName) return failure('Nama berkas tidak valid.')
   if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_DOCUMENT_SIZE_BYTES) {
     return failure('Ukuran berkas maksimal 10 MB.')
   }
@@ -78,6 +83,8 @@ const handleInit = async (request: Request, uid: string) => {
 
   const firestore = getFirebaseFirestore()
   let folderId: string
+  let documentLabel: string
+  let ownerName: string
   const applicationDocId =
     typeof body.applicationDocId === 'string' && APPLICATION_DOC_PATTERN.test(body.applicationDocId)
       ? body.applicationDocId
@@ -93,17 +100,14 @@ const handleInit = async (request: Request, uid: string) => {
     const definitions = DOCUMENT_DEFINITIONS[data?.product as keyof typeof DOCUMENT_DEFINITIONS]
     if (!definitions) return failure('Jenis pengajuan tidak valid.')
     if (documentIndex >= definitions.length) return failure('Jenis dokumen tidak valid.')
+    documentLabel = definitions[documentIndex].label
+    ownerName = typeof data?.applicantName === 'string' ? data.applicantName : ''
 
     const existingFolderId = typeof data?.driveFolderId === 'string' ? data.driveFolderId : ''
     if (existingFolderId) {
       folderId = existingFolderId
     } else {
-      const rootId = await getRootFolderId()
-      const folderName = sanitizeDriveFolderName(
-        `${String(data?.applicantName ?? '')} - ${String(data?.applicationId ?? '')}`,
-      )
-      if (!folderName) return failure('Nama pemohon belum diisi.')
-      folderId = await getOrCreateChildFolder(rootId, folderName)
+      folderId = await ensureApplicationDriveFolder(data)
       await applicationRef.update({
         driveFolderId: folderId,
         updatedAt: FieldValue.serverTimestamp(),
@@ -113,15 +117,16 @@ const handleInit = async (request: Request, uid: string) => {
     const product = typeof body.product === 'string' ? body.product : ''
     if (!Object.hasOwn(DOCUMENT_DEFINITIONS, product))
       return failure('Jenis pengajuan tidak valid.')
-    if (
-      documentIndex >= DOCUMENT_DEFINITIONS[product as keyof typeof DOCUMENT_DEFINITIONS].length
-    ) {
-      return failure('Jenis dokumen tidak valid.')
-    }
-    const folderName = sanitizeDriveFolderName(
+    const definitions = DOCUMENT_DEFINITIONS[product as keyof typeof DOCUMENT_DEFINITIONS]
+    if (documentIndex >= definitions.length) return failure('Jenis dokumen tidak valid.')
+    documentLabel = definitions[documentIndex].label
+
+    const applicantName = sanitizeDriveFolderName(
       typeof body.folderName === 'string' ? body.folderName : '',
     )
-    if (folderName.length < 2) return failure('Nama pemohon belum diisi.')
+    const lpkName = typeof body.lpkName === 'string' ? body.lpkName : ''
+    if (applicantName.length < 2) return failure('Nama pemohon belum diisi.')
+    ownerName = applicantName
 
     const mappingRef = firestore.collection('driveFolders').doc(uid)
     const mapping = await mappingRef.get()
@@ -129,15 +134,18 @@ const handleInit = async (request: Request, uid: string) => {
     if (
       mapping.exists &&
       mappingData?.ownerUid === uid &&
-      mappingData?.stage === 'draft' &&
       typeof mappingData?.folderId === 'string' &&
       mappingData.folderId
     ) {
       folderId = mappingData.folderId
     } else {
+      const draftFolderName = buildDraftFolderName(applicantName, lpkName)
+      if (!draftFolderName) return failure('Nama pemohon belum diisi.')
       const rootId = await getRootFolderId()
-      const draftFolderName = `${folderName} · ${uid.slice(0, 6)}`
-      folderId = await getOrCreateChildFolder(rootId, draftFolderName)
+      folderId = await getOrCreateChildFolder(rootId, draftFolderName, {
+        colorRgb: DRIVE_FOLDER_COLOR_DRAFT,
+        createOnly: true,
+      })
       await mappingRef.set({
         ownerUid: uid,
         folderId,
@@ -149,6 +157,7 @@ const handleInit = async (request: Request, uid: string) => {
     }
   }
 
+  const fileName = buildDocumentFileName(documentLabel, ownerName, requestedFileName)
   const sessionUrl = await createResumableSession({
     parentFolderId: folderId,
     fileName,

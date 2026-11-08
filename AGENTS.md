@@ -37,7 +37,7 @@ Firebase services (see `FIREBASE_SETUP.md` and `LOCAL_BACKEND.md`):
   writes go through the Admin SDK in Server Actions or route handlers.
 - **Google Drive** — applicant documents are uploaded through
   `api/applicant/uploads` (Firebase ID token verified, size/type and file
-  signature checks) into the `VentureGo Berkas` folder tree (OAuth as the Drive
+  signature checks) into the `VSV.VentureGo.id [database]` folder tree (OAuth as the Drive
   owner via `GDRIVE_REFRESH_TOKEN`; root folder auto-created). Staff access is
   proxied through authenticated server routes.
 
@@ -238,7 +238,7 @@ Firebase variables are documented in `FIREBASE_SETUP.md`:
 - Public web config: `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_SITE_URL`
 - Google Drive (server-only): `GDRIVE_OAUTH_CLIENT_ID`,
   `GDRIVE_OAUTH_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN` (OAuth client for Drive
-  access as the file owner; root `VentureGo Berkas` folder auto-created)
+  access as the file owner; root `VSV.VentureGo.id [database]` folder auto-created)
 
 Xendit payment gateway variables are documented in `XENDIT_SETUP.md`:
 

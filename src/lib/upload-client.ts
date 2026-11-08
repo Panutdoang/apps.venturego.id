@@ -5,6 +5,7 @@ export type DriveUploadOptions = {
   product?: string
   applicationDocId?: string
   folderName?: string
+  lpkName?: string
 }
 
 export type DriveUploadResult = {
@@ -50,6 +51,7 @@ export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveU
       product: options.product,
       applicationDocId: options.applicationDocId,
       folderName: options.folderName,
+      lpkName: options.lpkName,
     }),
   })
   const initData = await readJson(initResponse)

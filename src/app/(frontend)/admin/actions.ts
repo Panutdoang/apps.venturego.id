@@ -12,6 +12,7 @@ import {
   parseFinancingLines,
   serializeStable,
 } from '@/lib/departure-financing'
+import { promoteApplicationFolder } from '@/lib/drive-folders'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
 
@@ -399,6 +400,36 @@ export async function updateApplicationStatus(
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: staff.email ?? staff.uid,
     })
+    if (status === 'ACTIVE' && applicationData.status !== 'ACTIVE') {
+      const ownerUid =
+        typeof applicationData.ownerFirebaseUid === 'string' ? applicationData.ownerFirebaseUid : ''
+      const applicantName =
+        typeof applicationData.applicantName === 'string' ? applicationData.applicantName : ''
+      if (ownerUid && applicantName) {
+        const driveFiles = (Array.isArray(currentDocuments) ? currentDocuments : [])
+          .filter((document: Record<string, unknown>) => typeof document.fileId === 'string')
+          .map((document: Record<string, unknown>) => ({
+            fileId: String(document.fileId),
+            fileName: typeof document.fileName === 'string' ? document.fileName : '',
+            label: String(document.documentType ?? ''),
+          }))
+        const agreementPdf = applicationData.agreementPdf
+        if (agreementPdf && typeof agreementPdf.fileId === 'string') {
+          driveFiles.push({
+            fileId: agreementPdf.fileId,
+            fileName: typeof agreementPdf.fileName === 'string' ? agreementPdf.fileName : '',
+            label: 'Akad Wakalah bil Ujrah',
+          })
+        }
+        await promoteApplicationFolder({
+          folderId:
+            typeof applicationData.driveFolderId === 'string' ? applicationData.driveFolderId : '',
+          ownerUid,
+          applicantName,
+          files: driveFiles,
+        })
+      }
+    }
     return { ok: true }
   } catch {
     return { ok: false, message: 'Status belum dapat disimpan. Coba lagi.' }

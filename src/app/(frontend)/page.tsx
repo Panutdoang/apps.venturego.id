@@ -5,7 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { discardDriveUploads, submitFinancingApplication, type ApplicationInput } from './actions'
 import { formatRupiah } from '@/lib/financing-plan'
-import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
+import {
+  ACCEPTED_DOCUMENT_TYPES,
+  DOCUMENT_DEFINITIONS,
+  MAX_DOCUMENT_SIZE_BYTES,
+  getKtpDocumentIndex,
+} from '@/lib/documents'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
@@ -98,6 +103,8 @@ export default function HomePage() {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initialForm)
   const [documentFiles, setDocumentFiles] = useState<Record<string, File | null>>({})
+  const [ktpFile, setKtpFile] = useState<File | null>(null)
+  const [step3Error, setStep3Error] = useState('')
   const [result, setResult] = useState<{ id?: string; error?: string }>({})
   const [isPending, startTransition] = useTransition()
   const [pendingSignIn, setPendingSignIn] = useState<'user' | 'admin' | 'google' | ''>('')
@@ -188,14 +195,41 @@ export default function HomePage() {
         : [...form.selectedNeeds, need],
     )
 
+  const ktpIndex = getKtpDocumentIndex(form.product)
+  const ktpLabel =
+    ktpIndex >= 0 ? (DOCUMENT_DEFINITIONS[form.product][ktpIndex]?.label ?? 'Scan KTP') : 'Scan KTP'
+
+  const handleKtpChange = (file: File | undefined) => {
+    if (!file) return
+    setStep3Error('')
+    if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type as (typeof ACCEPTED_DOCUMENT_TYPES)[number])) {
+      setKtpFile(null)
+      setStep3Error('Gunakan berkas PDF, JPG, atau PNG untuk scan KTP.')
+      return
+    }
+    if (file.size <= 0 || file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      setKtpFile(null)
+      setStep3Error('Ukuran scan KTP maksimal 10 MB.')
+      return
+    }
+    setKtpFile(file)
+  }
+
   const submit = () => {
     setResult({})
-    const selectedBytes = Object.values(documentFiles).reduce(
-      (total, file) => total + (file?.size ?? 0),
-      0,
-    )
+    const selectedBytes =
+      Object.values(documentFiles).reduce((total, file) => total + (file?.size ?? 0), 0) +
+      (ktpFile?.size ?? 0)
     if (selectedBytes > 60 * 1024 * 1024) {
       setResult({ error: 'Ukuran seluruh dokumen tidak boleh melebihi 60 MB.' })
+      return
+    }
+    if (!form.applicantName.trim() || !form.lpkName.trim()) {
+      setResult({ error: 'Lengkapi nama pemohon dan nama LPK sebelum mengirim.' })
+      return
+    }
+    if (ktpIndex >= 0 && !ktpFile) {
+      setResult({ error: `Dokumen ${ktpLabel} wajib diunggah.` })
       return
     }
     startTransition(async () => {
@@ -205,7 +239,7 @@ export default function HomePage() {
         const user = await ensureApplicantAccount()
         uploadToken = await user.getIdToken()
         for (const [index, document] of DOCUMENT_DEFINITIONS[form.product].entries()) {
-          const file = documentFiles[document.label]
+          const file = index === ktpIndex ? ktpFile : documentFiles[document.label]
           if (!file) continue
           const result = await uploadToDrive({
             token: uploadToken,
@@ -213,6 +247,7 @@ export default function HomePage() {
             documentIndex: index,
             product: form.product,
             folderName: form.applicantName,
+            lpkName: form.lpkName,
           })
           uploaded.push({ index, fileId: result.fileId })
         }
@@ -494,6 +529,27 @@ export default function HomePage() {
                 <h2>Data diri pemohon</h2>
                 <p>Gunakan data yang sama dengan dokumen identitas resmi Anda.</p>
               </div>
+              <label className="field">
+                <span>{ktpLabel} (wajib)</span>
+                <input
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  type="file"
+                  onChange={(event) => {
+                    handleKtpChange(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+              </label>
+              <p className="text-[11px] leading-4 text-slate-500">
+                {ktpFile
+                  ? `${ktpFile.name} · ${(ktpFile.size / (1024 * 1024)).toFixed(2)} MB akan diunggah bersama pengajuan.`
+                  : 'PDF, JPG, atau PNG · maksimal 10 MB. Berkas diunggah ke Google Drive saat pengajuan dikirim.'}
+              </p>
+              {step3Error && (
+                <p className="error-message" role="alert">
+                  {step3Error}
+                </p>
+              )}
               <label className="field">
                 <span>Nama lengkap</span>
                 <input
@@ -1051,8 +1107,16 @@ export default function HomePage() {
               className="primary-button"
               disabled={isPending}
               onClick={() => {
-                if (step === 6) submit()
-                else setStep(step === 4 ? 6 : step + 1)
+                if (step === 6) {
+                  submit()
+                  return
+                }
+                if (step === 3 && !ktpFile) {
+                  setStep3Error('Scan KTP wajib diunggah sebelum melanjutkan.')
+                  return
+                }
+                setStep3Error('')
+                setStep(step === 4 ? 6 : step + 1)
               }}
             >
               {isPending ? 'Mengirim…' : step === 6 ? 'Kirim pengajuan' : 'Lanjut'}
