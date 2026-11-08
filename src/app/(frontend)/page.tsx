@@ -529,27 +529,39 @@ export default function HomePage() {
                 <h2>Data diri pemohon</h2>
                 <p>Gunakan data yang sama dengan dokumen identitas resmi Anda.</p>
               </div>
-              <label className="field">
+              <div className="field">
                 <span>{ktpLabel} (wajib)</span>
-                <input
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                  type="file"
-                  onChange={(event) => {
-                    handleKtpChange(event.target.files?.[0])
-                    event.target.value = ''
-                  }}
-                />
-              </label>
-              <p className="text-[11px] leading-4 text-slate-500">
-                {ktpFile
-                  ? `${ktpFile.name} · ${(ktpFile.size / (1024 * 1024)).toFixed(2)} MB akan diunggah bersama pengajuan.`
-                  : 'PDF, JPG, atau PNG · maksimal 10 MB. Berkas diunggah ke Google Drive saat pengajuan dikirim.'}
-              </p>
-              {step3Error && (
-                <p className="error-message" role="alert">
-                  {step3Error}
-                </p>
-              )}
+                <div className={`ktp-upload-row${ktpFile ? ' has-file' : ''}`}>
+                  <div className="ktp-upload-preview">
+                    {ktpFile ? (
+                      <>
+                        <strong title={ktpFile.name}>{ktpFile.name}</strong>
+                        <small>
+                          {(ktpFile.size / (1024 * 1024)).toFixed(2)} MB · dikirim bersama pengajuan
+                        </small>
+                      </>
+                    ) : (
+                      <small>PDF, JPG, atau PNG · maksimal 10 MB</small>
+                    )}
+                  </div>
+                  <label className="ktp-upload-button">
+                    <input
+                      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                      type="file"
+                      onChange={(event) => {
+                        handleKtpChange(event.target.files?.[0])
+                        event.target.value = ''
+                      }}
+                    />
+                    {ktpFile ? 'Ganti' : 'Unggah'}
+                  </label>
+                </div>
+                {step3Error && (
+                  <p className="error-message" role="alert">
+                    {step3Error}
+                  </p>
+                )}
+              </div>
               <label className="field">
                 <span>Nama lengkap</span>
                 <input

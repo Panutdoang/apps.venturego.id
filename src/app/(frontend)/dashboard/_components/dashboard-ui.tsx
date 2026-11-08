@@ -191,12 +191,14 @@ export function DashboardScaffold({
   title,
   subtitle,
   showHeader = true,
+  backHref = '/dashboard',
   children,
 }: {
   active: PrimaryRoute
   title: string
   subtitle?: string
   showHeader?: boolean
+  backHref?: string
   children: ReactNode
 }) {
   return (
@@ -205,9 +207,9 @@ export function DashboardScaffold({
         {showHeader && (
           <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
             <Link
-              aria-label="Kembali ke dashboard"
+              aria-label="Kembali"
               className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700"
-              href="/dashboard"
+              href={backHref}
             >
               <DashboardIcon name="arrowLeft" />
             </Link>

@@ -25,6 +25,18 @@ const FAQ_ITEMS = [
     q: 'Bagaimana jika saya membutuhkan keringanan pembayaran?',
     a: 'Pada menu Angsuran (/dashboard/angsuran), Anda dapat mengajukan permohonan keringanan beserta alasannya untuk ditinjau langsung oleh tim operasional VentureGo.',
   },
+  {
+    q: 'Bagaimana cara memperbarui data diri?',
+    a: 'Buka Profil → Data Diri, tekan Ubah Data, perbarui kolom yang tersedia, lalu tekan Simpan. Perubahan hanya berlaku untuk pengajuan yang sedang dipilih.',
+  },
+  {
+    q: 'Mengapa data diri saya terkunci?',
+    a: 'Setelah akad disepakati atau pembiayaan aktif, data dikunci agar tetap sesuai dengan dokumen akad. Hubungi tim melalui email untuk meminta koreksi.',
+  },
+  {
+    q: 'Kapan PDF akad dapat dilihat?',
+    a: 'PDF akad final muncul di Profil → Dokumen Saya setelah rincian disepakati dan tim VentureGo mengunggah dokumen bertanda tangan.',
+  },
 ]
 
 export default function HelpPage() {
