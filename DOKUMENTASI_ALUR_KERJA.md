@@ -2,7 +2,7 @@
 
 > **PENTING — Aturan pemeliharaan:** Dokumen ini adalah **satu-satunya rujukan resmi alur kerja aplikasi** (pengguna & admin). **Setiap perubahan apa pun pada aplikasi — fitur, alur, halaman, status, pesan error, struktur Google Drive, integrasi pembayaran — WAJIB disertai pembaruan dokumen ini di commit yang sama.** Jika menemukan ketidakcocokan antara kode dan dokumen ini, anggap kode sebagai perilaku lalu **perbaiki dokumen ini segera**.
 
-Terakhir diperbarui: **7 November 2026** (seluruh halaman pemohon dengan state loading menggunakan skeleton sesuai bentuk konten, termasuk guard sesi, beranda, angsuran, pembayaran, berkas, riwayat, dokumen, notifikasi, dan profil).
+Terakhir diperbarui: **8 November 2026** (Profil memakai tab Data Diri/Dokumen Saya/Pusat Bantuan, foto Firebase Auth, edit data terbatas, dan PDF akad privat melalui Google Drive).
 
 ---
 
@@ -31,6 +31,8 @@ Terakhir diperbarui: **7 November 2026** (seluruh halaman pemohon dengan state l
 | `/admin`                                                                      | Panel staf (tanpa halaman login; non-staf diarahkan ke `/`)                                              |
 | `POST /api/applicant/uploads`                                                 | Endpoint unggah dokumen (init + chunk) ke Google Drive                                                   |
 | `GET /api/admin/applications/[id]/documents/[index]`                          | Unduh dokumen oleh staf (proxy Drive)                                                                    |
+| `POST/GET /api/admin/applications/[id]/agreement`                             | Unggah/lihat PDF akad final oleh staf melalui Google Drive privat                                        |
+| `GET /api/applicant/applications/[id]/agreement`                              | Unduh/lihat PDF akad pengajuan milik pemohon (token Firebase + verifikasi owner)                         |
 | `POST/DELETE /api/admin/session`                                              | Buat/hapus cookie sesi staf                                                                              |
 | `POST /api/webhooks/xendit`                                                   | Webhook status pembayaran Xendit                                                                         |
 
@@ -134,6 +136,8 @@ Tombol: `Kembali` · `Lanjutkan` · `Kirim pengajuan` (saat kirim: `Mengirim…`
 
 Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)**. Tanpa sesi aplikasi → diarahkan ke `/` (welcome). Akun staf (`vworksofficial@gmail.com`, `demo.admin@venturego.id`, atau allowlist) → diarahkan ke `/admin`. Pemohon baru yang sudah login tetapi belum punya pengajuan tetap melihat **kartu ringkasan default** di beranda. Navigasi bawah: **Angsuran · Riwayat · Beranda · Unggah · Profil**.
 
+Halaman **Angsuran**, **Riwayat**, **Unggah Berkas**, dan **Profil** tidak menampilkan header atas/tombol kembali maupun judul-subjudul halaman. Konten langsung dimulai di bawah tepi atas layar; navigasi bawah tetap tersedia.
+
 #### Beranda `/dashboard`
 
 - Sapaan `Selamat datang, <nama depan>` (dari nama pemohon atau nama akun Google; loading: `Memuat…`), lonceng → notifikasi (titik amber tampil bila ada pengajuan aktif).
@@ -184,7 +188,11 @@ Semua halaman dashboard memerlukan **login Google atau akun demo (`Masuk User`)*
 - **Riwayat** `/dashboard/riwayat`: menampilkan riwayat transaksi & aktivitas riil dari Firestore (`payments` Xendit, pengajuan `applications`, dan berkas `documents`) dengan filter interaktif `Semua`, `Pembayaran`, dan `Dokumen`.
 - **Dokumen** `/dashboard/dokumen`: menampilkan arsip akad pembiayaan (`pricingStatus`, nilai kewajiban, referensi akad final), daftar berkas persyaratan yang telah diunggah beserta status verifikasinya (`Sudah diunggah`, `Diverifikasi`, `Perlu perbaikan`), serta daftar bukti pembayaran lunas (`payments` berstatus `PAID`).
 - **Notifikasi** `/dashboard/notifikasi`: menghasilkan pemberitahuan riil dari data pengguna (pengingat jatuh tempo angsuran berikutnya, rincian biaya `VERIFIED` yang menunggu persetujuan, berkas `REVISION_REQUIRED` yang perlu diperbaiki, tanggapan permohonan keringanan dari staf, status invoice Xendit, dan status pengajuan) + tombol `Tandai sudah dibaca`.
-- **Profil** `/dashboard/profil`: menampilkan nama, email, metode masuk (`Google` atau `Email & Password`), serta rincian identitas pengajuan riil dari Firestore (`phone`, `lpkName`, `destination`, tempat/tanggal lahir, alamat korespondensi) dan tombol **`Keluar`**.
+- **Profil** `/dashboard/profil`: foto dari `Firebase Auth user.photoURL` (fallback avatar bila tidak tersedia), nama, **Nomor Induk Siswa VSV** (`VSV-{nomor urut 4 digit}-{tahun}`), dan **Status Akun** dari `emailVerified`. NIS diterbitkan satu kali per Firebase UID saat profil pertama kali dibuka. Konten berupa tab di halaman (bukan shortcut ke route lain):
+  - `Data Diri`: data dari pengajuan terpilih (pemilih bila ada beberapa pengajuan), tombol `Ubah Data Diri`, form `Simpan`/`Batal`. Server memverifikasi ID token/provider, kepemilikan pengajuan, allowlist field, dan nilai. Perubahan hanya mengubah `applicantName`, `phone`, dan `personalDetails`; status, rincian biaya, serta catatan internal tidak dapat diedit pemohon. Data terkunci jika `pricingStatus: AGREED` atau status pengajuan `ACTIVE`/`COMPLETED`; pemohon diarahkan ke Pusat Bantuan untuk koreksi.
+  - `Dokumen Saya`: menampilkan Akad Wakalah bil Ujrah PDF final jika biaya `AGREED` dan admin telah mengunggah PDF. Berkas berada di folder privat Drive; route unduh pemohon memverifikasi token dan `ownerFirebaseUid`, tanpa URL publik. Jika belum ada berkas, tampilkan penjelasan bahwa PDF belum tersedia.
+  - `Pusat Bantuan`: FAQ interaktif dan kontak email layanan; permohonan keringanan tetap dilakukan melalui halaman Angsuran.
+  - Tombol `Keluar` berada di bagian bawah. Skeleton loading mengikuti struktur kartu profil, NIS/status, grid data diri, serta konten tab.
 - Saat data halaman-halaman tersebut dimuat, skeleton kartu/baris menggantikan teks `Memuat…`; bentuk skeleton mengikuti struktur konten yang akan tampil setelah data tersedia.
 - **Bantuan** `/dashboard/bantuan`: FAQ interaktif (buka/tutup jawaban) + tautan ke permohonan keringanan dan email layanan.
 - **Simulasi** `/dashboard/simulasi`: kalkulator klien (Rp31/33/36/40 juta → Nafaqah, ujrah 2,4%×12, total kewajiban, tenor 12 bulan) — catatan `Hasil ini merupakan simulasi. Nilai akhir mengikuti verifikasi program, kebutuhan, dan akad pembiayaan.`
@@ -251,6 +259,7 @@ Setiap pengajuan yang dibuka di Slide-Over Drawer memiliki satu form terpadu; **
 - Full Cover hanya bisa `Terverifikasi`/`Disepakati` untuk tujuan **Jepang**; `ju'alah` diset `COE_ISSUED`, `paymentStartCondition` `AFTER_DEPARTURE`.
 - Pembatalan wajib mencatat perhitungan Nafaqah & refund sebelum `Dibatalkan`.
 - Setiap simpan menambah `financialPlanHistory` (20 terakhir) + `updatedBy`/`updatedAt`.
+- **PDF akad final:** setelah `pricingStatus: AGREED`, staf dapat mengunggah PDF bertanda tangan melalui tab Persetujuan & Akad. Server membatasi PDF maksimal 4 MB, memeriksa signature berkas, menyimpan ke folder Drive privat pengajuan, lalu menambahkan metadata `agreementPdf` ke aplikasi. Penggantian PDF mengaitkan file baru ke aplikasi; akses download tetap melalui route terautentikasi.
 
 **Pesan error umum action**: `Pilih status pengajuan yang valid.` · `Catatan internal maksimal 2.000 karakter.` · `Dokumen belum memiliki berkas untuk diverifikasi.` · `Status Disepakati memerlukan persetujuan pemohon dan referensi akad final yang telah ditandatangani.` · `Total kewajiban harus sama dengan Nafaqah ditambah Ujrah.` · `Tanggal angsuran pertama harus berada pada bulan setelah perkiraan keberangkatan…` · `Status belum dapat disimpan. Coba lagi.`
 
@@ -263,6 +272,8 @@ Setiap pengajuan yang dibuka di Slide-Over Drawer memiliki satu form terpadu; **
 | `Status biaya` → `Terverifikasi`                       | Halaman angsuran menampilkan rincian + tombol `Saya menyetujui rincian terverifikasi`                                                                                  | Tidak ada                            |
 | `Status biaya` → `Disepakati` (setelah pemohon setuju) | Catatan hijau `Akad final tercatat disepakati…`; jadwal & total terkunci                                                                                               | Tidak ada                            |
 | Tanggapi permohonan keringanan                         | Tampil `Tanggapan tim: …` di halaman angsuran                                                                                                                          | Tidak ada                            |
+| Unggah PDF akad final                                  | Tab Profil → Dokumen Saya menampilkan pratinjau/unduhan setelah PDF tersedia                                                                                           | File PDF disimpan privat di Drive    |
+| Pemohon memperbarui data pribadi                       | Data pengajuan terpilih diperbarui setelah validasi; status dan rincian biaya tetap terlindungi                                                                        | Tidak ada                            |
 | Unduh dokumen                                          | —                                                                                                                                                                      | Stream dari Drive (tanpa URL publik) |
 | Ubah jadwal/biaya baru                                 | Persetujuan pemohon lama **dihapus** → tombol persetujuan muncul lagi                                                                                                  | Tidak ada                            |
 
@@ -286,11 +297,13 @@ Setiap pengajuan yang dibuka di Slide-Over Drawer memiliki satu form terpadu; **
 
 ## 6. Data Firestore
 
-| Koleksi / dokumen      | Isi ringkas                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `applications/{docId}` | `applicationId (VSV-APP-…)`, `ownerFirebaseUid`, `product`, `contractScheme`, data diri, `eligibility`, `fullCoverDetails`/`departureDetails`, `fundingNeeds`, `financialPlan` (+`pricingStatus`, jadwal angsuran, refund, referensi akad), `documents[]`, `driveFolderId`, `status`, `internalNotes`, `paidInstallments[]`, `userFinancingAcceptance`, `supportRequests[]`, `financialPlanHistory[]`, timestamps |
-| `driveFolders/{uid}`   | `{ownerUid, folderId, folderName, stage: 'draft'\|'submitted', applicationId?}` — peta sesi → folder Drive                                                                                                                                                                                                                                                                                                        |
-| `payments/{docId}`     | `{applicationId, ownerUid, type: INSTALLMENT\|CUSTOM, installmentNumber?, amount, description, status: PENDING\|PAID\|EXPIRED\|FAILED, invoiceId, invoiceUrl, expiresAt, paidAt, paidMethod, paidChannel}`                                                                                                                                                                                                        |
+| Koleksi / dokumen                       | Isi ringkas                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `applications/{docId}`                  | `applicationId (VSV-APP-…)`, `ownerFirebaseUid`, `product`, `contractScheme`, data diri, `eligibility`, `fullCoverDetails`/`departureDetails`, `fundingNeeds`, `financialPlan` (+`pricingStatus`, jadwal angsuran, refund, referensi akad), `agreementPdf?` (`fileId`, `fileName`, `mimeType`, `size`, `uploadedAt`, `uploadedBy`, `agreementReference` snapshot), `applicantProfileUpdatedAt?`, `documents[]`, `driveFolderId`, `status`, `internalNotes`, `paidInstallments[]`, `userFinancingAcceptance`, `supportRequests[]`, `financialPlanHistory[]`, timestamps |
+| `driveFolders/{uid}`                    | `{ownerUid, folderId, folderName, stage: 'draft'\|'submitted', applicationId?}` — peta sesi → folder Drive                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `payments/{docId}`                      | `{applicationId, ownerUid, type: INSTALLMENT\|CUSTOM, installmentNumber?, amount, description, status: PENDING\|PAID\|EXPIRED\|FAILED, invoiceId, invoiceUrl, expiresAt, paidAt, paidMethod, paidChannel}`                                                                                                                                                                                                                                                                                                                                                             |
+| `studentProfiles/{uid}`                 | `{ownerFirebaseUid, studentNumber, issuedAt}` — Nomor Induk Siswa VSV permanen yang terikat ke Firebase UID                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `systemCounters/{student-numbers-YYYY}` | `{year, lastIssued, updatedAt}` — counter transaksional tahunan untuk menerbitkan NIS unik berurutan (`VSV-0001-YYYY`)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 `firestore.rules` **deny-all** — semua baca/tulis via Admin SDK di server.
 
@@ -325,23 +338,27 @@ Daftar ini **harus ikut diperbarui** saat caveat-nya diselesaikan:
 8. **Tidak ada halaman login admin** — di production staf masuk lewat `Masuk dengan Google` di welcome `/` (dan di lokal bisa lewat `Masuk Admin`); allowlist & cookie tetap berlaku. `vworksofficial@gmail.com` dan `demo.admin@venturego.id` terdaftar di `isStaffEmail`.
 9. **Record lama milik akun anonim tidak bisa diakses pemohon** setelah migrasi ke Google; admin masih melihatnya di `/admin`, tetapi tidak ada jalur klaim karena email anonim tidak tersimpan. Jangan hapus record tersebut.
 10. **Kredensial akun demo ada di `src/lib/demo-accounts.json`** (`demo.user@venturego.id` / `UserDemo123!` dan `demo.admin@venturego.id` / `AdminDemo123!`), tetapi tombol `Masuk User` & `Masuk Admin` hanya ditampilkan di mode lokal (`NODE_ENV !== 'production'`). Di production (`NODE_ENV === 'production'`), halaman selamat datang hanya menampilkan 1 tombol `Masuk dengan Google`.
-11. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Untuk login Google di lokal, gunakan `http://localhost:3000` (akses ke `127.0.0.1` otomatis dialihkan ke `localhost` karena Firebase hanya mengizinkan domain `localhost` secara bawaan). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
-12. Halaman 404 (`not-found`) masih berbahasa Inggris.
+11. **NIS diterbitkan saat profil pertama kali dibuka** melalui transaksi Firestore pada `studentProfiles` dan `systemCounters`; tidak perlu migrasi massal dokumen pengajuan. Nomor yang sudah diterbitkan tetap sama untuk UID tersebut.
+12. **PDF akad final belum tersedia sampai staf mengunggah dokumen bertanda tangan** dari tab Persetujuan & Akad di `/admin` setelah biaya berstatus `Disepakati`.
+13. **Mode development terhubung langsung ke project Firebase Cloud di `.env.local`** (tanpa memerlukan emulator lokal). Untuk login Google di lokal, gunakan `http://localhost:3000` (akses ke `127.0.0.1` otomatis dialihkan ke `localhost` karena Firebase hanya mengizinkan domain `localhost` secara bawaan). Akun demo dibuat otomatis saat tombol `Masuk User` / `Masuk Admin` diklik atau melalui `node --env-file=.env.local scripts/seed-demo-accounts.mjs`.
+14. **Mengganti PDF akad mengaitkan file baru ke aplikasi; file versi sebelumnya tidak dihapus dari Google Drive** agar arsip lama tidak terhapus.
+15. Halaman 404 (`not-found`) masih berbahasa Inggris.
 
 ---
 
 ## 9. Peta File Sumber
 
-| Area        | File                                                                                                                              |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Formulir    | `src/app/(frontend)/page.tsx`, `src/app/(frontend)/actions.ts`                                                                    |
-| Dashboard   | `src/app/(frontend)/dashboard/**` (page + actions per halaman, `layout.tsx` guard akun)                                           |
-| Admin       | `src/app/(frontend)/admin/**` (`page.tsx`, `admin-dashboard.tsx`, `finance-terms-fields.tsx`, `actions.ts`)                       |
-| Auth        | `src/lib/auth-client.ts`, `src/lib/auth-shared.ts`, `src/lib/demo-accounts.{ts,json}`, `firebase-admin.ts`, `firebase-session.ts` |
-| Seed demo   | `scripts/seed-demo-accounts.mjs`                                                                                                  |
-| Upload API  | `src/app/api/applicant/uploads/route.ts`, `src/lib/upload-client.ts`                                                              |
-| Drive       | `src/lib/gdrive.ts` (OAuth, folder, resumable, ticket HMAC)                                                                       |
-| Dokumen     | `src/lib/documents.ts` (daftar slot, batas, validasi tanda tangan)                                                                |
-| Pembayaran  | `src/lib/xendit.ts`, `src/app/api/webhooks/xendit/route.ts`, `dashboard/pembayaran/*`                                             |
-| Firebase    | `src/lib/firebase-admin.ts`, `firebase-client.ts`, `firebase-session.ts`, `firebase-data.ts`                                      |
-| Admin unduh | `src/app/api/admin/applications/[id]/documents/[index]/route.ts`                                                                  |
+| Area               | File                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Formulir           | `src/app/(frontend)/page.tsx`, `src/app/(frontend)/actions.ts`                                                                    |
+| Dashboard          | `src/app/(frontend)/dashboard/**` (page + actions per halaman, `layout.tsx` guard akun)                                           |
+| Admin              | `src/app/(frontend)/admin/**` (`page.tsx`, `admin-dashboard.tsx`, `finance-terms-fields.tsx`, `actions.ts`)                       |
+| Auth               | `src/lib/auth-client.ts`, `src/lib/auth-shared.ts`, `src/lib/demo-accounts.{ts,json}`, `firebase-admin.ts`, `firebase-session.ts` |
+| Seed demo          | `scripts/seed-demo-accounts.mjs`                                                                                                  |
+| Upload API         | `src/app/api/applicant/uploads/route.ts`, `src/lib/upload-client.ts`                                                              |
+| Drive              | `src/lib/gdrive.ts` (OAuth, folder, resumable, ticket HMAC)                                                                       |
+| Dokumen            | `src/lib/documents.ts` (daftar slot, batas, validasi tanda tangan)                                                                |
+| Pembayaran         | `src/lib/xendit.ts`, `src/app/api/webhooks/xendit/route.ts`, `dashboard/pembayaran/*`                                             |
+| Firebase           | `src/lib/firebase-admin.ts`, `firebase-client.ts`, `firebase-session.ts`, `firebase-data.ts`                                      |
+| Admin/Pemohon akad | `src/app/api/admin/applications/[id]/agreement/route.ts`, `src/app/api/applicant/applications/[id]/agreement/route.ts`            |
+| Admin unduh berkas | `src/app/api/admin/applications/[id]/documents/[index]/route.ts`                                                                  |

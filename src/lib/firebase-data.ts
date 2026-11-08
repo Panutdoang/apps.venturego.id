@@ -71,6 +71,15 @@ export type FinancingApplicationRecord = {
   departureDetails: Record<string, unknown> | null
   fundingNeeds: Record<string, unknown>[]
   financialPlan: Record<string, unknown>
+  agreementPdf?: {
+    fileId: string
+    fileName: string
+    mimeType: 'application/pdf'
+    size: number
+    uploadedAt: string
+    uploadedBy: string
+    agreementReference: string
+  }
   financialPlanHistory?: {
     changedAt: string
     changedBy: string

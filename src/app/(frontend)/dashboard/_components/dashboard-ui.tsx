@@ -190,29 +190,33 @@ export function DashboardScaffold({
   active,
   title,
   subtitle,
+  showHeader = true,
   children,
 }: {
   active: PrimaryRoute
   title: string
   subtitle?: string
+  showHeader?: boolean
   children: ReactNode
 }) {
   return (
     <main className="dashboard-app min-h-dvh bg-[var(--canvas)]">
       <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-[#f8f9fd] shadow-[0_0_48px_rgba(15,23,42,0.08)]">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
-          <Link
-            aria-label="Kembali ke dashboard"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700"
-            href="/dashboard"
-          >
-            <DashboardIcon name="arrowLeft" />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-slate-950">{title}</h1>
-            {subtitle && <p className="mt-0.5 truncate text-[11px] text-slate-500">{subtitle}</p>}
-          </div>
-        </header>
+        {showHeader && (
+          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
+            <Link
+              aria-label="Kembali ke dashboard"
+              className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700"
+              href="/dashboard"
+            >
+              <DashboardIcon name="arrowLeft" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold tracking-tight text-slate-950">{title}</h1>
+              {subtitle && <p className="mt-0.5 truncate text-[11px] text-slate-500">{subtitle}</p>}
+            </div>
+          </header>
+        )}
         <div className="flex flex-1 flex-col gap-5 px-5 py-5 pb-32">{children}</div>
         <DashboardBottomNav active={active} />
       </section>

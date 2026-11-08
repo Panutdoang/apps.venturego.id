@@ -158,7 +158,12 @@ export default function UploadDocumentsPage() {
   }
 
   return (
-    <DashboardScaffold active="berkas" subtitle="Lengkapi dokumen pengajuan" title="Unggah berkas">
+    <DashboardScaffold
+      active="berkas"
+      showHeader={false}
+      subtitle="Lengkapi dokumen pengajuan"
+      title="Unggah berkas"
+    >
       <div className="flex items-start gap-3 rounded-2xl bg-indigo-50 p-4">
         <DashboardIcon name="shield" className="size-5 shrink-0 text-[var(--primary)]" />
         <p className="text-[11px] leading-5 text-slate-600">

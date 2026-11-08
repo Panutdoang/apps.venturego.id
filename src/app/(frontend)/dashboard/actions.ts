@@ -1,5 +1,6 @@
 'use server'
 
+import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
 import { isAllowedSignInProvider } from '@/lib/auth-shared'
 
@@ -60,10 +61,16 @@ export type UserApplicationDetail = {
   requestedFinancingAmount: number | null
   totalObligation: number | null
   finalAgreementReference: string | null
+  agreementPdf: {
+    fileName: string
+    size: number | null
+    uploadedAt: string | null
+  } | null
   acceptedAt: string | null
   createdAt: string | null
   updatedAt: string | null
   personalDetails: {
+    domicileSameAsIdCard: boolean
     birthPlace: string
     birthDate: string
     gender: string
@@ -104,6 +111,25 @@ export type UserActivityFeedResult =
       payments: UserPaymentItem[]
     }
   | { ok: false; message: string }
+
+export type StudentNumberResult =
+  | { ok: true; studentNumber: string }
+  | { ok: false; message: string }
+
+export type ApplicantProfileInput = {
+  applicantName: string
+  phone: string
+  birthPlace: string
+  birthDate: string
+  gender: 'MALE' | 'FEMALE'
+  religion: 'ISLAM' | 'PROTESTANT' | 'CATHOLIC' | 'HINDU' | 'BUDDHIST' | 'CONFUCIAN'
+  idCardAddress: string
+  domicileSameAsIdCard: boolean
+  domicileAddress: string
+  domicilePostalCode: string
+}
+
+export type ApplicantProfileUpdateResult = { ok: true } | { ok: false; message: string }
 
 const verifyUserIdentity = async (token: string) => {
   if (!token || token.length > 10_000) return null
@@ -183,6 +209,168 @@ const readTimestampMillis = (value: unknown): number | null => {
     return Number.isFinite(parsed) ? parsed : null
   }
   return null
+}
+
+const getJakartaYear = () =>
+  new Intl.DateTimeFormat('en', { timeZone: 'Asia/Jakarta', year: 'numeric' }).format(new Date())
+
+export async function getOrCreateStudentNumber(token: string): Promise<StudentNumberResult> {
+  try {
+    const identity = await verifyUserIdentity(token)
+    if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
+
+    const firestore = getFirebaseFirestore()
+    const year = getJakartaYear()
+    const profileRef = firestore.collection('studentProfiles').doc(identity.uid)
+    const counterRef = firestore.collection('systemCounters').doc(`student-numbers-${year}`)
+
+    const studentNumber = await firestore.runTransaction(async (transaction) => {
+      const profile = await transaction.get(profileRef)
+      const existingNumber = profile.data()?.studentNumber
+      if (typeof existingNumber === 'string' && /^VSV-\d{4,}-\d{4}$/.test(existingNumber)) {
+        return existingNumber
+      }
+
+      const counter = await transaction.get(counterRef)
+      const previous = counter.data()?.lastIssued
+      const nextSequence =
+        typeof previous === 'number' && Number.isSafeInteger(previous) && previous >= 0
+          ? previous + 1
+          : 1
+      const nextNumber = `VSV-${String(nextSequence).padStart(4, '0')}-${year}`
+
+      transaction.set(counterRef, {
+        year: Number(year),
+        lastIssued: nextSequence,
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      transaction.set(
+        profileRef,
+        {
+          ownerFirebaseUid: identity.uid,
+          studentNumber: nextNumber,
+          issuedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+
+      return nextNumber
+    })
+
+    return { ok: true, studentNumber }
+  } catch {
+    return { ok: false, message: 'Nomor induk siswa belum dapat dimuat. Silakan coba lagi.' }
+  }
+}
+
+export async function updateApplicantPersonalDetails(
+  token: string,
+  applicationId: string,
+  input: ApplicantProfileInput,
+): Promise<ApplicantProfileUpdateResult> {
+  try {
+    const identity = await verifyUserIdentity(token)
+    if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
+    if (typeof applicationId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(applicationId)) {
+      return { ok: false, message: 'Pengajuan tidak valid.' }
+    }
+
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return { ok: false, message: 'Data profil tidak valid.' }
+    }
+
+    const applicantName = typeof input.applicantName === 'string' ? input.applicantName.trim() : ''
+    const phone = typeof input.phone === 'string' ? input.phone.trim() : ''
+    const birthPlace = typeof input.birthPlace === 'string' ? input.birthPlace.trim() : ''
+    const birthDate = typeof input.birthDate === 'string' ? input.birthDate.trim() : ''
+    const idCardAddress = typeof input.idCardAddress === 'string' ? input.idCardAddress.trim() : ''
+    const domicileAddress = input.domicileSameAsIdCard
+      ? idCardAddress
+      : typeof input.domicileAddress === 'string'
+        ? input.domicileAddress.trim()
+        : ''
+    const domicilePostalCode =
+      typeof input.domicilePostalCode === 'string' ? input.domicilePostalCode.trim() : ''
+    const religions = ['ISLAM', 'PROTESTANT', 'CATHOLIC', 'HINDU', 'BUDDHIST', 'CONFUCIAN']
+
+    if (
+      applicantName.length < 2 ||
+      applicantName.length > 100 ||
+      phone.length > 24 ||
+      !/^(\+62|62|0)[0-9]{8,14}$/.test(phone.replace(/[\s-]/g, '')) ||
+      birthPlace.length < 2 ||
+      birthPlace.length > 80 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) ||
+      !['MALE', 'FEMALE'].includes(input.gender) ||
+      !religions.includes(input.religion) ||
+      typeof input.domicileSameAsIdCard !== 'boolean' ||
+      idCardAddress.length < 5 ||
+      idCardAddress.length > 500 ||
+      domicileAddress.length < 5 ||
+      domicileAddress.length > 500 ||
+      !/^\d{0,10}$/.test(domicilePostalCode)
+    ) {
+      return {
+        ok: false,
+        message: 'Periksa kembali nama, nomor WhatsApp, tanggal lahir, dan alamat.',
+      }
+    }
+
+    const birth = new Date(`${birthDate}T00:00:00.000Z`)
+    if (
+      Number.isNaN(birth.getTime()) ||
+      birth.toISOString().slice(0, 10) !== birthDate ||
+      birth.getUTCFullYear() < 1900
+    ) {
+      return { ok: false, message: 'Tanggal lahir tidak valid.' }
+    }
+
+    const applicationRef = getFirebaseFirestore().collection('applications').doc(applicationId)
+    const outcome = await getFirebaseFirestore().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(applicationRef)
+      const data = snapshot.data()
+      if (!snapshot.exists || data?.ownerFirebaseUid !== identity.uid) return 'NOT_FOUND'
+
+      const pricingStatus = data?.financialPlan?.pricingStatus
+      if (pricingStatus === 'AGREED' || ['ACTIVE', 'COMPLETED'].includes(String(data.status))) {
+        return 'LOCKED'
+      }
+
+      transaction.update(applicationRef, {
+        applicantName: applicantName.replace(/[<>]/g, ''),
+        phone: phone.replace(/[<>]/g, ''),
+        personalDetails: {
+          ...(data.personalDetails && typeof data.personalDetails === 'object'
+            ? data.personalDetails
+            : {}),
+          birthPlace: birthPlace.replace(/[<>]/g, ''),
+          birthDate,
+          gender: input.gender,
+          religion: input.religion,
+          idCardAddress: idCardAddress.replace(/[<>]/g, ''),
+          domicileSameAsIdCard: input.domicileSameAsIdCard,
+          domicileAddress: domicileAddress.replace(/[<>]/g, ''),
+          domicilePostalCode,
+        },
+        applicantProfileUpdatedAt: FieldValue.serverTimestamp(),
+      })
+      return 'UPDATED'
+    })
+
+    if (outcome === 'NOT_FOUND') {
+      return { ok: false, message: 'Pengajuan tidak ditemukan pada akun ini.' }
+    }
+    if (outcome === 'LOCKED') {
+      return {
+        ok: false,
+        message:
+          'Data terkunci setelah akad disepakati atau pembiayaan aktif. Hubungi Pusat Bantuan untuk koreksi.',
+      }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, message: 'Data diri belum dapat disimpan. Silakan coba lagi.' }
+  }
 }
 
 export async function getDashboardSummary(token: string): Promise<DashboardSummaryResult> {
@@ -347,6 +535,11 @@ export async function getUserActivityFeed(token: string): Promise<UserActivityFe
             ? String((data.userFinancingAcceptance as { acceptedAt: string }).acceptedAt)
             : null
 
+        const agreementDocument =
+          data.agreementPdf && typeof data.agreementPdf === 'object'
+            ? (data.agreementPdf as Record<string, unknown>)
+            : null
+
         const detail: UserApplicationDetail = {
           id: document.id,
           applicationId: data.applicationId,
@@ -369,10 +562,30 @@ export async function getUserActivityFeed(token: string): Promise<UserActivityFe
             financialPlan.finalAgreementReference
               ? financialPlan.finalAgreementReference
               : null,
+          agreementPdf:
+            financialPlan.pricingStatus === 'AGREED' &&
+            agreementDocument &&
+            typeof agreementDocument.fileId === 'string' &&
+            typeof agreementDocument.agreementReference === 'string' &&
+            agreementDocument.agreementReference === financialPlan.finalAgreementReference
+              ? {
+                  fileName:
+                    typeof agreementDocument.fileName === 'string'
+                      ? agreementDocument.fileName
+                      : 'Akad Wakalah bil Ujrah.pdf',
+                  size:
+                    typeof agreementDocument.size === 'number' &&
+                    Number.isFinite(agreementDocument.size)
+                      ? agreementDocument.size
+                      : null,
+                  uploadedAt: readTimestampIso(agreementDocument.uploadedAt),
+                }
+              : null,
           acceptedAt: acceptance,
           createdAt: readTimestampIso(data.createdAt),
           updatedAt: readTimestampIso(data.updatedAt),
           personalDetails: {
+            domicileSameAsIdCard: personal.domicileSameAsIdCard === true,
             birthPlace: typeof personal.birthPlace === 'string' ? personal.birthPlace : '',
             birthDate: typeof personal.birthDate === 'string' ? personal.birthDate : '',
             gender: typeof personal.gender === 'string' ? personal.gender : '',

@@ -159,7 +159,12 @@ export default function HistoryPage() {
   )
 
   return (
-    <DashboardScaffold active="riwayat" subtitle="Seluruh aktivitas akun" title="Riwayat transaksi">
+    <DashboardScaffold
+      active="riwayat"
+      showHeader={false}
+      subtitle="Seluruh aktivitas akun"
+      title="Riwayat transaksi"
+    >
       <div className="grid grid-cols-3 gap-2">
         {(['Semua', 'Pembayaran', 'Dokumen'] as const).map((item) => (
           <button

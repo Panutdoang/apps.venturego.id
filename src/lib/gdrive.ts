@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { Buffer } from 'node:buffer'
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 export const DRIVE_ROOT_FOLDER_NAME = 'VentureGo Berkas'
 
@@ -260,6 +260,51 @@ export const sendResumableChunk = async (
     throw new GDriveError('Sesi unggah kedaluwarsa. Silakan unggah ulang.', 'INVALID')
   }
   throw new GDriveError('Berkas gagal diteruskan ke Google Drive.', 'UPSTREAM')
+}
+
+export const uploadDriveFile = async (options: {
+  parentFolderId: string
+  fileName: string
+  mimeType: string
+  bytes: Uint8Array
+}): Promise<{ fileId: string; size: number }> => {
+  if (
+    !FILE_ID_PATTERN.test(options.parentFolderId) ||
+    !options.fileName ||
+    !options.bytes.byteLength
+  ) {
+    throw new GDriveError('Data berkas untuk Google Drive tidak valid.', 'INVALID')
+  }
+
+  const boundary = `venturego_${randomBytes(18).toString('hex')}`
+  const metadata = JSON.stringify({ name: options.fileName, parents: [options.parentFolderId] })
+  const multipartBody = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${options.mimeType}\r\n\r\n`,
+      'utf8',
+    ),
+    Buffer.from(options.bytes),
+    Buffer.from(`\r\n--${boundary}--`, 'utf8'),
+  ])
+
+  const response = await driveFetch('/upload/drive/v3/files?uploadType=multipart&fields=id,size', {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body: multipartBody,
+  })
+  if (!response.ok) {
+    if (response.status === 403) throw new GDriveError('Akses Google Drive ditolak.', 'FORBIDDEN')
+    throw new GDriveError('Google Drive gagal menyimpan berkas akad.', 'UPSTREAM')
+  }
+
+  const data = (await response.json().catch(() => null)) as {
+    id?: string
+    size?: string | number
+  } | null
+  if (!data?.id || !FILE_ID_PATTERN.test(data.id)) {
+    throw new GDriveError('Google Drive tidak mengembalikan identitas berkas.', 'UPSTREAM')
+  }
+  return { fileId: data.id, size: Number(data.size ?? options.bytes.byteLength) }
 }
 
 export const getDriveFileInfo = async (

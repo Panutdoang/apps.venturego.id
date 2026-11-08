@@ -335,6 +335,7 @@ function ApplicationDrawerForm({
   setActiveTab,
   pending,
   onSave,
+  onUploadAgreement,
   onClose,
 }: {
   application: FinancingApplicationRecord
@@ -343,11 +344,14 @@ function ApplicationDrawerForm({
   setActiveTab: (tab: DetailTabId) => void
   pending: boolean
   onSave: (application: FinancingApplicationRecord, formData: FormData) => void
+  onUploadAgreement: (applicationId: string, file: File) => Promise<void>
   onClose: () => void
 }) {
   const [docStatuses, setDocStatuses] = useState<ApplicationDocumentStatus[]>(() =>
     application.documents.map((doc) => doc.status),
   )
+  const [agreementUploading, setAgreementUploading] = useState(false)
+  const [agreementUploadError, setAgreementUploadError] = useState('')
 
   const definitions =
     DOCUMENT_DEFINITIONS[application.product] ?? DOCUMENT_DEFINITIONS.DEPARTURE_BRIDGING
@@ -359,6 +363,11 @@ function ApplicationDrawerForm({
   ).length
 
   const pricingStatus = String(application.financialPlan?.pricingStatus ?? 'ESTIMATED')
+  const agreementPdfCurrent = Boolean(
+    application.agreementPdf &&
+    application.agreementPdf.agreementReference ===
+      application.financialPlan?.finalAgreementReference,
+  )
   const schedule = readScheduleRows(application.financialPlan?.schedule)
   const paidSet = new Set(
     Array.isArray(application.paidInstallments) ? application.paidInstallments : [],
@@ -381,6 +390,29 @@ function ApplicationDrawerForm({
     setDocStatuses((current) =>
       current.map((status, index) => (application.documents[index]?.fileId ? 'VERIFIED' : status)),
     )
+  }
+
+  const selectAgreementPdf = async (file: File | undefined) => {
+    setAgreementUploadError('')
+    if (!file) return
+    if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) {
+      setAgreementUploadError('Pilih berkas akad berformat PDF.')
+      return
+    }
+    if (file.size <= 0 || file.size > 4 * 1024 * 1024) {
+      setAgreementUploadError('Ukuran PDF akad maksimal 4 MB.')
+      return
+    }
+    setAgreementUploading(true)
+    try {
+      await onUploadAgreement(application.id, file)
+    } catch (error) {
+      setAgreementUploadError(
+        error instanceof Error ? error.message : 'PDF akad belum dapat diunggah.',
+      )
+    } finally {
+      setAgreementUploading(false)
+    }
   }
 
   return (
@@ -779,6 +811,66 @@ function ApplicationDrawerForm({
               </p>
             </div>
           </div>
+          <section className="rounded-xl border border-slate-200 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">PDF Akad Wakalah bil Ujrah</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Unggah salinan PDF final yang telah ditandatangani. Berkas disimpan privat di
+                  Google Drive dan hanya dapat diakses staf serta pemohon pengajuan ini.
+                </p>
+              </div>
+              {agreementPdfCurrent ? (
+                <a
+                  className="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-[#17158c] hover:bg-indigo-100"
+                  href={`/api/admin/applications/${application.id}/agreement`}
+                >
+                  Buka PDF
+                </a>
+              ) : null}
+            </div>
+            {pricingStatus !== 'AGREED' ? (
+              <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+                PDF final dapat diunggah setelah status biaya menjadi Disepakati.
+              </p>
+            ) : (
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#17158c] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#111077]">
+                <span>
+                  {agreementUploading
+                    ? 'Mengunggah PDF…'
+                    : agreementPdfCurrent
+                      ? 'Ganti PDF akad'
+                      : 'Unggah PDF akad'}
+                </span>
+                <input
+                  accept="application/pdf,.pdf"
+                  className="sr-only"
+                  disabled={agreementUploading}
+                  onChange={(event) => {
+                    void selectAgreementPdf(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                  type="file"
+                />
+              </label>
+            )}
+            {agreementPdfCurrent && application.agreementPdf ? (
+              <p className="mt-2 text-[11px] text-slate-500">
+                {application.agreementPdf.fileName} · {formatSizeMb(application.agreementPdf.size)}{' '}
+                · Diunggah oleh {application.agreementPdf.uploadedBy}
+              </p>
+            ) : application.agreementPdf ? (
+              <p className="mt-2 text-[11px] text-amber-700">
+                PDF tersimpan untuk referensi akad sebelumnya. Unggah PDF baru untuk referensi akad
+                saat ini.
+              </p>
+            ) : null}
+            {agreementUploadError && (
+              <p className="mt-2 text-xs text-red-700" role="alert">
+                {agreementUploadError}
+              </p>
+            )}
+          </section>
         </div>
 
         {/* TAB: INSTALLMENTS */}
@@ -1164,6 +1256,26 @@ export function AdminDashboard({
         router.refresh()
       }
     })
+  }
+
+  const uploadAgreement = async (applicationId: string, file: File) => {
+    const response = await fetch(`/api/admin/applications/${applicationId}/agreement`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/pdf',
+        'x-agreement-file-name': encodeURIComponent(file.name),
+      },
+      body: file,
+    })
+    const result = (await response.json().catch(() => ({}))) as {
+      ok?: boolean
+      message?: string
+    }
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || 'PDF akad belum dapat diunggah.')
+    }
+    setSavedNotice(`PDF akad ${applicationId} berhasil diunggah.`)
+    router.refresh()
   }
 
   const allMenus = SIDEBAR_GROUPS.flatMap((g) => g.items)
@@ -2003,6 +2115,7 @@ export function AdminDashboard({
               key={drawerApplication.id}
               onClose={() => setDrawerAppId(null)}
               onSave={save}
+              onUploadAgreement={uploadAgreement}
               payments={drawerPayments}
               pending={pending}
               setActiveTab={setDrawerTab}

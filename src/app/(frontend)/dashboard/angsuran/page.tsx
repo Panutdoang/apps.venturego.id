@@ -427,7 +427,12 @@ export default function InstallmentsPage() {
   }
 
   return (
-    <DashboardScaffold active="angsuran" subtitle="Rincian sesuai akad" title="Angsuran saya">
+    <DashboardScaffold
+      active="angsuran"
+      showHeader={false}
+      subtitle="Rincian sesuai akad"
+      title="Angsuran saya"
+    >
       {loading && (
         <>
           <DashboardCardSkeleton rows={3} />
