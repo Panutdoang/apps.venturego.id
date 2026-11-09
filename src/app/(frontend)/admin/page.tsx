@@ -70,7 +70,14 @@ export default async function AdminPage() {
     }
   })
 
+  const todayIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+
   return (
-    <AdminDashboard email={staff.email ?? ''} applications={applications} payments={payments} />
+    <AdminDashboard
+      applications={applications}
+      email={staff.email ?? ''}
+      payments={payments}
+      todayIso={todayIso}
+    />
   )
 }

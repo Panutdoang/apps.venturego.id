@@ -372,12 +372,10 @@ const readScheduleRows = (value: unknown): ScheduleRow[] => {
   )
 }
 
-const getLocalIsoDate = (offsetDays = 0) => {
-  const date = new Date()
-  date.setDate(date.getDate() + offsetDays)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate(),
-  ).padStart(2, '0')}`
+const addDaysIso = (iso: string, days: number) => {
+  const date = new Date(`${iso}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 const getDaysBetween = (fromIso: string, toIso: string) =>
@@ -396,7 +394,10 @@ type InstallmentSummary = {
   openRelief: number
 }
 
-const summarizeInstallments = (app: FinancingApplicationRecord): InstallmentSummary => {
+const summarizeInstallments = (
+  app: FinancingApplicationRecord,
+  todayIso: string,
+): InstallmentSummary => {
   const schedule = readScheduleRows(app.financialPlan?.schedule)
   const paidSet = new Set(Array.isArray(app.paidInstallments) ? app.paidInstallments : [])
   const paidRows = schedule.filter((row) => paidSet.has(row.installment))
@@ -411,10 +412,9 @@ const summarizeInstallments = (app: FinancingApplicationRecord): InstallmentSumm
     obligation !== null
       ? Math.max(0, obligation - paidAmount)
       : unpaidRows.reduce((sum, row) => sum + row.amount, 0)
-  const today = getLocalIsoDate()
-  const soon = getLocalIsoDate(7)
+  const soon = addDaysIso(todayIso, 7)
   const nextDue = unpaidRows[0] ?? null
-  const overdueCount = unpaidRows.filter((row) => row.dueDate < today).length
+  const overdueCount = unpaidRows.filter((row) => row.dueDate < todayIso).length
   const openRelief = (app.supportRequests ?? []).filter((req) => req.status === 'OPEN').length
   return {
     schedule,
@@ -425,7 +425,7 @@ const summarizeInstallments = (app: FinancingApplicationRecord): InstallmentSumm
     unpaidCount: unpaidRows.length,
     nextDue,
     overdueCount,
-    dueSoon: Boolean(nextDue && nextDue.dueDate >= today && nextDue.dueDate <= soon),
+    dueSoon: Boolean(nextDue && nextDue.dueDate >= todayIso && nextDue.dueDate <= soon),
     openRelief,
   }
 }
@@ -479,6 +479,7 @@ function ApplicationDrawerForm({
   onSave,
   onUploadAgreement,
   onClose,
+  todayIso,
 }: {
   application: FinancingApplicationRecord
   payments: AdminPaymentRecord[]
@@ -488,6 +489,7 @@ function ApplicationDrawerForm({
   onSave: (application: FinancingApplicationRecord, formData: FormData) => void
   onUploadAgreement: (applicationId: string, file: File) => Promise<void>
   onClose: () => void
+  todayIso: string
 }) {
   const [docStatuses, setDocStatuses] = useState<ApplicationDocumentStatus[]>(() =>
     application.documents.map((doc) => doc.status),
@@ -523,7 +525,7 @@ function ApplicationDrawerForm({
       ? application.financialPlan.totalObligation
       : null
   const nextUnpaidRow = schedule.find((row) => !paidSet.has(row.installment)) ?? null
-  const nextDueOverdue = Boolean(nextUnpaidRow && nextUnpaidRow.dueDate < getLocalIsoDate())
+  const nextDueOverdue = Boolean(nextUnpaidRow && nextUnpaidRow.dueDate < todayIso)
 
   const personal = application.personalDetails ?? {}
   const eligibility = application.eligibility ?? {}
@@ -1026,7 +1028,7 @@ function ApplicationDrawerForm({
               </strong>
               {nextDueOverdue && nextUnpaidRow && (
                 <span className="mt-1 block text-[11px] font-semibold text-red-700">
-                  Terlambat {getDaysBetween(nextUnpaidRow.dueDate, getLocalIsoDate())} hari
+                  Terlambat {getDaysBetween(nextUnpaidRow.dueDate, todayIso)} hari
                 </span>
               )}
             </div>
@@ -1267,10 +1269,12 @@ export function AdminDashboard({
   email,
   applications,
   payments = [],
+  todayIso,
 }: {
   email: string
   applications: FinancingApplicationRecord[]
   payments?: AdminPaymentRecord[]
+  todayIso: string
 }) {
   const router = useRouter()
   const [error, setError] = useState('')
@@ -1426,9 +1430,9 @@ export function AdminDashboard({
   const activeInstallmentSummaries = useMemo(
     () =>
       filteredApplications
-        .map((app) => ({ app, summary: summarizeInstallments(app) }))
+        .map((app) => ({ app, summary: summarizeInstallments(app, todayIso) }))
         .filter(({ app, summary }) => hasActiveInstallment(app, summary)),
-    [filteredApplications],
+    [filteredApplications, todayIso],
   )
 
   const activeInstallmentMetrics = useMemo(() => {
@@ -2305,10 +2309,9 @@ export function AdminDashboard({
                     {/* Mobile cards */}
                     <ul className="divide-y divide-slate-100 lg:hidden">
                       {visibleActiveInstallments.map(({ app, summary }) => {
-                        const today = getLocalIsoDate()
                         const overdueDays =
                           summary.nextDue && summary.overdueCount > 0
-                            ? getDaysBetween(summary.nextDue.dueDate, today)
+                            ? getDaysBetween(summary.nextDue.dueDate, todayIso)
                             : 0
                         return (
                           <li className="p-4" key={app.id}>
@@ -2392,10 +2395,9 @@ export function AdminDashboard({
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {visibleActiveInstallments.map(({ app, summary }) => {
-                            const today = getLocalIsoDate()
                             const overdueDays =
                               summary.nextDue && summary.overdueCount > 0
-                                ? getDaysBetween(summary.nextDue.dueDate, today)
+                                ? getDaysBetween(summary.nextDue.dueDate, todayIso)
                                 : 0
                             const progressPercent =
                               summary.schedule.length > 0
@@ -2645,6 +2647,7 @@ export function AdminDashboard({
               payments={drawerPayments}
               pending={pending}
               setActiveTab={setDrawerTab}
+              todayIso={todayIso}
             />
           </div>
         </div>
