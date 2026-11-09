@@ -15,18 +15,11 @@ export type InstallmentEntry = {
 export const MAX_FINANCING_LINES = 20
 export const MAX_INSTALLMENTS = 36
 
-export function parseFinancingLines(value: string): FinancingCostLine[] | null {
-  if (value.length > 20_000) return null
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(value)
-  } catch {
-    return null
-  }
-  if (!Array.isArray(parsed) || parsed.length > MAX_FINANCING_LINES) return null
+export function coerceFinancingLines(value: unknown): FinancingCostLine[] | null {
+  if (!Array.isArray(value) || value.length > MAX_FINANCING_LINES) return null
 
   const lines: FinancingCostLine[] = []
-  for (const item of parsed) {
+  for (const item of value) {
     if (
       !item ||
       typeof item !== 'object' ||
@@ -50,6 +43,17 @@ export function parseFinancingLines(value: string): FinancingCostLine[] | null {
     })
   }
   return lines
+}
+
+export function parseFinancingLines(value: string): FinancingCostLine[] | null {
+  if (value.length > 20_000) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    return null
+  }
+  return coerceFinancingLines(parsed)
 }
 
 export function calculateInstallmentSchedule(

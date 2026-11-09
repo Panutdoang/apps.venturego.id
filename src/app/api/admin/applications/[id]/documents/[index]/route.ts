@@ -4,7 +4,7 @@ import { getStaffSession } from '@/lib/firebase-session'
 import { downloadDriveFile } from '@/lib/gdrive'
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; index: string }> },
 ) {
   const staff = await getStaffSession()
@@ -27,10 +27,11 @@ export async function GET(
 
     const contents = await downloadDriveFile(fileId)
     const fileName = String(document.fileName ?? 'dokumen').replace(/[\r\n"\\/]/g, '_')
+    const inline = new URL(request.url).searchParams.get('inline') === '1'
     return new Response(contents as unknown as BodyInit, {
       headers: {
         'Content-Type': String(document.mimeType ?? 'application/octet-stream'),
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${fileName}"`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
       },

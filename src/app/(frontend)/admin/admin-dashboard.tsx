@@ -4,16 +4,23 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import { DOCUMENT_DEFINITIONS } from '@/lib/documents'
+import { DOCUMENT_DEFINITIONS, getKtpDocumentIndex } from '@/lib/documents'
 import {
-  APPLICATION_DOCUMENT_STATUSES,
   APPLICATION_STATUSES,
   PRICING_STATUSES,
   type AdminPaymentRecord,
   type ApplicationDocumentStatus,
   type FinancingApplicationRecord,
 } from '@/lib/firebase-data'
-import { updateApplicationStatus } from './actions'
+import {
+  approveApplicationDocument,
+  approveApplicationPricing,
+  deleteApplicationDocument,
+  saveFinancialPlan,
+  setApplicationPricingAgreed,
+  updateApplicationWorkflow,
+  updateSupportRequest,
+} from './actions'
 import { FinanceTermsFields } from './finance-terms-fields'
 
 const STATUS_LABELS: Record<(typeof APPLICATION_STATUSES)[number], string> = {
@@ -44,18 +51,18 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   CANCELLED: 'bg-rose-50 text-rose-700 ring-rose-200',
 }
 
-const DOCUMENT_STATUS_LABELS: Record<(typeof APPLICATION_DOCUMENT_STATUSES)[number], string> = {
+const DOCUMENT_STATUS_LABELS: Record<ApplicationDocumentStatus, string> = {
   NOT_UPLOADED: 'Belum diunggah',
-  UPLOADED: 'Sudah diunggah',
-  VERIFIED: 'Diverifikasi',
-  REVISION_REQUIRED: 'Perlu perbaikan',
+  UPLOADED: 'Menunggu tinjauan',
+  VERIFIED: 'Sesuai',
+  REVISION_REQUIRED: 'Tidak sesuai',
 }
 
 const DOCUMENT_BADGE_STYLES: Record<ApplicationDocumentStatus, string> = {
   NOT_UPLOADED: 'bg-slate-100 text-slate-600',
-  UPLOADED: 'bg-blue-50 text-blue-700',
+  UPLOADED: 'bg-amber-50 text-amber-800',
   VERIFIED: 'bg-emerald-50 text-emerald-700',
-  REVISION_REQUIRED: 'bg-amber-50 text-amber-800',
+  REVISION_REQUIRED: 'bg-red-50 text-red-700',
 }
 
 const PRICING_STATUS_LABELS: Record<(typeof PRICING_STATUSES)[number], string> = {
@@ -138,10 +145,12 @@ type MenuId =
   | 'contracts'
   | 'installments'
   | 'activeInstallments'
+  | 'schedule'
+  | 'relief'
   | 'statistics'
   | 'audit'
 
-type DetailTabId = 'profile' | 'documents' | 'pricing' | 'contract' | 'installments' | 'support'
+type DetailTabId = 'profile' | 'nominal' | 'documents' | 'pricing' | 'contract'
 
 const SIDEBAR_GROUPS: {
   group: string
@@ -183,13 +192,25 @@ const SIDEBAR_GROUPS: {
         id: 'installments',
         label: 'Angsuran & Kas',
         subtitle: 'Pemantauan jadwal cicilan siswa, pembayaran Xendit, & permohonan keringanan',
-        defaultTab: 'installments',
+        defaultTab: 'profile',
       },
       {
         id: 'activeInstallments',
         label: 'Angsuran Aktif',
         subtitle: 'Siswa yang sedang mengangsur atau masih memiliki tanggungan',
-        defaultTab: 'installments',
+        defaultTab: 'profile',
+      },
+      {
+        id: 'schedule',
+        label: 'Jadwal Angsuran',
+        subtitle: 'Detail jadwal cicilan, progres bayar, dan transaksi Xendit per siswa',
+        defaultTab: 'profile',
+      },
+      {
+        id: 'relief',
+        label: 'Keringanan',
+        subtitle: 'Permohonan keringanan pemohon: status tinjauan dan tanggapan staf',
+        defaultTab: 'profile',
       },
     ],
   },
@@ -206,7 +227,7 @@ const SIDEBAR_GROUPS: {
         id: 'audit',
         label: 'Log Audit',
         subtitle: 'Riwayat perubahan rincian biaya dan jejak verifikasi staf',
-        defaultTab: 'support',
+        defaultTab: 'profile',
       },
     ],
   },
@@ -214,12 +235,122 @@ const SIDEBAR_GROUPS: {
 
 const DETAIL_TABS: { id: DetailTabId; label: string }[] = [
   { id: 'profile', label: 'Profil & Kelayakan' },
+  { id: 'nominal', label: 'Nominal Pengajuan' },
   { id: 'documents', label: 'Berkas Dokumen' },
   { id: 'pricing', label: 'Draft Biaya & Akad' },
   { id: 'contract', label: 'Status Persetujuan' },
-  { id: 'installments', label: 'Jadwal Angsuran' },
-  { id: 'support', label: 'Keringanan & Audit' },
 ]
+
+function TabIcon({ id }: { id: DetailTabId }) {
+  switch (id) {
+    case 'profile':
+      return (
+        <svg
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" strokeLinecap="round" />
+        </svg>
+      )
+    case 'nominal':
+      return (
+        <svg
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <rect height="14" rx="2" width="20" x="2" y="5" />
+          <circle cx="12" cy="12" r="2.5" />
+          <path d="M6 9h.01M18 15h.01" strokeLinecap="round" />
+        </svg>
+      )
+    case 'documents':
+      return (
+        <svg
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" strokeLinecap="round" />
+        </svg>
+      )
+    case 'pricing':
+      return (
+        <svg
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <rect height="16" rx="2" width="18" x="3" y="4" />
+          <path d="M7 8h10M7 12h4M13 12h4M7 16h4M13 16h4" strokeLinecap="round" />
+        </svg>
+      )
+    case 'contract':
+      return (
+        <svg
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="9" />
+        </svg>
+      )
+  }
+}
+
+function DestinationFlag({ destination }: { destination: string }) {
+  if (destination === 'JAPAN') {
+    return (
+      <svg
+        aria-hidden="true"
+        className="inline-block size-3.5 shrink-0 rounded-[2px] ring-1 ring-slate-200"
+        viewBox="0 0 24 24"
+      >
+        <rect fill="#ffffff" height="24" width="24" />
+        <circle cx="12" cy="12" r="6" fill="#bc002d" />
+      </svg>
+    )
+  }
+  return (
+    <svg
+      aria-hidden="true"
+      className="inline-block size-3.5 shrink-0 rounded-[2px] ring-1 ring-slate-200"
+      viewBox="0 0 24 24"
+    >
+      <rect fill="#e30a17" height="24" width="24" />
+      <path
+        d="M15.2 12a5.2 5.2 0 1 1-2.2-4.3A4.2 4.2 0 1 0 16.4 13"
+        fill="#ffffff"
+        stroke="#ffffff"
+        strokeLinejoin="round"
+        strokeWidth="0.6"
+      />
+      <path
+        d="M16.8 10.2l2.9.85-1.85 2.35.02-2.92 2.86.9-2.87.88.03 2.92-1.87-2.35z"
+        fill="#ffffff"
+      />
+    </svg>
+  )
+}
 
 function MenuIcon({ id }: { id: MenuId }) {
   switch (id) {
@@ -303,6 +434,36 @@ function MenuIcon({ id }: { id: MenuId }) {
         >
           <rect height="14" rx="2" width="20" x="2" y="5" />
           <path d="M8 12.5l2.5 2.5L16 9.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'schedule':
+      return (
+        <svg
+          className="size-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <rect height="16" rx="2" width="18" x="3" y="4" />
+          <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
+          <path d="M7.5 14h3M13.5 14h3M7.5 17.5h3" strokeLinecap="round" />
+        </svg>
+      )
+    case 'relief':
+      return (
+        <svg
+          className="size-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M12 20.5S4 15.5 4 9.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8 3.5c0 6-8 11-8 11z"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       )
     case 'statistics':
@@ -433,25 +594,41 @@ const summarizeInstallments = (
 const hasActiveInstallment = (app: FinancingApplicationRecord, summary: InstallmentSummary) =>
   app.status === 'ACTIVE' || summary.remaining > 0 || summary.unpaidCount > 0
 
+const compareInstallmentRows = (
+  a: { summary: InstallmentSummary },
+  b: { summary: InstallmentSummary },
+) => {
+  const aOverdue = a.summary.overdueCount > 0 ? 0 : 1
+  const bOverdue = b.summary.overdueCount > 0 ? 0 : 1
+  if (aOverdue !== bOverdue) return aOverdue - bOverdue
+  const aDue = a.summary.nextDue?.dueDate ?? '9999-99-99'
+  const bDue = b.summary.nextDue?.dueDate ?? '9999-99-99'
+  if (aDue !== bDue) return aDue.localeCompare(bDue)
+  return b.summary.remaining - a.summary.remaining
+}
+
 function DrawerAction({
   label,
   onClick,
   variant = 'secondary',
   ariaLabel,
+  disabled = false,
 }: {
   label: string
   onClick: () => void
   variant?: 'primary' | 'secondary'
   ariaLabel?: string
+  disabled?: boolean
 }) {
   return (
     <button
       aria-label={ariaLabel}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:cursor-not-allowed disabled:opacity-60 ${
         variant === 'primary'
           ? 'bg-[#17158c] text-white hover:bg-[#111077]'
           : 'border border-slate-200 bg-white text-[#17158c] hover:border-[#17158c]/30 hover:bg-indigo-50'
       }`}
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >
@@ -472,38 +649,54 @@ function DrawerAction({
 
 function ApplicationDrawerForm({
   application,
-  payments,
   activeTab,
   setActiveTab,
   pending,
+  error,
+  savedNotice,
+  onDismissError,
+  onDismissSaved,
   onSave,
+  onWorkflow,
+  onApproveDocument,
+  onDeleteDocument,
+  onApprovePricing,
+  onAgreePricing,
   onUploadAgreement,
   onClose,
-  todayIso,
 }: {
   application: FinancingApplicationRecord
-  payments: AdminPaymentRecord[]
   activeTab: DetailTabId
   setActiveTab: (tab: DetailTabId) => void
   pending: boolean
+  error: string
+  savedNotice: string
+  onDismissError: () => void
+  onDismissSaved: () => void
   onSave: (application: FinancingApplicationRecord, formData: FormData) => void
+  onWorkflow: (applicationId: string, status: string, internalNotes: string) => void
+  onApproveDocument: (applicationId: string, documentIndex: number) => void
+  onDeleteDocument: (applicationId: string, documentIndex: number) => void
+  onApprovePricing: (applicationId: string, newNominal: number | null) => void
+  onAgreePricing: (applicationId: string) => void
   onUploadAgreement: (applicationId: string, file: File) => Promise<void>
   onClose: () => void
-  todayIso: string
 }) {
-  const [docStatuses, setDocStatuses] = useState<ApplicationDocumentStatus[]>(() =>
-    application.documents.map((doc) => doc.status),
-  )
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [showNominalInput, setShowNominalInput] = useState(false)
+  const [newNominal, setNewNominal] = useState('')
+  const [workflowStatus, setWorkflowStatus] = useState(application.status)
+  const [workflowNotes, setWorkflowNotes] = useState(application.internalNotes ?? '')
   const [agreementUploading, setAgreementUploading] = useState(false)
   const [agreementUploadError, setAgreementUploadError] = useState('')
 
   const definitions =
     DOCUMENT_DEFINITIONS[application.product] ?? DOCUMENT_DEFINITIONS.DEPARTURE_BRIDGING
   const uploadedCount = application.documents.filter((doc) => Boolean(doc.fileId)).length
-  const verifiedCount = docStatuses.filter((status) => status === 'VERIFIED').length
-  const revisionCount = docStatuses.filter((status) => status === 'REVISION_REQUIRED').length
-  const openSupportCount = (application.supportRequests ?? []).filter(
-    (req) => req.status === 'OPEN',
+  const verifiedCount = application.documents.filter((doc) => doc.status === 'VERIFIED').length
+  const reviewCount = application.documents.filter((doc) => doc.status === 'UPLOADED').length
+  const revisionCount = application.documents.filter(
+    (doc) => doc.status === 'REVISION_REQUIRED',
   ).length
 
   const pricingStatus = String(application.financialPlan?.pricingStatus ?? 'ESTIMATED')
@@ -512,31 +705,51 @@ function ApplicationDrawerForm({
     application.agreementPdf.agreementReference ===
       application.financialPlan?.finalAgreementReference,
   )
-  const schedule = readScheduleRows(application.financialPlan?.schedule)
-  const paidSet = new Set(
-    Array.isArray(application.paidInstallments) ? application.paidInstallments : [],
-  )
-  const paidInstallmentsCount = schedule.filter((row) => paidSet.has(row.installment)).length
-  const paidAmountTotal = schedule
-    .filter((row) => paidSet.has(row.installment))
-    .reduce((sum, row) => sum + row.amount, 0)
-  const totalObligation =
-    typeof application.financialPlan?.totalObligation === 'number'
-      ? application.financialPlan.totalObligation
-      : null
-  const nextUnpaidRow = schedule.find((row) => !paidSet.has(row.installment)) ?? null
-  const nextDueOverdue = Boolean(nextUnpaidRow && nextUnpaidRow.dueDate < todayIso)
 
   const personal = application.personalDetails ?? {}
   const eligibility = application.eligibility ?? {}
   const fullCover = application.fullCoverDetails ?? {}
   const departure = application.departureDetails ?? {}
 
-  const markAllUploadedAsVerified = () => {
-    setDocStatuses((current) =>
-      current.map((status, index) => (application.documents[index]?.fileId ? 'VERIFIED' : status)),
-    )
-  }
+  const ktpIndex = getKtpDocumentIndex(application.product)
+  const ktpDocument = application.documents[ktpIndex]
+  const ktpIsPdf = String(ktpDocument?.mimeType ?? '')
+    .toLowerCase()
+    .includes('pdf')
+
+  const previewDocument = previewIndex !== null ? application.documents[previewIndex] : null
+  const previewIsPdf = String(previewDocument?.mimeType ?? '')
+    .toLowerCase()
+    .includes('pdf')
+
+  const requestedAmount =
+    application.product === 'DEPARTURE_BRIDGING'
+      ? Number(departure.requestedFinancingAmount) || 0
+      : 0
+  const estimatedMonthlyUjrah =
+    application.product === 'DEPARTURE_BRIDGING' && requestedAmount > 0
+      ? Math.round(requestedAmount * 0.024)
+      : null
+  const estimatedTotalUjrah = estimatedMonthlyUjrah === null ? null : estimatedMonthlyUjrah * 12
+  const estimatedAdminFee =
+    application.product === 'DEPARTURE_BRIDGING' && requestedAmount > 0
+      ? Math.round(requestedAmount * 0.05)
+      : null
+  const estimatedCashDisbursed =
+    estimatedAdminFee === null ? null : requestedAmount - estimatedAdminFee
+  const estimatedFinancingTotal =
+    estimatedTotalUjrah === null ? null : requestedAmount + estimatedTotalUjrah
+
+  const nominalCap =
+    application.product === 'DEPARTURE_BRIDGING' && requestedAmount > 0 ? requestedAmount : null
+  const parsedNewNominal = Number(newNominal.replace(/[^\d]/g, ''))
+  const newNominalValid =
+    Number.isSafeInteger(parsedNewNominal) &&
+    parsedNewNominal > 0 &&
+    (nominalCap === null || parsedNewNominal <= nominalCap)
+
+  const workflowDirty =
+    workflowStatus !== application.status || workflowNotes !== (application.internalNotes ?? '')
 
   const selectAgreementPdf = async (file: File | undefined) => {
     setAgreementUploadError('')
@@ -568,88 +781,92 @@ function ApplicationDrawerForm({
     >
       {/* Drawer Header: identity + close */}
       <div className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-[#17158c] px-2 py-0.5 text-[11px] font-bold text-white">
-                {application.applicationId}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
-                  STATUS_BADGE_STYLES[application.status] ??
-                  'bg-slate-100 text-slate-700 ring-slate-200'
-                }`}
-              >
-                {STATUS_LABELS[application.status as keyof typeof STATUS_LABELS] ??
-                  application.status}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                  PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
-                }`}
-              >
-                Biaya:{' '}
-                {PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
-                  pricingStatus}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
-                  application.status === 'ACTIVE' || application.status === 'COMPLETED'
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                    : 'bg-red-50 text-red-600 ring-red-200'
-                }`}
-              >
-                {application.status === 'ACTIVE' || application.status === 'COMPLETED'
-                  ? 'Folder siswa resmi'
-                  : 'Folder draft'}
-              </span>
-            </div>
-            <h2 className="mt-2 text-xl font-bold text-slate-900">{application.applicantName}</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {application.phone} · {application.lpkName} ·{' '}
-              {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'} ·{' '}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-md bg-[#17158c] px-2.5 py-1 text-xs font-bold text-white">
+              {application.applicationId}
+            </span>
+            <span className="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-[#17158c] ring-1 ring-inset ring-indigo-200">
               {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
-            </p>
+            </span>
           </div>
           <button
             aria-label="Tutup panel pengajuan"
-            className="shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c]"
+            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c]"
             onClick={onClose}
             type="button"
           >
-            Tutup ✕
+            ✕
           </button>
         </div>
+        <h2 className="mt-2.5 text-2xl font-extrabold tracking-tight text-slate-900">
+          {application.applicantName}
+        </h2>
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="font-medium text-slate-700">{application.lpkName}</span>
+          <span aria-hidden="true" className="text-slate-300">
+            |
+          </span>
+          <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
+            <DestinationFlag destination={application.destination} />
+            {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'}
+          </span>
+        </p>
+        {error && (
+          <div
+            className="mt-3 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800"
+            role="alert"
+          >
+            <span>{error}</span>
+            <button className="underline" onClick={onDismissError} type="button">
+              Tutup
+            </button>
+          </div>
+        )}
+        {savedNotice && (
+          <div
+            className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-900"
+            role="status"
+          >
+            <span>✓ {savedNotice}</span>
+            <button className="underline" onClick={onDismissSaved} type="button">
+              Tutup
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Drawer Navigation Tabs */}
-      <div className="border-b border-slate-200 bg-white px-6 py-2.5">
-        <div className="flex flex-wrap gap-1.5">
+      {/* Drawer Navigation Tabs — solid pill tab bar */}
+      <div className="border-b border-slate-200 bg-white px-6 py-3">
+        <div
+          aria-label="Tab detail pengajuan"
+          className="flex items-center gap-1.5 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
           {DETAIL_TABS.map((tab) => {
             const isActive = activeTab === tab.id
             let badge = ''
             if (tab.id === 'documents') badge = `${uploadedCount}/${application.documents.length}`
-            if (tab.id === 'installments' && schedule.length > 0) {
-              badge = `${paidInstallmentsCount}/${schedule.length}`
-            }
-            if (tab.id === 'support' && openSupportCount > 0) badge = `${openSupportCount}`
 
             return (
               <button
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+                aria-selected={isActive}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
                   isActive
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-[#17158c] text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                role="tab"
                 type="button"
               >
+                <TabIcon id={tab.id} />
                 <span>{tab.label}</span>
                 {badge && (
                   <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      isActive ? 'bg-white/15 text-white' : 'bg-slate-200 text-slate-600'
                     }`}
                   >
                     {badge}
@@ -664,66 +881,104 @@ function ApplicationDrawerForm({
       {/* Scrollable Drawer Body */}
       <div className="flex-1 overflow-y-auto p-6">
         {/* TAB: PROFILE */}
-        <div className={activeTab === 'profile' ? 'block space-y-5' : 'hidden'}>
-          {application.product === 'DEPARTURE_BRIDGING' && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-950">
-              Estimasi yang diajukan siswa:{' '}
-              <strong>{formatRupiah(departure.requestedFinancingAmount)}</strong> · Sisa kewajiban
-              LPK: <strong>{formatRupiah(departure.outstandingLPKAmount)}</strong>
+        <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 className="text-sm font-bold text-slate-900">Profil Pemohon</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Biodata, dokumen identitas, dan program LPK mitra
+              </p>
             </div>
-          )}
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-slate-200 p-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Biodata & Kontak Siswa
-              </h3>
-              <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <dt className="text-slate-400">Nama Lengkap</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
-                    {application.applicantName}
-                  </dd>
+            <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  KTP Pemohon
+                </h4>
+                <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                  {ktpDocument?.fileId ? (
+                    ktpIsPdf ? (
+                      <iframe
+                        className="h-44 w-full bg-white"
+                        src={`/api/admin/applications/${application.id}/documents/${ktpIndex}?inline=1`}
+                        title="Pratinjau KTP pemohon"
+                      />
+                    ) : (
+                      <img
+                        alt="KTP pemohon"
+                        className="h-44 w-full bg-white object-contain"
+                        src={`/api/admin/applications/${application.id}/documents/${ktpIndex}?inline=1`}
+                      />
+                    )
+                  ) : (
+                    <div className="flex h-44 items-center justify-center px-4 text-center text-xs text-slate-400">
+                      KTP belum diunggah
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <dt className="text-slate-400">No. WhatsApp</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">{application.phone}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">Tempat, Tgl Lahir</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
-                    {String(personal.birthPlace ?? '—')}, {String(personal.birthDate ?? '—')}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">Gender & Agama</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
-                    {personal.gender === 'FEMALE' ? 'Perempuan' : 'Laki-laki'} ·{' '}
-                    {RELIGION_LABELS[String(personal.religion ?? '')] ??
-                      String(personal.religion ?? '—')}
-                  </dd>
-                </div>
-                <div className="col-span-2">
-                  <dt className="text-slate-400">Alamat KTP</dt>
-                  <dd className="mt-0.5 rounded-lg bg-slate-50 p-2.5 text-slate-800">
-                    {String(personal.idCardAddress ?? '—')}
-                  </dd>
-                </div>
-                <div className="col-span-2">
-                  <dt className="text-slate-400">Alamat Domisili / Korespondensi</dt>
-                  <dd className="mt-0.5 rounded-lg bg-slate-50 p-2.5 text-slate-800">
-                    {String(personal.domicileAddress ?? '—')}{' '}
-                    {personal.domicilePostalCode ? `(${String(personal.domicilePostalCode)})` : ''}
-                  </dd>
-                </div>
-              </dl>
-            </section>
+                {ktpDocument?.fileId && (
+                  <a
+                    className="mt-1.5 inline-block text-[11px] font-semibold text-[#17158c] underline"
+                    href={`/api/admin/applications/${application.id}/documents/${ktpIndex}`}
+                  >
+                    Unduh KTP {formatSizeMb(ktpDocument.size)}
+                  </a>
+                )}
+              </div>
 
-            <section className="rounded-xl border border-slate-200 p-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Biodata & Kontak
+                </h4>
+                <dl className="mt-2 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <dt className="text-slate-400">Nama Lengkap</dt>
+                    <dd className="mt-0.5 font-semibold text-slate-900">
+                      {application.applicantName}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400">No. WhatsApp</dt>
+                    <dd className="mt-0.5 font-semibold text-slate-900">{application.phone}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400">Tempat, Tgl Lahir</dt>
+                    <dd className="mt-0.5 font-semibold text-slate-900">
+                      {String(personal.birthPlace ?? '—')}, {String(personal.birthDate ?? '—')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400">Gender & Agama</dt>
+                    <dd className="mt-0.5 font-semibold text-slate-900">
+                      {personal.gender === 'FEMALE' ? 'Perempuan' : 'Laki-laki'} ·{' '}
+                      {RELIGION_LABELS[String(personal.religion ?? '')] ??
+                        String(personal.religion ?? '—')}
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-slate-400">Alamat KTP</dt>
+                    <dd className="mt-0.5 rounded-lg bg-slate-50 p-2.5 text-slate-800">
+                      {String(personal.idCardAddress ?? '—')}
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-slate-400">Alamat Domisili / Korespondensi</dt>
+                    <dd className="mt-0.5 rounded-lg bg-slate-50 p-2.5 text-slate-800">
+                      {String(personal.domicileAddress ?? '—')}{' '}
+                      {personal.domicilePostalCode
+                        ? `(${String(personal.domicilePostalCode)})`
+                        : ''}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 p-5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Program LPK & Kesiapan Keberangkatan
-              </h3>
-              <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
+              </h4>
+              <dl className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                 <div>
                   <dt className="text-slate-400">LPK Mitra</dt>
                   <dd className="mt-0.5 font-semibold text-slate-900">{application.lpkName}</dd>
@@ -749,7 +1004,7 @@ function ApplicationDrawerForm({
                   </dd>
                 </div>
               </dl>
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                 {[
                   ['Pelatihan dimulai', eligibility.trainingStarted],
                   ['Pelatihan selesai', eligibility.trainingCompleted],
@@ -770,7 +1025,7 @@ function ApplicationDrawerForm({
                 ))}
               </div>
               {application.product === 'FULL_COVER' && (
-                <div className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
                   Level bahasa:{' '}
                   <strong>
                     {LANGUAGE_LABELS[String(fullCover.languageLevel ?? '')] ??
@@ -789,36 +1044,303 @@ function ApplicationDrawerForm({
                   </p>
                 </div>
               )}
-            </section>
+            </div>
+          </section>
+        </div>
+
+        {/* TAB: NOMINAL PENGAJUAN */}
+        <div className={activeTab === 'nominal' ? 'block space-y-4' : 'hidden'}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <span className="text-[11px] font-medium text-slate-500">Nominal Diajukan</span>
+              <strong className="mt-1 block text-xl font-extrabold text-[#17158c]">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? formatRupiah(departure.requestedFinancingAmount)
+                  : formatRupiah(
+                      typeof fullCover.financingAmount === 'number'
+                        ? fullCover.financingAmount
+                        : null,
+                    )}
+              </strong>
+              <span className="mt-1 block text-[11px] text-slate-400">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? 'Plafon maksimum persetujuan staf'
+                  : 'Perhitungan berbasis Nafaqah + Ujrah'}
+              </span>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <span className="text-[11px] font-medium text-slate-500">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? 'Sisa Kewajiban LPK'
+                  : 'Status Biaya'}
+              </span>
+              <strong
+                className={`mt-1 block text-xl font-extrabold ${
+                  application.product === 'DEPARTURE_BRIDGING'
+                    ? 'text-slate-900'
+                    : pricingStatus === 'AGREED'
+                      ? 'text-emerald-700'
+                      : pricingStatus === 'VERIFIED'
+                        ? 'text-amber-700'
+                        : 'text-slate-700'
+                }`}
+              >
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? formatRupiah(departure.outstandingLPKAmount)
+                  : (PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
+                    pricingStatus)}
+              </strong>
+              <span className="mt-1 block text-[11px] text-slate-400">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? 'Tagihan yang belum ditutup LPK'
+                  : 'Tahap verifikasi rincian biaya'}
+              </span>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <span className="text-[11px] font-medium text-slate-500">Total Kewajiban Akad</span>
+              <strong className="mt-1 block text-xl font-extrabold text-slate-900">
+                {formatRupiah(application.financialPlan?.totalObligation ?? null)}
+              </strong>
+              <span className="mt-1 block text-[11px] text-slate-400">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? `Sesuai rincian saat ini · ${String(
+                      application.financialPlan?.installmentCount ?? '—',
+                    )} angsuran`
+                  : 'Nafaqah + Ujrah (di luar Ju’alah)'}
+              </span>
+            </div>
           </div>
+
+          {application.product === 'DEPARTURE_BRIDGING' && (
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h3 className="text-sm font-bold text-slate-900">Estimasi Wakalah (Sistem)</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Perhitungan otomatis berbasis nominal yang diajukan: ujrah 2,4% per bulan
+                  dikalikan 12 bulan dan biaya admin 5%.
+                </p>
+              </div>
+              <dl className="divide-y divide-slate-100 px-5 text-xs">
+                {[
+                  ['Principal (nominal diajukan)', formatRupiah(requestedAmount)],
+                  ['Ujrah per bulan (2,4%)', formatRupiah(estimatedMonthlyUjrah)],
+                  ['Ujrah × 12 bulan', formatRupiah(estimatedTotalUjrah)],
+                  ['Biaya admin (5%)', formatRupiah(estimatedAdminFee)],
+                  ['Pencairan bersih ke pemohon', formatRupiah(estimatedCashDisbursed)],
+                  ['Total estimasi kewajiban', formatRupiah(estimatedFinancingTotal)],
+                ].map(([label, value], index, rows) => (
+                  <div
+                    className={`flex items-center justify-between py-2.5 ${
+                      index === rows.length - 1 ? 'font-bold text-[#17158c]' : 'text-slate-600'
+                    }`}
+                    key={label}
+                  >
+                    <dt>{label}</dt>
+                    <dd
+                      className={
+                        index === rows.length - 1 ? 'text-sm' : 'font-semibold text-slate-900'
+                      }
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Rincian Biaya Saat Ini</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Nilai tersimpan yang menjadi dasar penawaran kepada pemohon.
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                  PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
+                } ring-slate-200`}
+              >
+                {PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
+                  pricingStatus}
+              </span>
+            </div>
+            <dl className="grid gap-x-6 gap-y-3 px-5 py-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
+              {application.product === 'DEPARTURE_BRIDGING'
+                ? (
+                    [
+                      [
+                        'Total Nafaqah',
+                        formatRupiah(application.financialPlan?.nafaqahTotal ?? null),
+                      ],
+                      ['Total Ujrah', formatRupiah(application.financialPlan?.ujrahTotal ?? null)],
+                      ['Qardh', formatRupiah(application.financialPlan?.qardhAmount ?? null)],
+                      [
+                        'Refund / potongan',
+                        formatRupiah(application.financialPlan?.refundTotal ?? null),
+                      ],
+                      [
+                        'Total kewajiban',
+                        formatRupiah(application.financialPlan?.totalObligation ?? null),
+                      ],
+                      [
+                        'Jadwal angsuran',
+                        application.financialPlan?.firstPaymentDate
+                          ? `${String(application.financialPlan.installmentCount ?? '—')}× mulai ${formatDateShort(application.financialPlan.firstPaymentDate)}`
+                          : 'Belum diatur',
+                      ],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-slate-400">{label}</dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">{value}</dd>
+                    </div>
+                  ))
+                : (
+                    [
+                      [
+                        'Total Nafaqah',
+                        formatRupiah(application.financialPlan?.nafaqahTotal ?? null),
+                      ],
+                      ['Total Ujrah', formatRupiah(application.financialPlan?.ujrahTotal ?? null)],
+                      [
+                        'Ju’alah (saat COE terbit)',
+                        formatRupiah(application.financialPlan?.jualaTotal ?? null),
+                      ],
+                      [
+                        'Tenor setelah keberangkatan',
+                        application.financialPlan?.tenorMonths
+                          ? `${String(application.financialPlan.tenorMonths)} bulan`
+                          : '—',
+                      ],
+                      [
+                        'Total kewajiban (di luar Ju’alah)',
+                        formatRupiah(application.financialPlan?.totalObligation ?? null),
+                      ],
+                      [
+                        'Angsuran per bulan (setelah COE)',
+                        formatRupiah(application.financialPlan?.monthlyInstallmentAfterCoe ?? null),
+                      ],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-slate-400">{label}</dt>
+                      <dd className="mt-0.5 font-semibold text-slate-900">{value}</dd>
+                    </div>
+                  ))}
+            </dl>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-slate-900">Persetujuan Biaya</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {pricingStatus === 'ESTIMATED'
+                ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru, lalu jadwal angsuran dihitung ulang.'
+                : pricingStatus === 'VERIFIED'
+                  ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Biaya & Akad.'
+                  : 'Rincian biaya sudah disepakati dan siap diproses ke tahap akad.'}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {pricingStatus === 'ESTIMATED' && (
+                <>
+                  <DrawerAction
+                    disabled={pending}
+                    label={pending ? 'Menyimpan…' : 'Setujui'}
+                    onClick={() => onApprovePricing(application.id, null)}
+                    variant="primary"
+                  />
+                  <DrawerAction
+                    disabled={pending}
+                    label="Setujui dengan Nominal Baru"
+                    onClick={() => setShowNominalInput((current) => !current)}
+                  />
+                </>
+              )}
+              {pricingStatus === 'VERIFIED' && (
+                <>
+                  <DrawerAction
+                    disabled={pending}
+                    label={pending ? 'Menyimpan…' : 'Tandai Disepakati'}
+                    onClick={() => onAgreePricing(application.id)}
+                    variant="primary"
+                  />
+                  <DrawerAction
+                    disabled={pending}
+                    label="Setujui dengan Nominal Baru"
+                    onClick={() => setShowNominalInput((current) => !current)}
+                  />
+                </>
+              )}
+              {pricingStatus === 'AGREED' && (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                  ✓ Biaya disepakati — lanjutkan ke tahap akad
+                </span>
+              )}
+            </div>
+            {(pricingStatus === 'ESTIMATED' || pricingStatus === 'VERIFIED') &&
+              showNominalInput && (
+                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Nominal baru (Rp)
+                    <input
+                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                      min={1}
+                      onChange={(event) => setNewNominal(event.target.value)}
+                      placeholder="Contoh: 120000000"
+                      step={1}
+                      type="number"
+                      value={newNominal}
+                    />
+                  </label>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    {nominalCap !== null
+                      ? `Maksimal ${formatRupiah(nominalCap)} (nominal yang diajukan siswa). Rincian biaya & jadwal dihitung ulang otomatis.`
+                      : 'Rincian biaya & jadwal dihitung ulang otomatis agar totalnya sama dengan nominal baru.'}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <DrawerAction
+                      disabled={pending || !newNominalValid}
+                      label={pending ? 'Menyimpan…' : 'Setujui Nominal Baru'}
+                      onClick={() => {
+                        if (!newNominalValid) return
+                        onApprovePricing(application.id, parsedNewNominal)
+                        setShowNominalInput(false)
+                        setNewNominal('')
+                      }}
+                      variant="primary"
+                    />
+                    <DrawerAction
+                      label="Batal"
+                      onClick={() => {
+                        setShowNominalInput(false)
+                        setNewNominal('')
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+          </section>
         </div>
 
         {/* TAB: DOCUMENTS */}
         <div className={activeTab === 'documents' ? 'block space-y-4' : 'hidden'}>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
-            <div className="flex gap-4">
-              <span>
-                Terunggah:{' '}
-                <strong>
-                  {uploadedCount}/{application.documents.length}
-                </strong>
-              </span>
-              <span>
-                Diverifikasi: <strong className="text-emerald-700">{verifiedCount}</strong>
-              </span>
-              <span>
-                Perlu revisi: <strong className="text-amber-700">{revisionCount}</strong>
-              </span>
-            </div>
-            {uploadedCount > 0 && (
-              <button
-                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1 font-semibold text-emerald-800 hover:bg-emerald-100"
-                onClick={markAllUploadedAsVerified}
-                type="button"
-              >
-                ✓ Verifikasi Semua Berkas Terunggah
-              </button>
-            )}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
+            <span>
+              Terunggah:{' '}
+              <strong>
+                {uploadedCount}/{application.documents.length}
+              </strong>
+            </span>
+            <span>
+              Menunggu tinjauan: <strong className="text-amber-700">{reviewCount}</strong>
+            </span>
+            <span>
+              Sesuai: <strong className="text-emerald-700">{verifiedCount}</strong>
+            </span>
+            <span>
+              Tidak sesuai: <strong className="text-red-700">{revisionCount}</strong>
+            </span>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -828,58 +1350,110 @@ function ApplicationDrawerForm({
                   <th className="px-3.5 py-2.5">No</th>
                   <th className="px-3.5 py-2.5">Dokumen</th>
                   <th className="px-3.5 py-2.5">Kategori</th>
-                  <th className="px-3.5 py-2.5">Berkas Drive</th>
                   <th className="px-3.5 py-2.5">Status</th>
+                  <th className="px-3.5 py-2.5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {application.documents.map((document, index) => {
                   const def = definitions[index]
-                  const currentStatus = docStatuses[index] ?? document.status
+                  const currentStatus = document.status
                   return (
                     <tr className="hover:bg-slate-50" key={`${document.documentType}-${index}`}>
                       <td className="px-3.5 py-2.5 text-slate-400">{index + 1}</td>
-                      <td className="px-3.5 py-2.5 font-medium text-slate-900">
-                        {document.documentType}
-                        {def?.required && <span className="ml-1 text-red-500">*</span>}
+                      <td className="px-3.5 py-2.5">
+                        <span className="font-medium text-slate-900">
+                          {document.documentType}
+                          {def?.required && <span className="ml-1 text-red-500">*</span>}
+                        </span>
+                        {document.fileId && (
+                          <span className="mt-0.5 block text-[11px] text-slate-400">
+                            {document.fileName ?? 'berkas'}{' '}
+                            {document.size ? `· ${formatSizeMb(document.size)}` : ''}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-500">
                         {def?.section === 'dokumen-pendukung' ? 'Pendukung' : 'Utama'}
                       </td>
                       <td className="px-3.5 py-2.5">
-                        {document.fileId ? (
-                          <a
-                            className="font-semibold text-[#17158c] underline"
-                            href={`/api/admin/applications/${application.id}/documents/${index}`}
-                          >
-                            Unduh {document.fileName ?? 'berkas'}{' '}
-                            {document.size ? `(${formatSizeMb(document.size)})` : ''}
-                          </a>
-                        ) : (
-                          <span className="text-slate-400">Belum diunggah</span>
-                        )}
+                        <span
+                          className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            DOCUMENT_BADGE_STYLES[currentStatus] ?? 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {DOCUMENT_STATUS_LABELS[currentStatus] ?? currentStatus}
+                        </span>
                       </td>
                       <td className="px-3.5 py-2.5">
-                        <select
-                          aria-label={`Status ${document.documentType}`}
-                          className={`rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold ${
-                            DOCUMENT_BADGE_STYLES[currentStatus] ?? ''
-                          }`}
-                          name={`documentStatus-${index}`}
-                          onChange={(e) => {
-                            const next = e.target.value as ApplicationDocumentStatus
-                            setDocStatuses((prev) =>
-                              prev.map((item, idx) => (idx === index ? next : item)),
-                            )
-                          }}
-                          value={currentStatus}
-                        >
-                          {APPLICATION_DOCUMENT_STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {DOCUMENT_STATUS_LABELS[status]}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            aria-label={`Pratinjau ${document.documentType}`}
+                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-[#17158c]/30 hover:text-[#17158c] disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={!document.fileId}
+                            onClick={() => setPreviewIndex(index)}
+                            title="Pratinjau berkas"
+                            type="button"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              className="size-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.8}
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                              <circle cx="12" cy="12" r="2.5" />
+                            </svg>
+                          </button>
+                          <button
+                            aria-label={`Hapus berkas ${document.documentType}`}
+                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={!document.fileId || pending}
+                            onClick={() => onDeleteDocument(application.id, index)}
+                            title="Hapus berkas (status menjadi Tidak sesuai)"
+                            type="button"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              className="size-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.8}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"
+                                strokeLinecap="round"
+                              />
+                              <path d="M10 11v6M14 11v6" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                          <button
+                            aria-label={`Tandai sesuai ${document.documentType}`}
+                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={!document.fileId || pending}
+                            onClick={() => onApproveDocument(application.id, index)}
+                            title="Tandai sesuai"
+                            type="button"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              className="size-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.8}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M5 13l4 4L19 7"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -893,12 +1467,81 @@ function ApplicationDrawerForm({
         <div className={activeTab === 'pricing' ? 'block space-y-4' : 'hidden'}>
           <FinanceTermsFields
             financialPlan={application.financialPlan}
+            key={JSON.stringify(application.financialPlan ?? {})}
             product={application.product}
           />
+          <div className="flex justify-end border-t border-slate-100 pt-4">
+            <button
+              className="rounded-lg bg-[#17158c] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60"
+              disabled={pending}
+              type="submit"
+            >
+              {pending ? 'Menyimpan…' : 'Simpan Rincian Biaya'}
+            </button>
+          </div>
         </div>
 
         {/* TAB: CONTRACT APPROVAL */}
         <div className={activeTab === 'contract' ? 'block space-y-4' : 'hidden'}>
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Status Pengajuan</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Atur tahap proses pemohon dan simpan catatan internal staf.
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                  STATUS_BADGE_STYLES[application.status] ??
+                  'bg-slate-100 text-slate-700 ring-slate-200'
+                }`}
+              >
+                {STATUS_LABELS[application.status as keyof typeof STATUS_LABELS] ??
+                  application.status}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">
+                <span>Status Pengajuan</span>
+                <select
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-[#17158c] focus:outline-none"
+                  onChange={(event) => setWorkflowStatus(event.target.value)}
+                  value={workflowStatus}
+                >
+                  {APPLICATION_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_LABELS[status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">
+                <span>Catatan Internal</span>
+                <input
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[11px] font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                  maxLength={2000}
+                  onChange={(event) => setWorkflowNotes(event.target.value)}
+                  placeholder="Catatan internal staf…"
+                  value={workflowNotes}
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex items-center justify-end gap-3">
+              <span className="text-[11px] text-slate-400">
+                Perubahan disimpan terpisah dari rincian biaya.
+              </span>
+              <button
+                className="rounded-lg bg-[#17158c] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60"
+                disabled={pending || !workflowDirty}
+                onClick={() => onWorkflow(application.id, workflowStatus, workflowNotes)}
+                type="button"
+              >
+                {pending ? 'Menyimpan…' : 'Simpan Status & Catatan'}
+              </button>
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-200 p-4 text-xs">
               <h3 className="font-bold text-slate-900">Persetujuan Siswa atas Penawaran</h3>
@@ -983,284 +1626,90 @@ function ApplicationDrawerForm({
             )}
           </section>
         </div>
+      </div>
 
-        {/* TAB: INSTALLMENTS */}
-        <div className={activeTab === 'installments' ? 'block space-y-4' : 'hidden'}>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
-              <span className="text-slate-500">Total Kewajiban Akad</span>
-              <strong className="mt-1 block text-sm font-bold text-slate-900">
-                {formatRupiah(totalObligation)}
-              </strong>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs">
-              <span className="text-emerald-700">Total Terbayar</span>
-              <strong className="mt-1 block text-sm font-bold text-emerald-900">
-                {formatRupiah(paidAmountTotal)} ({paidInstallmentsCount}/{schedule.length})
-              </strong>
-            </div>
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-3.5 text-xs">
-              <span className="text-indigo-700">Sisa Kewajiban</span>
-              <strong className="mt-1 block text-sm font-bold text-[#17158c]">
-                {totalObligation !== null
-                  ? formatRupiah(Math.max(0, totalObligation - paidAmountTotal))
-                  : '—'}
-              </strong>
-            </div>
-            <div
-              className={`rounded-xl border p-3.5 text-xs ${
-                nextDueOverdue ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'
-              }`}
-            >
-              <span className={nextDueOverdue ? 'text-red-700' : 'text-slate-500'}>
-                Cicilan Berikutnya
-              </span>
-              <strong
-                className={`mt-1 block text-sm font-bold ${
-                  nextDueOverdue ? 'text-red-700' : 'text-slate-900'
-                }`}
-              >
-                {nextUnpaidRow
-                  ? `${formatDateShort(nextUnpaidRow.dueDate)} · ${formatRupiah(nextUnpaidRow.amount)}`
-                  : schedule.length > 0
-                    ? 'Semua lunas'
-                    : '—'}
-              </strong>
-              {nextDueOverdue && nextUnpaidRow && (
-                <span className="mt-1 block text-[11px] font-semibold text-red-700">
-                  Terlambat {getDaysBetween(nextUnpaidRow.dueDate, todayIso)} hari
+      {/* Slide-over preview berkas dokumen */}
+      {previewIndex !== null && previewDocument && (
+        <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
+          <div className="flex h-dvh w-full max-w-2xl flex-col bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900">{previewDocument.documentType}</h3>
+                <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                  {previewDocument.fileName ?? 'berkas'}{' '}
+                  {previewDocument.size ? `· ${formatSizeMb(previewDocument.size)}` : ''}
+                </p>
+                <span
+                  className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    DOCUMENT_BADGE_STYLES[previewDocument.status] ?? 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {DOCUMENT_STATUS_LABELS[previewDocument.status] ?? previewDocument.status}
                 </span>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <button
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+                  disabled={pending}
+                  onClick={() => {
+                    onDeleteDocument(application.id, previewIndex)
+                    setPreviewIndex(null)
+                  }}
+                  type="button"
+                >
+                  Hapus Berkas
+                </button>
+                <button
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
+                  disabled={pending}
+                  onClick={() => {
+                    onApproveDocument(application.id, previewIndex)
+                    setPreviewIndex(null)
+                  }}
+                  type="button"
+                >
+                  Tandai Sesuai
+                </button>
+                <button
+                  aria-label="Tutup pratinjau berkas"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                  onClick={() => setPreviewIndex(null)}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-100 p-4">
+              {previewIsPdf ? (
+                <iframe
+                  className="h-full min-h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
+                  src={`/api/admin/applications/${application.id}/documents/${previewIndex}?inline=1`}
+                  title={`Pratinjau ${previewDocument.documentType}`}
+                />
+              ) : String(previewDocument.mimeType ?? '').startsWith('image/') ? (
+                <img
+                  alt={`Pratinjau ${previewDocument.documentType}`}
+                  className="mx-auto rounded-lg border border-slate-200 bg-white object-contain"
+                  src={`/api/admin/applications/${application.id}/documents/${previewIndex}?inline=1`}
+                />
+              ) : (
+                <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white text-center">
+                  <p className="text-xs text-slate-500">
+                    Pratinjau tidak tersedia untuk jenis berkas ini.
+                  </p>
+                  <a
+                    className="rounded-lg bg-[#17158c] px-4 py-2 text-xs font-semibold text-white hover:bg-[#111077]"
+                    href={`/api/admin/applications/${application.id}/documents/${previewIndex}`}
+                  >
+                    Unduh berkas
+                  </a>
+                </div>
               )}
             </div>
           </div>
-
-          {schedule.length === 0 ? (
-            <p className="rounded-xl border border-slate-200 p-6 text-center text-xs text-slate-500">
-              Jadwal angsuran belum tersedia.
-            </p>
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
-                    <th className="px-3.5 py-2.5">Cicilan</th>
-                    <th className="px-3.5 py-2.5">Jatuh Tempo</th>
-                    <th className="px-3.5 py-2.5">Nominal</th>
-                    <th className="px-3.5 py-2.5">Sisa</th>
-                    <th className="px-3.5 py-2.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {schedule.map((row) => {
-                    const paid = paidSet.has(row.installment)
-                    return (
-                      <tr key={row.installment}>
-                        <td className="px-3.5 py-2.5 font-semibold text-slate-900">
-                          Ke-{row.installment}
-                        </td>
-                        <td className="px-3.5 py-2.5 text-slate-600">{row.dueDate}</td>
-                        <td className="px-3.5 py-2.5 font-medium text-slate-900">
-                          {formatRupiah(row.amount)}
-                        </td>
-                        <td className="px-3.5 py-2.5 text-slate-500">
-                          {formatRupiah(row.remainingBalance)}
-                        </td>
-                        <td className="px-3.5 py-2.5">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              paid
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {paid ? '✓ Lunas' : 'Belum bayar'}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {payments.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700">
-                Transaksi Xendit ({payments.length})
-              </div>
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
-                    <th className="px-3.5 py-2.5">Keterangan</th>
-                    <th className="px-3.5 py-2.5">Nominal</th>
-                    <th className="px-3.5 py-2.5">Status</th>
-                    <th className="px-3.5 py-2.5">Dibayar</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {payments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td className="px-3.5 py-2.5 font-medium text-slate-900">
-                        {payment.description || payment.id}
-                      </td>
-                      <td className="px-3.5 py-2.5 font-semibold text-slate-900">
-                        {formatRupiah(payment.amount)}
-                      </td>
-                      <td className="px-3.5 py-2.5">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            PAYMENT_BADGE_STYLES[payment.status] ?? 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}
-                        </span>
-                      </td>
-                      <td className="px-3.5 py-2.5 text-slate-500">
-                        {payment.paidAt ? formatDateTime(payment.paidAt) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
-
-        {/* TAB: SUPPORT & AUDIT */}
-        <div className={activeTab === 'support' ? 'block space-y-4' : 'hidden'}>
-          <section className="space-y-3 rounded-xl border border-slate-200 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Permohonan Keringanan ({(application.supportRequests ?? []).length})
-            </h3>
-            {(application.supportRequests ?? []).length === 0 ? (
-              <p className="text-xs text-slate-500">Tidak ada permohonan keringanan.</p>
-            ) : (
-              (application.supportRequests ?? []).map((request, index) => (
-                <div
-                  className="space-y-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 text-xs"
-                  key={`${request.requestedAt}-${index}`}
-                >
-                  <div className="flex justify-between font-semibold text-amber-950">
-                    <span>Permohonan #{index + 1}</span>
-                    <span>{formatDateTime(request.requestedAt)}</span>
-                  </div>
-                  <p className="rounded bg-white p-2.5 text-slate-800">{request.message}</p>
-                  <div className="grid gap-2.5 sm:grid-cols-2">
-                    <label className="space-y-1 font-semibold text-slate-700">
-                      <span>Status</span>
-                      <select
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-normal"
-                        defaultValue={request.status}
-                        name={`supportRequestStatus-${index}`}
-                      >
-                        <option value="OPEN">Menunggu tinjauan</option>
-                        <option value="REVIEWED">Ditinjau</option>
-                      </select>
-                    </label>
-                    <label className="space-y-1 font-semibold text-slate-700">
-                      <span>Tanggapan</span>
-                      <input
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-normal"
-                        defaultValue={request.response ?? ''}
-                        maxLength={1000}
-                        name={`supportRequestResponse-${index}`}
-                      />
-                    </label>
-                  </div>
-                </div>
-              ))
-            )}
-          </section>
-
-          <section className="space-y-2.5 rounded-xl border border-slate-200 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Riwayat Perubahan Biaya ({(application.financialPlanHistory ?? []).length})
-            </h3>
-            {(application.financialPlanHistory ?? []).length === 0 ? (
-              <p className="text-xs text-slate-500">Belum ada riwayat perubahan biaya.</p>
-            ) : (
-              [...(application.financialPlanHistory ?? [])].reverse().map((entry, idx) => (
-                <div
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs"
-                  key={`${entry.changedAt}-${idx}`}
-                >
-                  <div className="flex justify-between font-semibold text-slate-900">
-                    <span>
-                      {entry.changedBy} ·{' '}
-                      {PRICING_STATUS_LABELS[
-                        entry.pricingStatus as keyof typeof PRICING_STATUS_LABELS
-                      ] ?? entry.pricingStatus}
-                    </span>
-                    <span className="text-slate-500">{formatDateTime(entry.changedAt)}</span>
-                  </div>
-                  <p className="mt-1 text-slate-600">
-                    Total Kewajiban: {formatRupiah(entry.financialPlan?.totalObligation)}
-                    {entry.finalAgreementReference
-                      ? ` · Akad: ${entry.finalAgreementReference}`
-                      : ''}
-                  </p>
-                </div>
-              ))
-            )}
-          </section>
-        </div>
-      </div>
-
-      {/* Sticky Footer: status, biaya, catatan, simpan */}
-      <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
-            <span>Status Pengajuan</span>
-            <select
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
-              defaultValue={application.status}
-              name="status"
-            >
-              {APPLICATION_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
-            <span>Status Biaya</span>
-            <select
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
-              defaultValue={pricingStatus}
-              name="pricingStatus"
-            >
-              {PRICING_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {PRICING_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600 sm:col-span-2 lg:col-span-1">
-            <span>Catatan Internal</span>
-            <input
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-900"
-              defaultValue={application.internalNotes ?? ''}
-              maxLength={2000}
-              name="internalNotes"
-              placeholder="Catatan internal staf…"
-            />
-          </label>
-          <button
-            className="rounded-lg bg-[#17158c] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60 sm:col-span-2 lg:col-span-1"
-            disabled={pending}
-            type="submit"
-          >
-            {pending ? 'Menyimpan…' : 'Simpan'}
-          </button>
-        </div>
-        <p className="mt-2.5 text-[11px] text-slate-500">
-          Tekan Simpan untuk menerapkan status pengajuan, status biaya, dokumen, dan catatan
-          internal.
-        </p>
-      </div>
+      )}
     </form>
   )
 }
@@ -1284,6 +1733,10 @@ export function AdminDashboard({
   const [activeMenu, setActiveMenu] = useState<MenuId>('dashboard')
   const [drawerAppId, setDrawerAppId] = useState<string | null>(null)
   const [drawerTab, setDrawerTab] = useState<DetailTabId>('profile')
+  const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null)
+  const [reliefEdits, setReliefEdits] = useState<
+    Record<string, { status: string; response: string }>
+  >({})
 
   const [searchQuery, setSearchQuery] = useState('')
   const [productFilter, setProductFilter] = useState<'ALL' | 'FULL_COVER' | 'DEPARTURE_BRIDGING'>(
@@ -1323,18 +1776,6 @@ export function AdminDashboard({
   const drawerApplication = useMemo(
     () => (drawerAppId ? (applications.find((app) => app.id === drawerAppId) ?? null) : null),
     [applications, drawerAppId],
-  )
-
-  const drawerPayments = useMemo(
-    () =>
-      drawerApplication
-        ? payments.filter(
-            (p) =>
-              p.applicationDocId === drawerApplication.id ||
-              p.applicationId === drawerApplication.applicationId,
-          )
-        : [],
-    [payments, drawerApplication],
   )
 
   // Summary metrics
@@ -1426,14 +1867,37 @@ export function AdminDashboard({
     return [...map.values()].sort((a, b) => b.count - a.count)
   }, [applications])
 
-  // Angsuran Aktif: siswa yang sedang mengangsur atau masih memiliki tanggungan
-  const activeInstallmentSummaries = useMemo(
+  // Ringkasan angsuran per pengajuan (dasar menu Angsuran Aktif & Jadwal Angsuran)
+  const installmentSummaries = useMemo(
     () =>
-      filteredApplications
-        .map((app) => ({ app, summary: summarizeInstallments(app, todayIso) }))
-        .filter(({ app, summary }) => hasActiveInstallment(app, summary)),
+      filteredApplications.map((app) => ({ app, summary: summarizeInstallments(app, todayIso) })),
     [filteredApplications, todayIso],
   )
+
+  const activeInstallmentSummaries = useMemo(
+    () => installmentSummaries.filter(({ app, summary }) => hasActiveInstallment(app, summary)),
+    [installmentSummaries],
+  )
+
+  const scheduleRows = useMemo(
+    () =>
+      installmentSummaries
+        .filter(({ summary }) => summary.schedule.length > 0)
+        .sort(compareInstallmentRows),
+    [installmentSummaries],
+  )
+
+  const reliefRows = useMemo(() => {
+    const rows: {
+      app: FinancingApplicationRecord
+      request: NonNullable<FinancingApplicationRecord['supportRequests']>[number]
+      index: number
+    }[] = []
+    for (const app of filteredApplications) {
+      ;(app.supportRequests ?? []).forEach((request, index) => rows.push({ app, request, index }))
+    }
+    return rows.sort((a, b) => b.request.requestedAt.localeCompare(a.request.requestedAt))
+  }, [filteredApplications])
 
   const activeInstallmentMetrics = useMemo(() => {
     let overdue = 0
@@ -1466,56 +1930,116 @@ export function AdminDashboard({
       }
       return true
     })
-    return rows.sort((a, b) => {
-      const aOverdue = a.summary.overdueCount > 0 ? 0 : 1
-      const bOverdue = b.summary.overdueCount > 0 ? 0 : 1
-      if (aOverdue !== bOverdue) return aOverdue - bOverdue
-      const aDue = a.summary.nextDue?.dueDate ?? '9999-99-99'
-      const bDue = b.summary.nextDue?.dueDate ?? '9999-99-99'
-      if (aDue !== bDue) return aDue.localeCompare(bDue)
-      return b.summary.remaining - a.summary.remaining
-    })
+    return rows.sort(compareInstallmentRows)
   }, [activeInstallmentSummaries, activeInstallmentFilter])
 
   const save = (application: FinancingApplicationRecord, formData: FormData) => {
     setError('')
     setSavedNotice('')
     startTransition(async () => {
-      const result = await updateApplicationStatus(
-        application.id,
-        String(formData.get('status')),
-        String(formData.get('internalNotes') ?? ''),
-        application.documents.map((_, index) => String(formData.get(`documentStatus-${index}`))),
-        String(formData.get('pricingStatus')),
-        {
-          nafaqahTotal: String(formData.get('nafaqahTotal') ?? ''),
-          ujrahTotal: String(formData.get('ujrahTotal') ?? ''),
-          totalObligation: String(formData.get('totalObligation') ?? ''),
-          tenorMonths: String(formData.get('tenorMonths') ?? ''),
-          monthlyInstallment: String(formData.get('monthlyInstallment') ?? ''),
-          jualaTotal: String(formData.get('jualaTotal') ?? ''),
-          nafaqahItems: String(formData.get('nafaqahItems') ?? '[]'),
-          ujrahItems: String(formData.get('ujrahItems') ?? '[]'),
-          qardhAmount: String(formData.get('qardhAmount') ?? '0'),
-          qardhDisbursed: String(formData.get('qardhDisbursed') ?? 'false'),
-          installmentCount: String(formData.get('installmentCount') ?? ''),
-          firstPaymentDate: String(formData.get('firstPaymentDate') ?? ''),
-          refundTotal: String(formData.get('refundTotal') ?? '0'),
-          refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
-          finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
-          settlementNotes: String(formData.get('settlementNotes') ?? ''),
-        },
-        (application.supportRequests ?? []).map((request, index) => ({
-          status: String(formData.get(`supportRequestStatus-${index}`) ?? request.status),
-          response: String(
-            formData.get(`supportRequestResponse-${index}`) ?? request.response ?? '',
-          ),
-        })),
-      )
+      const result = await saveFinancialPlan(application.id, {
+        nafaqahTotal: String(formData.get('nafaqahTotal') ?? ''),
+        ujrahTotal: String(formData.get('ujrahTotal') ?? ''),
+        totalObligation: String(formData.get('totalObligation') ?? ''),
+        tenorMonths: String(formData.get('tenorMonths') ?? ''),
+        monthlyInstallment: String(formData.get('monthlyInstallment') ?? ''),
+        jualaTotal: String(formData.get('jualaTotal') ?? ''),
+        nafaqahItems: String(formData.get('nafaqahItems') ?? '[]'),
+        ujrahItems: String(formData.get('ujrahItems') ?? '[]'),
+        qardhAmount: String(formData.get('qardhAmount') ?? '0'),
+        qardhDisbursed: String(formData.get('qardhDisbursed') ?? 'false'),
+        installmentCount: String(formData.get('installmentCount') ?? ''),
+        firstPaymentDate: String(formData.get('firstPaymentDate') ?? ''),
+        refundTotal: String(formData.get('refundTotal') ?? '0'),
+        refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
+        finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
+        settlementNotes: String(formData.get('settlementNotes') ?? ''),
+      })
       if (!result.ok) {
         setError(result.message)
       } else {
-        setSavedNotice(`Data pengajuan ${application.applicationId} berhasil diperbarui.`)
+        setSavedNotice(`Rincian biaya ${application.applicationId} berhasil disimpan.`)
+        router.refresh()
+      }
+    })
+  }
+
+  const saveWorkflow = (applicationId: string, status: string, internalNotes: string) => {
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await updateApplicationWorkflow(applicationId, status, internalNotes)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice(`Status & catatan pengajuan berhasil diperbarui.`)
+        router.refresh()
+      }
+    })
+  }
+
+  const approveDocument = (applicationId: string, documentIndex: number) => {
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await approveApplicationDocument(applicationId, documentIndex)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice('Status dokumen ditandai Sesuai.')
+        router.refresh()
+      }
+    })
+  }
+
+  const removeDocument = (applicationId: string, documentIndex: number) => {
+    if (
+      !window.confirm(
+        'Hapus berkas dokumen ini dari Google Drive? Status dokumen menjadi "Tidak sesuai" dan pemohon perlu mengunggah ulang.',
+      )
+    ) {
+      return
+    }
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await deleteApplicationDocument(applicationId, documentIndex)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice('Berkas dokumen dihapus dan status menjadi Tidak sesuai.')
+        router.refresh()
+      }
+    })
+  }
+
+  const approvePricing = (applicationId: string, newNominal: number | null) => {
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await approveApplicationPricing(applicationId, newNominal)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice(
+          newNominal !== null
+            ? `Rincian biaya disetujui dengan nominal baru ${formatRupiah(newNominal)}.`
+            : 'Rincian biaya disetujui menjadi Terverifikasi.',
+        )
+        router.refresh()
+      }
+    })
+  }
+
+  const agreePricing = (applicationId: string) => {
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await setApplicationPricingAgreed(applicationId)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice('Rincian biaya ditandai Disepakati.')
         router.refresh()
       }
     })
@@ -1541,6 +2065,37 @@ export function AdminDashboard({
     router.refresh()
   }
 
+  const reliefKey = (applicationId: string, index: number) => `${applicationId}:${index}`
+
+  const saveRelief = (
+    app: FinancingApplicationRecord,
+    index: number,
+    status: string,
+    response: string,
+  ) => {
+    setError('')
+    setSavedNotice('')
+    startTransition(async () => {
+      const result = await updateSupportRequest(app.id, index, status, response)
+      if (!result.ok) {
+        setError(result.message)
+      } else {
+        setSavedNotice(`Permohonan keringanan ${app.applicationId} diperbarui.`)
+        setReliefEdits((current) => {
+          const next = { ...current }
+          delete next[reliefKey(app.id, index)]
+          return next
+        })
+        router.refresh()
+      }
+    })
+  }
+
+  const openScheduleDetail = (appId: string) => {
+    setActiveMenu('schedule')
+    setExpandedScheduleId(appId)
+  }
+
   const allMenus = SIDEBAR_GROUPS.flatMap((g) => g.items)
   const activeMenuInfo = allMenus.find((m) => m.id === activeMenu) ?? allMenus[0]
 
@@ -1560,6 +2115,10 @@ export function AdminDashboard({
         return metrics.openReliefCount > 0 ? metrics.openReliefCount : metrics.activeCount
       case 'activeInstallments':
         return activeInstallmentMetrics.count
+      case 'schedule':
+        return scheduleRows.length
+      case 'relief':
+        return metrics.openReliefCount
       case 'audit':
         return auditEntries.length
       default:
@@ -1622,10 +2181,12 @@ export function AdminDashboard({
                               ? 'bg-white text-[#17158c]'
                               : item.id === 'installments' && metrics.openReliefCount > 0
                                 ? 'bg-amber-400 text-slate-950'
-                                : item.id === 'activeInstallments' &&
-                                    activeInstallmentMetrics.overdue > 0
+                                : item.id === 'relief' && metrics.openReliefCount > 0
                                   ? 'bg-amber-400 text-slate-950'
-                                  : 'bg-white/10 text-indigo-200'
+                                  : item.id === 'activeInstallments' &&
+                                      activeInstallmentMetrics.overdue > 0
+                                    ? 'bg-amber-400 text-slate-950'
+                                    : 'bg-white/10 text-indigo-200'
                           }`}
                         >
                           {badge}
@@ -2203,12 +2764,7 @@ export function AdminDashboard({
                               <DrawerAction
                                 ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
                                 label="Rincian"
-                                onClick={() =>
-                                  openApplicationDrawer(
-                                    app.id,
-                                    openRelief > 0 ? 'support' : 'installments',
-                                  )
-                                }
+                                onClick={() => openScheduleDetail(app.id)}
                               />
                             </td>
                           </tr>
@@ -2368,7 +2924,7 @@ export function AdminDashboard({
                               <DrawerAction
                                 ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
                                 label="Rincian"
-                                onClick={() => openApplicationDrawer(app.id, 'installments')}
+                                onClick={() => openScheduleDetail(app.id)}
                               />
                             </div>
                           </li>
@@ -2479,7 +3035,7 @@ export function AdminDashboard({
                                   <DrawerAction
                                     ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
                                     label="Rincian"
-                                    onClick={() => openApplicationDrawer(app.id, 'installments')}
+                                    onClick={() => openScheduleDetail(app.id)}
                                   />
                                 </td>
                               </tr>
@@ -2494,7 +3050,385 @@ export function AdminDashboard({
             </div>
           )}
 
-          {/* 7. MENU: STATISTIK (Portfolio Analytics & LPK Partner Table) */}
+          {/* 7. MENU: JADWAL ANGSURAN (Per-student Schedule & Xendit Detail) */}
+          {activeMenu === 'schedule' && (
+            <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
+              <header className="border-b border-slate-100 px-5 py-3.5">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Jadwal Cicilan Siswa ({scheduleRows.length})
+                </h2>
+              </header>
+              {scheduleRows.length === 0 ? (
+                <p className="px-5 py-8 text-center text-xs text-slate-400">
+                  Belum ada siswa dengan jadwal angsuran.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {scheduleRows.map(({ app, summary }) => {
+                    const expanded = expandedScheduleId === app.id
+                    const rowPayments = payments.filter(
+                      (p) => p.applicationDocId === app.id || p.applicationId === app.applicationId,
+                    )
+                    const paidSet = new Set(
+                      Array.isArray(app.paidInstallments) ? app.paidInstallments : [],
+                    )
+                    const overdueDays =
+                      summary.nextDue && summary.overdueCount > 0
+                        ? getDaysBetween(summary.nextDue.dueDate, todayIso)
+                        : 0
+                    return (
+                      <li key={app.id}>
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-[#17158c]">{app.applicationId}</span>
+                              <span className="font-semibold text-slate-900">
+                                {app.applicantName}
+                              </span>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+                                  STATUS_BADGE_STYLES[app.status] ??
+                                  'bg-slate-100 text-slate-700 ring-slate-200'
+                                }`}
+                              >
+                                {STATUS_LABELS[app.status as keyof typeof STATUS_LABELS] ??
+                                  app.status}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
+                              {app.lpkName} · {summary.schedule.length} bulan · {summary.paidCount}/
+                              {summary.schedule.length} lunas
+                              {overdueDays > 0 && (
+                                <span className="ml-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                                  Terlambat {overdueDays} hr
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right text-xs">
+                              <span className="block text-slate-400">Sisa Kewajiban</span>
+                              <strong className="block font-bold text-slate-900">
+                                {formatRupiah(summary.remaining)}
+                              </strong>
+                            </div>
+                            <div className="text-right text-xs">
+                              <span className="block text-slate-400">Jatuh Tempo</span>
+                              <strong className="block font-bold text-slate-900">
+                                {summary.nextDue ? formatDateShort(summary.nextDue.dueDate) : '—'}
+                              </strong>
+                            </div>
+                            <DrawerAction
+                              ariaLabel={`${expanded ? 'Tutup' : 'Buka'} detail jadwal ${app.applicationId}`}
+                              label={expanded ? 'Tutup' : 'Detail'}
+                              onClick={() => setExpandedScheduleId(expanded ? null : app.id)}
+                            />
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="space-y-4 border-t border-slate-100 bg-slate-50/60 px-5 py-4">
+                            {/* KPI 4 cards */}
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                <span className="text-[11px] text-slate-400">
+                                  Total Kewajiban Akad
+                                </span>
+                                <strong className="mt-1 block text-lg font-extrabold text-slate-900">
+                                  {formatRupiah(summary.obligation)}
+                                </strong>
+                              </div>
+                              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                <span className="text-[11px] text-slate-400">Total Terbayar</span>
+                                <strong className="mt-1 block text-lg font-extrabold text-emerald-600">
+                                  {formatRupiah(summary.paidAmount)}
+                                </strong>
+                                <span className="mt-0.5 block text-[10px] text-slate-400">
+                                  {summary.paidCount} dari {summary.schedule.length} cicilan
+                                </span>
+                              </div>
+                              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                <span className="text-[11px] text-slate-400">Sisa Kewajiban</span>
+                                <strong className="mt-1 block text-lg font-extrabold text-[#17158c]">
+                                  {formatRupiah(summary.remaining)}
+                                </strong>
+                              </div>
+                              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                                <span className="text-[11px] text-slate-400">
+                                  Cicilan Berikutnya
+                                </span>
+                                {summary.nextDue ? (
+                                  <>
+                                    <strong
+                                      className={`mt-1 block text-lg font-extrabold ${overdueDays > 0 ? 'text-red-600' : 'text-slate-900'}`}
+                                    >
+                                      {formatRupiah(summary.nextDue.amount)}
+                                    </strong>
+                                    <span
+                                      className={`mt-0.5 block text-[10px] ${overdueDays > 0 ? 'font-bold text-red-600' : 'text-slate-400'}`}
+                                    >
+                                      {formatDateShort(summary.nextDue.dueDate)}
+                                      {overdueDays > 0 && ` · Terlambat ${overdueDays} hr`}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <strong className="mt-1 block text-lg font-extrabold text-slate-900">
+                                    —
+                                  </strong>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Tabel jadwal cicilan */}
+                            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                              <table className="w-full border-collapse text-left text-xs">
+                                <thead>
+                                  <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    <th className="px-4 py-2.5">Cicilan</th>
+                                    <th className="px-4 py-2.5">Jatuh Tempo</th>
+                                    <th className="px-4 py-2.5 text-right">Nominal</th>
+                                    <th className="px-4 py-2.5 text-right">Sisa</th>
+                                    <th className="px-4 py-2.5">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {summary.schedule.map((row) => {
+                                    const paid = paidSet.has(row.installment)
+                                    return (
+                                      <tr
+                                        className="border-b border-slate-100 last:border-b-0"
+                                        key={row.installment}
+                                      >
+                                        <td className="px-4 py-2.5 font-semibold text-slate-900">
+                                          {row.installment}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-600">
+                                          {formatDateShort(row.dueDate)}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-900">
+                                          {formatRupiah(row.amount)}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-600">
+                                          {paid ? '—' : formatRupiah(row.amount)}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          <span
+                                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                              paid
+                                                ? 'bg-emerald-50 text-emerald-700'
+                                                : row.dueDate < todayIso
+                                                  ? 'bg-red-50 text-red-700'
+                                                  : 'bg-amber-50 text-amber-700'
+                                            }`}
+                                          >
+                                            {paid
+                                              ? 'Lunas'
+                                              : row.dueDate < todayIso
+                                                ? 'Terlambat'
+                                                : 'Belum dibayar'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Transaksi Xendit */}
+                            {rowPayments.length > 0 ? (
+                              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700">
+                                  Transaksi Xendit ({rowPayments.length})
+                                </div>
+                                <table className="w-full border-collapse text-left text-xs">
+                                  <thead>
+                                    <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                      <th className="px-4 py-2.5">Keterangan</th>
+                                      <th className="px-4 py-2.5 text-right">Nominal</th>
+                                      <th className="px-4 py-2.5">Status</th>
+                                      <th className="px-4 py-2.5 text-right">Dibayar</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rowPayments.map((payment) => (
+                                      <tr
+                                        className="border-b border-slate-100 last:border-b-0"
+                                        key={payment.id}
+                                      >
+                                        <td className="px-4 py-2.5 font-medium text-slate-900">
+                                          {payment.description || 'Pembayaran'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-900">
+                                          {formatRupiah(payment.amount)}
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                          <span
+                                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ${
+                                              PAYMENT_BADGE_STYLES[payment.status] ??
+                                              'bg-slate-100 text-slate-700 ring-slate-200'
+                                            }`}
+                                          >
+                                            {PAYMENT_STATUS_LABELS[payment.status] ??
+                                              payment.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-600">
+                                          {formatDateTime(payment.paidAt)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-500">
+                                Belum ada transaksi Xendit untuk siswa ini.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* 8. MENU: KERINGANAN (Support Requests Review) */}
+          {activeMenu === 'relief' && (
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">Menunggu Tinjauan</span>
+                  <strong
+                    className={`mt-1.5 block text-2xl font-extrabold ${
+                      reliefRows.some((row) => row.request.status === 'OPEN')
+                        ? 'text-amber-600'
+                        : 'text-slate-900'
+                    }`}
+                  >
+                    {reliefRows.filter((row) => row.request.status === 'OPEN').length}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Permohonan berstatus OPEN
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">Ditinjau</span>
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-emerald-600">
+                    {reliefRows.filter((row) => row.request.status === 'REVIEWED').length}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Permohonan sudah ditanggapi
+                  </span>
+                </div>
+              </div>
+
+              <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
+                <header className="border-b border-slate-100 px-5 py-3.5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Permohonan Keringanan ({reliefRows.length})
+                  </h2>
+                </header>
+                {reliefRows.length === 0 ? (
+                  <p className="px-5 py-8 text-center text-xs text-slate-400">
+                    Belum ada permohonan keringanan masuk.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 py-2.5">Siswa</th>
+                          <th className="px-4 py-2.5">Waktu</th>
+                          <th className="px-4 py-2.5">Pesan</th>
+                          <th className="px-4 py-2.5">Status</th>
+                          <th className="px-4 py-2.5">Tanggapan</th>
+                          <th className="px-4 py-2.5 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reliefRows.map(({ app, request, index }) => {
+                          const key = reliefKey(app.id, index)
+                          const edit = reliefEdits[key] ?? {
+                            status: request.status,
+                            response: request.response ?? '',
+                          }
+                          const unchanged =
+                            edit.status === request.status &&
+                            edit.response === (request.response ?? '')
+                          return (
+                            <tr
+                              className="border-b border-slate-100 align-top last:border-b-0"
+                              key={key}
+                            >
+                              <td className="px-4 py-3">
+                                <span className="font-semibold text-slate-900">
+                                  {app.applicantName}
+                                </span>
+                                <span className="mt-0.5 block text-[11px] text-slate-400">
+                                  {app.applicationId}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                                {formatDateTime(request.requestedAt)}
+                              </td>
+                              <td className="max-w-xs px-4 py-3 text-slate-600">
+                                {request.message || '—'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  aria-label={`Status permohonan ${app.applicationId}`}
+                                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
+                                  onChange={(event) =>
+                                    setReliefEdits((current) => ({
+                                      ...current,
+                                      [key]: { ...edit, status: event.target.value },
+                                    }))
+                                  }
+                                  value={edit.status}
+                                >
+                                  <option value="OPEN">Menunggu tinjauan</option>
+                                  <option value="REVIEWED">Ditinjau</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  aria-label={`Tanggapan untuk ${app.applicationId}`}
+                                  className="w-full min-w-44 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900"
+                                  maxLength={1000}
+                                  onChange={(event) =>
+                                    setReliefEdits((current) => ({
+                                      ...current,
+                                      [key]: { ...edit, response: event.target.value },
+                                    }))
+                                  }
+                                  placeholder="Tanggapan untuk pemohon…"
+                                  value={edit.response}
+                                />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right">
+                                <DrawerAction
+                                  ariaLabel={`Simpan tanggapan ${app.applicationId}`}
+                                  disabled={pending || unchanged}
+                                  label="Simpan"
+                                  onClick={() => saveRelief(app, index, edit.status, edit.response)}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {/* 9. MENU: STATISTIK (Portfolio Analytics & LPK Partner Table) */}
           {activeMenu === 'statistics' && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -2553,7 +3487,7 @@ export function AdminDashboard({
             </div>
           )}
 
-          {/* 8. MENU: LOG AUDIT (Financial Plan History Table) */}
+          {/* 10. MENU: LOG AUDIT (Financial Plan History Table) */}
           {activeMenu === 'audit' && (
             <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
               <div className="overflow-x-auto">
@@ -2619,7 +3553,7 @@ export function AdminDashboard({
                             <DrawerAction
                               ariaLabel={`Lihat detail audit ${item.app.applicationId}`}
                               label="Detail"
-                              onClick={() => openApplicationDrawer(item.app.id, 'support')}
+                              onClick={() => openApplicationDrawer(item.app.id, 'pricing')}
                             />
                           </td>
                         </tr>
@@ -2640,14 +3574,21 @@ export function AdminDashboard({
             <ApplicationDrawerForm
               activeTab={drawerTab}
               application={drawerApplication}
+              error={error}
               key={drawerApplication.id}
+              onAgreePricing={agreePricing}
+              onApproveDocument={approveDocument}
+              onApprovePricing={approvePricing}
               onClose={() => setDrawerAppId(null)}
+              onDeleteDocument={removeDocument}
+              onDismissError={() => setError('')}
+              onDismissSaved={() => setSavedNotice('')}
               onSave={save}
               onUploadAgreement={uploadAgreement}
-              payments={drawerPayments}
+              onWorkflow={saveWorkflow}
               pending={pending}
+              savedNotice={savedNotice}
               setActiveTab={setDrawerTab}
-              todayIso={todayIso}
             />
           </div>
         </div>
