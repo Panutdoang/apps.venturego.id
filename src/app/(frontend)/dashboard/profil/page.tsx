@@ -5,11 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import {
-  getOrCreateStudentNumber,
-  getUserActivityFeed,
-  type UserApplicationDetail,
-} from '../actions'
+import { getStudentNumber, getUserActivityFeed, type UserApplicationDetail } from '../actions'
 import {
   DashboardCard,
   DashboardIcon,
@@ -106,7 +102,7 @@ export default function ProfilePage() {
         if (!active) return
         const [feed, studentProfile] = await Promise.all([
           getUserActivityFeed(token),
-          getOrCreateStudentNumber(token),
+          getStudentNumber(token),
         ])
         if (!active) return
         if (feed.ok) {
@@ -201,9 +197,16 @@ export default function ProfilePage() {
             {profileLoading ? (
               <SkeletonBlock className="mt-2 h-4 w-32" />
             ) : (
-              <strong className="mt-1 block truncate text-sm font-bold tracking-wide text-[var(--primary)]">
-                {studentNumber || 'Belum tersedia'}
-              </strong>
+              <>
+                <strong className="mt-1 block truncate text-sm font-bold tracking-wide text-[var(--primary)]">
+                  {studentNumber || 'Belum tersedia'}
+                </strong>
+                {!studentNumber && (
+                  <span className="mt-1 block text-[10px] leading-4 text-slate-400">
+                    Terbit setelah pengajuan berstatus Aktif.
+                  </span>
+                )}
+              </>
             )}
             {studentNumberError && !profileLoading && (
               <span className="mt-1 block text-[10px] leading-4 text-amber-700">

@@ -3,7 +3,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase-admin'
 import { isAllowedSignInProvider } from '@/lib/auth-shared'
-import { ensureStudentNumber } from '@/lib/student-number'
+import { STUDENT_NUMBER_PATTERN } from '@/lib/student-number'
 
 export type DashboardScheduleSummary = {
   total: number
@@ -216,17 +216,23 @@ const readTimestampMillis = (value: unknown): number | null => {
   return null
 }
 
-export async function getOrCreateStudentNumber(token: string): Promise<StudentNumberResult> {
+export async function getStudentNumber(token: string): Promise<StudentNumberResult> {
   try {
     const identity = await verifyUserIdentity(token)
     if (!identity) return { ok: false, message: 'Sesi telah berakhir. Silakan masuk kembali.' }
 
-    const studentNumber = await ensureStudentNumber(identity.uid)
-    if (!studentNumber) {
-      return { ok: false, message: 'Nomor induk siswa belum dapat dimuat. Silakan coba lagi.' }
+    const snapshot = await getFirebaseFirestore()
+      .collection('studentProfiles')
+      .doc(identity.uid)
+      .get()
+    const studentNumber = snapshot.data()?.studentNumber
+    return {
+      ok: true,
+      studentNumber:
+        typeof studentNumber === 'string' && STUDENT_NUMBER_PATTERN.test(studentNumber)
+          ? studentNumber
+          : '',
     }
-
-    return { ok: true, studentNumber }
   } catch {
     return { ok: false, message: 'Nomor induk siswa belum dapat dimuat. Silakan coba lagi.' }
   }

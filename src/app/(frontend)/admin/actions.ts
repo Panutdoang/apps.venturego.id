@@ -15,6 +15,7 @@ import {
 import { promoteApplicationFolder } from '@/lib/drive-folders'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
+import { ensureStudentNumber } from '@/lib/student-number'
 
 export async function updateApplicationStatus(
   documentId: string,
@@ -405,6 +406,9 @@ export async function updateApplicationStatus(
         typeof applicationData.ownerFirebaseUid === 'string' ? applicationData.ownerFirebaseUid : ''
       const applicantName =
         typeof applicationData.applicantName === 'string' ? applicationData.applicantName : ''
+      if (ownerUid) {
+        await ensureStudentNumber(ownerUid)
+      }
       if (ownerUid && applicantName) {
         const driveFiles = (Array.isArray(currentDocuments) ? currentDocuments : [])
           .filter((document: Record<string, unknown>) => typeof document.fileId === 'string')

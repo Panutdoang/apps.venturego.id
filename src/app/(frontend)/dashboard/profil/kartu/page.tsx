@@ -3,11 +3,7 @@
 import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
-import {
-  getOrCreateStudentNumber,
-  getUserActivityFeed,
-  type UserApplicationDetail,
-} from '../../actions'
+import { getStudentNumber, getUserActivityFeed, type UserApplicationDetail } from '../../actions'
 import { DashboardCard, DashboardScaffold, SkeletonBlock } from '../../_components/dashboard-ui'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -45,7 +41,7 @@ export default function StudentCardPage() {
         if (!active) return
         const [feed, studentProfile] = await Promise.all([
           getUserActivityFeed(token),
-          getOrCreateStudentNumber(token),
+          getStudentNumber(token),
         ])
         if (!active) return
         if (feed.ok) {
@@ -122,6 +118,11 @@ export default function StudentCardPage() {
             <p className="mt-1 text-2xl font-black tracking-widest">
               {studentNumber || 'Belum tersedia'}
             </p>
+            {!studentNumber && !loading && !studentNumberError && (
+              <p className="mt-1 text-[10px] text-indigo-200">
+                Terbit setelah pengajuan berstatus Aktif.
+              </p>
+            )}
             {studentNumberError && (
               <p className="mt-1 text-[10px] text-amber-200">Nomor belum dapat dimuat.</p>
             )}
