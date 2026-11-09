@@ -47,7 +47,10 @@ const getOAuthConfig = (): OAuthConfig => {
   const clientSecret = process.env.GDRIVE_OAUTH_CLIENT_SECRET?.trim()
   const refreshToken = process.env.GDRIVE_REFRESH_TOKEN?.trim()
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new GDriveError('Layanan Google Drive belum dikonfigurasi di server.', 'NOT_CONFIGURED')
+    throw new GDriveError(
+      'Layanan penyimpanan berkas belum dikonfigurasi di server.',
+      'NOT_CONFIGURED',
+    )
   }
   cachedOAuthConfig = { clientId, clientSecret, refreshToken }
   return cachedOAuthConfig
@@ -72,7 +75,7 @@ const getServiceAccessToken = async (): Promise<string> => {
       cache: 'no-store',
     })
   } catch {
-    throw new GDriveError('Google Drive tidak dapat dihubungi.', 'UPSTREAM')
+    throw new GDriveError('Layanan penyimpanan berkas tidak dapat dihubungi.', 'UPSTREAM')
   }
   const payload = (await response.json().catch(() => null)) as {
     access_token?: string
@@ -82,11 +85,11 @@ const getServiceAccessToken = async (): Promise<string> => {
   if (!response.ok || !payload?.access_token) {
     if (payload?.error === 'invalid_grant') {
       throw new GDriveError(
-        'Akses Google Drive kedaluwarsa. Silakan setujui ulang akses aplikasi.',
+        'Akses penyimpanan berkas kedaluwarsa. Silakan setujui ulang akses aplikasi.',
         'NOT_CONFIGURED',
       )
     }
-    throw new GDriveError('Autentikasi Google Drive gagal.', 'UPSTREAM')
+    throw new GDriveError('Autentikasi penyimpanan berkas gagal.', 'UPSTREAM')
   }
   cachedToken = {
     value: payload.access_token,
@@ -102,7 +105,7 @@ const driveFetch = async (path: string, init?: RequestInit): Promise<Response> =
   try {
     return await fetch(`${DRIVE_API}${path}`, { ...init, headers, cache: 'no-store' })
   } catch {
-    throw new GDriveError('Google Drive tidak dapat dihubungi.', 'UPSTREAM')
+    throw new GDriveError('Layanan penyimpanan berkas tidak dapat dihubungi.', 'UPSTREAM')
   }
 }
 
@@ -110,12 +113,12 @@ const driveJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await driveFetch(path, init)
   if (response.ok) return (await response.json()) as T
   if (response.status === 403) {
-    throw new GDriveError('Akses Google Drive ditolak.', 'FORBIDDEN')
+    throw new GDriveError('Akses penyimpanan berkas ditolak.', 'FORBIDDEN')
   }
   if (response.status === 404) {
-    throw new GDriveError('Folder atau berkas Drive tidak ditemukan.', 'INVALID')
+    throw new GDriveError('Folder atau berkas tidak ditemukan.', 'INVALID')
   }
-  throw new GDriveError('Google Drive tidak dapat dihubungi.', 'UPSTREAM')
+  throw new GDriveError('Layanan penyimpanan berkas tidak dapat dihubungi.', 'UPSTREAM')
 }
 
 export const sanitizeDriveFolderName = (value: string) =>
@@ -174,7 +177,7 @@ export const getOrCreateChildFolder = async (
       ...(options.colorRgb ? { folderColorRgb: options.colorRgb } : {}),
     }),
   })
-  if (!created.id) throw new GDriveError('Folder Drive gagal dibuat.', 'UPSTREAM')
+  if (!created.id) throw new GDriveError('Folder gagal dibuat.', 'UPSTREAM')
   return created.id
 }
 
@@ -215,7 +218,7 @@ export const getRootFolderId = async (): Promise<string> => {
       parents: ['root'],
     }),
   })
-  if (!created.id) throw new GDriveError('Folder Drive gagal dibuat.', 'UPSTREAM')
+  if (!created.id) throw new GDriveError('Folder gagal dibuat.', 'UPSTREAM')
   cachedRootFolderId = created.id
   return created.id
 }
@@ -244,11 +247,11 @@ export const createResumableSession = async (options: {
       },
     )
   } catch {
-    throw new GDriveError('Google Drive tidak dapat dihubungi.', 'UPSTREAM')
+    throw new GDriveError('Layanan penyimpanan berkas tidak dapat dihubungi.', 'UPSTREAM')
   }
   const location = response.headers.get('location')
   if (!response.ok || !location) {
-    throw new GDriveError('Google Drive gagal menyiapkan sesi unggah.', 'UPSTREAM')
+    throw new GDriveError('Server gagal menyiapkan sesi unggah.', 'UPSTREAM')
   }
   return location
 }
@@ -285,7 +288,7 @@ export const sendResumableChunk = async (
       cache: 'no-store',
     })
   } catch {
-    throw new GDriveError('Berkas gagal diteruskan ke Google Drive.', 'UPSTREAM')
+    throw new GDriveError('Berkas gagal diteruskan ke server.', 'UPSTREAM')
   }
   if (response.status === 308) return { done: false }
   if (response.ok) {
@@ -293,13 +296,13 @@ export const sendResumableChunk = async (
       id?: string
       size?: string | number
     } | null
-    if (!data?.id) throw new GDriveError('Google Drive tidak mengembalikan berkas.', 'UPSTREAM')
+    if (!data?.id) throw new GDriveError('Server tidak mengembalikan berkas.', 'UPSTREAM')
     return { done: true, fileId: data.id, size: Number(data.size ?? totalSize) }
   }
   if (response.status === 404 || response.status === 410) {
     throw new GDriveError('Sesi unggah kedaluwarsa. Silakan unggah ulang.', 'INVALID')
   }
-  throw new GDriveError('Berkas gagal diteruskan ke Google Drive.', 'UPSTREAM')
+  throw new GDriveError('Berkas gagal diteruskan ke server.', 'UPSTREAM')
 }
 
 export const uploadDriveFile = async (options: {
@@ -313,7 +316,7 @@ export const uploadDriveFile = async (options: {
     !options.fileName ||
     !options.bytes.byteLength
   ) {
-    throw new GDriveError('Data berkas untuk Google Drive tidak valid.', 'INVALID')
+    throw new GDriveError('Data berkas tidak valid.', 'INVALID')
   }
 
   const boundary = `venturego_${randomBytes(18).toString('hex')}`
@@ -333,8 +336,9 @@ export const uploadDriveFile = async (options: {
     body: multipartBody,
   })
   if (!response.ok) {
-    if (response.status === 403) throw new GDriveError('Akses Google Drive ditolak.', 'FORBIDDEN')
-    throw new GDriveError('Google Drive gagal menyimpan berkas akad.', 'UPSTREAM')
+    if (response.status === 403)
+      throw new GDriveError('Akses penyimpanan berkas ditolak.', 'FORBIDDEN')
+    throw new GDriveError('Server gagal menyimpan berkas akad.', 'UPSTREAM')
   }
 
   const data = (await response.json().catch(() => null)) as {
@@ -342,7 +346,7 @@ export const uploadDriveFile = async (options: {
     size?: string | number
   } | null
   if (!data?.id || !FILE_ID_PATTERN.test(data.id)) {
-    throw new GDriveError('Google Drive tidak mengembalikan identitas berkas.', 'UPSTREAM')
+    throw new GDriveError('Server tidak mengembalikan identitas berkas.', 'UPSTREAM')
   }
   return { fileId: data.id, size: Number(data.size ?? options.bytes.byteLength) }
 }
@@ -371,7 +375,7 @@ export const readDriveFileHead = async (fileId: string): Promise<Uint8Array> => 
   })
   if (!response.ok) {
     throw new GDriveError(
-      'Berkas tidak dapat dibaca dari Google Drive.',
+      'Berkas tidak dapat dibaca dari penyimpanan.',
       response.status === 404 ? 'INVALID' : 'UPSTREAM',
     )
   }
@@ -385,7 +389,7 @@ export const downloadDriveFile = async (fileId: string): Promise<Uint8Array> => 
   const response = await driveFetch(`/drive/v3/files/${fileId}?alt=media`)
   if (!response.ok) {
     throw new GDriveError(
-      'Berkas tidak dapat diunduh dari Google Drive.',
+      'Berkas tidak dapat diunduh dari penyimpanan.',
       response.status === 404 ? 'INVALID' : 'UPSTREAM',
     )
   }

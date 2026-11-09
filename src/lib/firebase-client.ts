@@ -15,7 +15,7 @@ const getFirebaseApp = () => {
   }
 
   if (Object.values(config).some((value) => !value)) {
-    throw new Error('Firebase client configuration is not complete.')
+    throw new Error('Konfigurasi aplikasi belum lengkap. Hubungi pengelola.')
   }
 
   const existingApp = getApps().find((app) => app.name === APP_NAME)

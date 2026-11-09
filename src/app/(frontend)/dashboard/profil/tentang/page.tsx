@@ -11,7 +11,7 @@ const ABOUT_ROWS: { label: string; value: string; href?: string }[] = [
     href: 'mailto:vworksofficial@gmail.com',
   },
   { label: 'Skema pembiayaan', value: 'Wakalah bil Ujrah' },
-  { label: 'Basis data', value: 'Google Firestore & Google Drive' },
+  { label: 'Basis data', value: 'Database aplikasi' },
 ]
 
 export default function AboutPage() {

@@ -78,6 +78,7 @@ export default function ProfilePage() {
   const [studentNumberError, setStudentNumberError] = useState('')
   const [account, setAccount] = useState<{
     name: string
+    email: string
     emailVerified: boolean
     photoUrl: string
   } | null>(null)
@@ -95,6 +96,7 @@ export default function ProfilePage() {
       const photoUrl = user.photoURL?.startsWith('https://') ? user.photoURL : ''
       setAccount({
         name: user.displayName?.trim() || 'Pengguna',
+        email: user.email ?? '',
         emailVerified: user.emailVerified,
         photoUrl,
       })
@@ -179,7 +181,12 @@ export default function ProfilePage() {
                 <SkeletonBlock className="h-4 w-36 rounded-full" />
               </div>
             ) : (
-              <h1 className="truncate text-lg font-bold text-slate-900">{displayName}</h1>
+              <>
+                <h1 className="truncate text-lg font-bold text-slate-900">{displayName}</h1>
+                {account?.email && (
+                  <p className="mt-1 truncate text-xs text-slate-500">{account.email}</p>
+                )}
+              </>
             )}
             {firstApplication && (
               <span className="mt-1.5 inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-[var(--primary)]">

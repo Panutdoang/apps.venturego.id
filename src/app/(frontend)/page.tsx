@@ -161,7 +161,7 @@ export default function HomePage() {
       setSignInError(
         role === 'google'
           ? code === 'auth/unauthorized-domain'
-            ? 'Gunakan alamat http://localhost:3000 agar login Google diizinkan oleh Firebase.'
+            ? 'Gunakan alamat http://localhost:3000 agar login Google diizinkan sistem.'
             : 'Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.'
           : `Tidak dapat masuk sebagai ${role === 'admin' ? 'admin' : 'user'} demo. Silakan coba lagi.`,
       )

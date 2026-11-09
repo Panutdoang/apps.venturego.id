@@ -15,8 +15,8 @@ const formatDate = (value: string | null) => {
 }
 
 const POLICY_POINTS = [
-  'Data pengajuan (identitas, kontak, dan dokumen) disimpan di database Firestore dan hanya diakses oleh server serta staf resmi VentureGo.',
-  'Berkas seperti KTP dan ijazah diunggah ke Google Drive privat; unduhan hanya melalui akun Anda dan route staf yang terautentikasi.',
+  'Data pengajuan (identitas, kontak, dan dokumen) disimpan di database dan hanya diakses oleh server serta staf resmi VentureGo.',
+  'Berkas seperti KTP dan ijazah disimpan secara privat; unduhan hanya melalui akun Anda dan staf resmi yang terautentikasi.',
   'Alamat email dipakai untuk verifikasi akun, notifikasi pengajuan, dan bantuan — tidak dibagikan ke pihak ketiga untuk pemasaran.',
   'Untuk koreksi atau penghapusan data, hubungi tim layanan melalui vworksofficial@gmail.com.',
 ]
