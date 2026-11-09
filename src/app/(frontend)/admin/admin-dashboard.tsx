@@ -38,8 +38,8 @@ const STATUS_LABELS: Record<(typeof APPLICATION_STATUSES)[number], string> = {
 }
 
 const STATUS_BADGE_STYLES: Record<string, string> = {
-  SUBMITTED: 'bg-blue-50 text-blue-700 ring-blue-200',
-  ELIGIBILITY_REVIEW: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+  SUBMITTED: 'bg-blue-50 text-[#1a4691] ring-blue-200',
+  ELIGIBILITY_REVIEW: 'bg-blue-50 text-[#1a4691] ring-blue-200',
   DOCUMENT_REVIEW: 'bg-purple-50 text-purple-700 ring-purple-200',
   REVISION_REQUIRED: 'bg-amber-50 text-amber-800 ring-amber-200',
   COST_VERIFICATION: 'bg-cyan-50 text-cyan-800 ring-cyan-200',
@@ -234,10 +234,10 @@ const SIDEBAR_GROUPS: {
 ]
 
 const DETAIL_TABS: { id: DetailTabId; label: string }[] = [
-  { id: 'profile', label: 'Profil & Kelayakan' },
+  { id: 'profile', label: 'Profil' },
   { id: 'nominal', label: 'Nominal Pengajuan' },
-  { id: 'documents', label: 'Berkas Dokumen' },
-  { id: 'pricing', label: 'Draft Biaya & Akad' },
+  { id: 'documents', label: 'Berkas' },
+  { id: 'pricing', label: 'Draft Akad' },
   { id: 'contract', label: 'Status Persetujuan' },
 ]
 
@@ -623,10 +623,10 @@ function DrawerAction({
   return (
     <button
       aria-label={ariaLabel}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:cursor-not-allowed disabled:opacity-60 ${
         variant === 'primary'
-          ? 'bg-[#17158c] text-white hover:bg-[#111077]'
-          : 'border border-slate-200 bg-white text-[#17158c] hover:border-[#17158c]/30 hover:bg-indigo-50'
+          ? 'bg-[#1a4691] text-white hover:bg-[#143670]'
+          : 'border border-slate-200 bg-white text-[#1a4691] hover:border-[#1a4691]/30 hover:bg-blue-50'
       }`}
       disabled={disabled}
       onClick={onClick}
@@ -783,16 +783,16 @@ function ApplicationDrawerForm({
       <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-[#17158c] px-2.5 py-1 text-xs font-bold text-white">
+            <span className="inline-flex items-center rounded-md bg-[#1a4691] px-2.5 py-1 text-xs font-bold text-white">
               {application.applicationId}
             </span>
-            <span className="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-[#17158c] ring-1 ring-inset ring-indigo-200">
+            <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#1a4691] ring-1 ring-inset ring-blue-200">
               {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
             </span>
           </div>
           <button
             aria-label="Tutup panel pengajuan"
-            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c]"
+            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691]"
             onClick={onClose}
             type="button"
           >
@@ -851,9 +851,9 @@ function ApplicationDrawerForm({
             return (
               <button
                 aria-selected={isActive}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] ${
                   isActive
-                    ? 'bg-[#17158c] text-white shadow-xs'
+                    ? 'bg-[#1a4691] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
                 key={tab.id}
@@ -918,7 +918,7 @@ function ApplicationDrawerForm({
                 </div>
                 {ktpDocument?.fileId && (
                   <a
-                    className="mt-1.5 inline-block text-[11px] font-semibold text-[#17158c] underline"
+                    className="mt-1.5 inline-block text-[11px] font-semibold text-[#1a4691] underline"
                     href={`/api/admin/applications/${application.id}/documents/${ktpIndex}`}
                   >
                     Unduh KTP {formatSizeMb(ktpDocument.size)}
@@ -1053,7 +1053,7 @@ function ApplicationDrawerForm({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <span className="text-[11px] font-medium text-slate-500">Nominal Diajukan</span>
-              <strong className="mt-1 block text-xl font-extrabold text-[#17158c]">
+              <strong className="mt-1 block text-xl font-extrabold text-[#1a4691]">
                 {application.product === 'DEPARTURE_BRIDGING'
                   ? formatRupiah(departure.requestedFinancingAmount)
                   : formatRupiah(
@@ -1131,7 +1131,7 @@ function ApplicationDrawerForm({
                 ].map(([label, value], index, rows) => (
                   <div
                     className={`flex items-center justify-between py-2.5 ${
-                      index === rows.length - 1 ? 'font-bold text-[#17158c]' : 'text-slate-600'
+                      index === rows.length - 1 ? 'font-bold text-[#1a4691]' : 'text-slate-600'
                     }`}
                     key={label}
                   >
@@ -1238,7 +1238,7 @@ function ApplicationDrawerForm({
               {pricingStatus === 'ESTIMATED'
                 ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru, lalu jadwal angsuran dihitung ulang.'
                 : pricingStatus === 'VERIFIED'
-                  ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Biaya & Akad.'
+                  ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Akad.'
                   : 'Rincian biaya sudah disepakati dan siap diproses ke tahap akad.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
@@ -1280,11 +1280,11 @@ function ApplicationDrawerForm({
             </div>
             {(pricingStatus === 'ESTIMATED' || pricingStatus === 'VERIFIED') &&
               showNominalInput && (
-                <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
+                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                   <label className="block text-xs font-semibold text-slate-700">
                     Nominal baru (Rp)
                     <input
-                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                       min={1}
                       onChange={(event) => setNewNominal(event.target.value)}
                       placeholder="Contoh: 120000000"
@@ -1389,7 +1389,7 @@ function ApplicationDrawerForm({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             aria-label={`Pratinjau ${document.documentType}`}
-                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-[#17158c]/30 hover:text-[#17158c] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-[#1a4691]/30 hover:text-[#1a4691] disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={!document.fileId}
                             onClick={() => setPreviewIndex(index)}
                             title="Pratinjau berkas"
@@ -1472,7 +1472,7 @@ function ApplicationDrawerForm({
           />
           <div className="flex justify-end border-t border-slate-100 pt-4">
             <button
-              className="rounded-lg bg-[#17158c] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60"
+              className="rounded-lg bg-[#1a4691] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#143670] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:opacity-60"
               disabled={pending}
               type="submit"
             >
@@ -1505,7 +1505,7 @@ function ApplicationDrawerForm({
               <label className="space-y-1 text-[11px] font-semibold text-slate-600">
                 <span>Status Pengajuan</span>
                 <select
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-[#17158c] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-[#1a4691] focus:outline-none"
                   onChange={(event) => setWorkflowStatus(event.target.value)}
                   value={workflowStatus}
                 >
@@ -1519,7 +1519,7 @@ function ApplicationDrawerForm({
               <label className="space-y-1 text-[11px] font-semibold text-slate-600">
                 <span>Catatan Internal</span>
                 <input
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[11px] font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[11px] font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                   maxLength={2000}
                   onChange={(event) => setWorkflowNotes(event.target.value)}
                   placeholder="Catatan internal staf…"
@@ -1532,7 +1532,7 @@ function ApplicationDrawerForm({
                 Perubahan disimpan terpisah dari rincian biaya.
               </span>
               <button
-                className="rounded-lg bg-[#17158c] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60"
+                className="rounded-lg bg-[#1a4691] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#143670] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:opacity-60"
                 disabled={pending || !workflowDirty}
                 onClick={() => onWorkflow(application.id, workflowStatus, workflowNotes)}
                 type="button"
@@ -1561,7 +1561,7 @@ function ApplicationDrawerForm({
               <p className="mt-2 rounded-lg bg-slate-50 p-3 text-slate-700">
                 {application.financialPlan?.finalAgreementReference
                   ? String(application.financialPlan.finalAgreementReference)
-                  : 'Belum diisi (isi pada tab Draft Biaya & Akad)'}
+                  : 'Belum diisi (isi pada tab Draft Akad)'}
               </p>
             </div>
           </div>
@@ -1576,7 +1576,7 @@ function ApplicationDrawerForm({
               </div>
               {agreementPdfCurrent ? (
                 <a
-                  className="shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-[#17158c] hover:bg-indigo-100"
+                  className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1a4691] hover:bg-blue-100"
                   href={`/api/admin/applications/${application.id}/agreement`}
                 >
                   Buka PDF
@@ -1588,7 +1588,7 @@ function ApplicationDrawerForm({
                 PDF final dapat diunggah setelah status biaya menjadi Disepakati.
               </p>
             ) : (
-              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#17158c] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#111077]">
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#1a4691] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#143670]">
                 <span>
                   {agreementUploading
                     ? 'Mengunggah PDF…'
@@ -1631,7 +1631,7 @@ function ApplicationDrawerForm({
       {/* Slide-over preview berkas dokumen */}
       {previewIndex !== null && previewDocument && (
         <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
-          <div className="flex h-dvh w-full max-w-2xl flex-col bg-white shadow-2xl">
+          <div className="flex h-dvh w-full max-w-5xl flex-col bg-white shadow-2xl">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-slate-900">{previewDocument.documentType}</h3>
@@ -1699,7 +1699,7 @@ function ApplicationDrawerForm({
                     Pratinjau tidak tersedia untuk jenis berkas ini.
                   </p>
                   <a
-                    className="rounded-lg bg-[#17158c] px-4 py-2 text-xs font-semibold text-white hover:bg-[#111077]"
+                    className="rounded-lg bg-[#1a4691] px-4 py-2 text-xs font-semibold text-white hover:bg-[#143670]"
                     href={`/api/admin/applications/${application.id}/documents/${previewIndex}`}
                   >
                     Unduh berkas
@@ -2129,7 +2129,7 @@ export function AdminDashboard({
   return (
     <div className="flex min-h-dvh flex-col bg-[#f8fafc] text-slate-900 lg:h-dvh lg:flex-row lg:overflow-hidden">
       {/* FIXED 100dvh SIDEBAR */}
-      <aside className="flex w-full flex-col justify-between border-b border-slate-200 bg-[#0f1338] text-white lg:h-dvh lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-slate-800">
+      <aside className="flex w-full flex-col justify-between border-b border-slate-200 bg-[#1a4691] text-white lg:h-dvh lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#143670]">
         {/* Brand Header */}
         <div className="flex items-center gap-2.5 border-b border-white/10 px-4 py-3.5">
           <img
@@ -2141,7 +2141,7 @@ export function AdminDashboard({
           />
           <div className="min-w-0">
             <p className=" truncate text-xs font-bold tracking-tight text-white">VentureGo VSV</p>
-            <p className="truncate text-[10px] font-medium text-indigo-300">Admin Backoffice</p>
+            <p className="truncate text-[10px] font-medium text-blue-300">Admin Backoffice</p>
           </div>
         </div>
 
@@ -2152,7 +2152,7 @@ export function AdminDashboard({
         >
           {SIDEBAR_GROUPS.map((group) => (
             <div className="w-full space-y-1" key={group.group}>
-              <p className="hidden px-2.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300/60 lg:block">
+              <p className="hidden px-2.5 text-[10px] font-bold uppercase tracking-wider text-blue-300/60 lg:block">
                 {group.group}
               </p>
               <div className="flex flex-wrap gap-1 lg:flex-col">
@@ -2163,8 +2163,8 @@ export function AdminDashboard({
                     <button
                       className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs font-medium transition lg:w-full ${
                         active
-                          ? 'bg-[#252b7a] font-semibold text-white shadow-2xs ring-1 ring-indigo-400/30'
-                          : 'text-indigo-100/75 hover:bg-white/5 hover:text-white'
+                          ? 'bg-[#143670] font-semibold text-white shadow-2xs ring-1 ring-white/20'
+                          : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
                       }`}
                       key={item.id}
                       onClick={() => setActiveMenu(item.id)}
@@ -2178,7 +2178,7 @@ export function AdminDashboard({
                         <span
                           className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
                             active
-                              ? 'bg-white text-[#17158c]'
+                              ? 'bg-white text-[#1a4691]'
                               : item.id === 'installments' && metrics.openReliefCount > 0
                                 ? 'bg-amber-400 text-slate-950'
                                 : item.id === 'relief' && metrics.openReliefCount > 0
@@ -2186,7 +2186,7 @@ export function AdminDashboard({
                                   : item.id === 'activeInstallments' &&
                                       activeInstallmentMetrics.overdue > 0
                                     ? 'bg-amber-400 text-slate-950'
-                                    : 'bg-white/10 text-indigo-200'
+                                    : 'bg-white/10 text-blue-200'
                           }`}
                         >
                           {badge}
@@ -2203,7 +2203,7 @@ export function AdminDashboard({
         {/* Compact Staff Footer */}
         <div className="border-t border-white/10 bg-black/20 px-3.5 py-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-300">
               Staf
             </span>
             <span className="truncate text-[11px] font-medium text-white">{email}</span>
@@ -2239,7 +2239,7 @@ export function AdminDashboard({
           <div className="flex flex-wrap items-center gap-2">
             <input
               aria-label="Cari pengajuan atau siswa"
-              className="w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-[#17158c] focus:bg-white focus:outline-none"
+              className="w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-[#1a4691] focus:bg-white focus:outline-none"
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari ID, nama, WA, LPK…"
               value={searchQuery}
@@ -2313,7 +2313,7 @@ export function AdminDashboard({
                 </div>
                 <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
                   <span className="text-xs font-medium text-slate-500">Menunggu Verifikasi</span>
-                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#17158c]">
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#1a4691]">
                     {metrics.pendingReview}
                   </strong>
                   <span className="mt-1 block text-[11px] text-slate-400">
@@ -2349,7 +2349,7 @@ export function AdminDashboard({
                     Pengajuan Terbaru ({filteredApplications.slice(0, 8).length})
                   </h2>
                   <button
-                    className="text-xs font-semibold text-[#17158c] hover:underline"
+                    className="text-xs font-semibold text-[#1a4691] hover:underline"
                     onClick={() => setActiveMenu('applications')}
                     type="button"
                   >
@@ -2375,7 +2375,7 @@ export function AdminDashboard({
                         const uploaded = app.documents.filter((d) => Boolean(d.fileId)).length
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-slate-500">
@@ -2453,7 +2453,7 @@ export function AdminDashboard({
                         const pricing = String(app.financialPlan?.pricingStatus ?? 'ESTIMATED')
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-slate-500">
@@ -2622,7 +2622,7 @@ export function AdminDashboard({
 
                       return (
                         <tr className="hover:bg-slate-50/80" key={app.id}>
-                          <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                          <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
                             {app.applicationId}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2728,7 +2728,7 @@ export function AdminDashboard({
 
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2785,7 +2785,7 @@ export function AdminDashboard({
                   <span className="text-xs font-medium text-slate-500">
                     Siswa dengan Tanggungan
                   </span>
-                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#17158c]">
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#1a4691]">
                     {activeInstallmentMetrics.count}
                   </strong>
                   <span className="mt-1 block text-[11px] text-slate-400">
@@ -2841,9 +2841,9 @@ export function AdminDashboard({
                   <div className="flex flex-wrap gap-1.5">
                     {ACTIVE_INSTALLMENT_FILTERS.map((filter) => (
                       <button
-                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] ${
                           activeInstallmentFilter === filter.id
-                            ? 'bg-[#17158c] text-white'
+                            ? 'bg-[#1a4691] text-white'
                             : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                         key={filter.id}
@@ -2961,7 +2961,7 @@ export function AdminDashboard({
                                 : 0
                             return (
                               <tr className="hover:bg-slate-50/80" key={app.id}>
-                                <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                                <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
                                   {app.applicationId}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2999,7 +2999,7 @@ export function AdminDashboard({
                                   {summary.schedule.length > 0 && (
                                     <span className="mt-1 block h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
                                       <span
-                                        className="block h-full rounded-full bg-[#17158c]"
+                                        className="block h-full rounded-full bg-[#1a4691]"
                                         style={{ width: `${progressPercent}%` }}
                                       />
                                     </span>
@@ -3081,7 +3081,7 @@ export function AdminDashboard({
                         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-bold text-[#17158c]">{app.applicationId}</span>
+                              <span className="font-bold text-[#1a4691]">{app.applicationId}</span>
                               <span className="font-semibold text-slate-900">
                                 {app.applicantName}
                               </span>
@@ -3149,7 +3149,7 @@ export function AdminDashboard({
                               </div>
                               <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                                 <span className="text-[11px] text-slate-400">Sisa Kewajiban</span>
-                                <strong className="mt-1 block text-lg font-extrabold text-[#17158c]">
+                                <strong className="mt-1 block text-lg font-extrabold text-[#1a4691]">
                                   {formatRupiah(summary.remaining)}
                                 </strong>
                               </div>
@@ -3520,7 +3520,7 @@ export function AdminDashboard({
                             {formatDateTime(item.changedAt)}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            <span className="font-bold text-[#17158c]">
+                            <span className="font-bold text-[#1a4691]">
                               {item.app.applicationId}
                             </span>{' '}
                             ·{' '}
@@ -3570,7 +3570,7 @@ export function AdminDashboard({
       {/* SLIDE-OVER DRAWER FOR APPLICATION MANAGEMENT */}
       {drawerApplication && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-[1px]">
-          <div className="h-dvh w-full max-w-4xl shadow-2xl">
+          <div className="h-dvh w-full max-w-6xl shadow-2xl">
             <ApplicationDrawerForm
               activeTab={drawerTab}
               application={drawerApplication}

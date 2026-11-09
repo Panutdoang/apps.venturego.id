@@ -96,12 +96,12 @@ export default function StudentCardPage() {
         </DashboardCard>
       ) : (
         <div
-          className="overflow-hidden rounded-3xl bg-[var(--primary)] text-white shadow-[0_12px_32px_rgba(23,21,140,0.28)]"
+          className="overflow-hidden rounded-3xl bg-[var(--primary)] text-white shadow-[0_12px_32px_rgba(26,70,145,0.28)]"
           id="student-card"
         >
           <div className="flex items-center justify-between border-b border-white/15 px-5 py-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-200">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200">
                 Vworks Student Venture
               </p>
               <p className="mt-1 text-sm font-bold">Kartu Identitas Siswa</p>
@@ -112,14 +112,14 @@ export default function StudentCardPage() {
           </div>
 
           <div className="px-5 py-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-200">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-200">
               Nomor Induk Siswa
             </p>
             <p className="mt-1 text-2xl font-black tracking-widest">
               {studentNumber || 'Belum tersedia'}
             </p>
             {!studentNumber && !loading && !studentNumberError && (
-              <p className="mt-1 text-[10px] text-indigo-200">
+              <p className="mt-1 text-[10px] text-blue-200">
                 Terbit setelah pengajuan berstatus Aktif.
               </p>
             )}
@@ -129,15 +129,15 @@ export default function StudentCardPage() {
 
             <div className="mt-5 grid grid-cols-2 gap-4 text-xs">
               <div className="min-w-0">
-                <p className="text-[10px] text-indigo-200">Nama siswa</p>
+                <p className="text-[10px] text-blue-200">Nama siswa</p>
                 <p className="mt-1 truncate font-bold">{displayName}</p>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-indigo-200">LPK</p>
+                <p className="text-[10px] text-blue-200">LPK</p>
                 <p className="mt-1 truncate font-bold">{application?.lpkName || '—'}</p>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-indigo-200">Program</p>
+                <p className="text-[10px] text-blue-200">Program</p>
                 <p className="mt-1 truncate font-bold">
                   {application
                     ? `${application.product === 'FULL_COVER' ? 'Full Cover' : 'Dana Keberangkatan'} · ${
@@ -147,13 +147,13 @@ export default function StudentCardPage() {
                 </p>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-indigo-200">Status</p>
+                <p className="text-[10px] text-blue-200">Status</p>
                 <p className="mt-1 truncate font-bold">{statusLabel || '—'}</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/15 px-5 py-3 text-[10px] text-indigo-200">
+          <div className="flex items-center justify-between border-t border-white/15 px-5 py-3 text-[10px] text-blue-200">
             <span>{application?.applicationId ?? '—'}</span>
             <span>venturego.id</span>
           </div>

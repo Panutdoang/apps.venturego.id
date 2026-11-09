@@ -714,8 +714,7 @@ export async function approveApplicationPricing(
       if (!nafaqahItems || !ujrahItems || nafaqahItems.length === 0 || ujrahItems.length === 0) {
         return {
           ok: false,
-          message:
-            'Lengkapi rincian Nafaqah dan Ujrah pada tab Draft Biaya & Akad sebelum menyetujui.',
+          message: 'Lengkapi rincian Nafaqah dan Ujrah pada tab Draft Akad sebelum menyetujui.',
         }
       }
       const qardhAmount = Number(plan.qardhAmount) || 0
@@ -761,7 +760,7 @@ export async function approveApplicationPricing(
         if (linesTotal <= 0) {
           return {
             ok: false,
-            message: 'Total rincian biaya masih nol. Isi rincian pada tab Draft Biaya & Akad.',
+            message: 'Total rincian biaya masih nol. Isi rincian pada tab Draft Akad.',
           }
         }
         const desiredLines = newNominal - qardhAmount + refundTotal
@@ -856,7 +855,7 @@ export async function approveApplicationPricing(
         return {
           ok: false,
           message:
-            'Lengkapi Nafaqah, Ujrah, Ju’alah, dan tenor pada tab Draft Biaya & Akad sebelum menyetujui.',
+            'Lengkapi Nafaqah, Ujrah, Ju’alah, dan tenor pada tab Draft Akad sebelum menyetujui.',
         }
       }
       if (newNominal !== null) {
@@ -864,7 +863,7 @@ export async function approveApplicationPricing(
         if (base <= 0) {
           return {
             ok: false,
-            message: 'Total Nafaqah dan Ujrah masih nol. Isi rincian pada tab Draft Biaya & Akad.',
+            message: 'Total Nafaqah dan Ujrah masih nol. Isi rincian pada tab Draft Akad.',
           }
         }
         const factor = newNominal / base
@@ -988,7 +987,7 @@ export async function setApplicationPricingAgreed(documentId: string): Promise<A
         return {
           ok: false,
           message:
-            'Isi referensi akad final yang sudah ditandatangani pada tab Draft Biaya & Akad sebelum menyetujui.',
+            'Isi referensi akad final yang sudah ditandatangani pada tab Draft Akad sebelum menyetujui.',
         }
       }
       const acceptance = applicationData.userFinancingAcceptance as

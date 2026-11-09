@@ -18,11 +18,11 @@ export default function SimulationPage() {
         <span className="grid size-11 place-items-center rounded-2xl bg-white/15">
           <DashboardIcon name="calculator" />
         </span>
-        <p className="mt-4 text-xs text-indigo-100">Estimasi angsuran bulanan</p>
+        <p className="mt-4 text-xs text-blue-100">Estimasi angsuran bulanan</p>
         <strong className="mt-2 block text-2xl tracking-tight">
           {formatRupiah(plan.monthlyInstallment)}
         </strong>
-        <span className="mt-2 block text-[11px] text-indigo-200">
+        <span className="mt-2 block text-[11px] text-blue-200">
           Selama {plan.tenorMonths} bulan
         </span>
       </DashboardCard>
@@ -69,7 +69,7 @@ export default function SimulationPage() {
         ))}
       </DashboardCard>
 
-      <div className="flex gap-3 rounded-2xl bg-indigo-50 p-4">
+      <div className="flex gap-3 rounded-2xl bg-blue-50 p-4">
         <DashboardIcon name="info" className="size-5 shrink-0 text-[var(--primary)]" />
         <p className="text-[11px] leading-5 text-slate-600">
           Hasil ini merupakan simulasi. Nilai akhir mengikuti verifikasi program, kebutuhan, dan

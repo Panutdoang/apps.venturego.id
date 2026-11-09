@@ -186,7 +186,7 @@ function ApplicationTerms({
                 </div>
               </div>
             ))}
-            <div className="space-y-2 rounded-xl bg-indigo-50 p-3 text-xs">
+            <div className="space-y-2 rounded-xl bg-blue-50 p-3 text-xs">
               <div className="flex justify-between gap-3">
                 <span>Nafaqah</span>
                 <strong>{formatRupiah(plan.nafaqahTotal)}</strong>
@@ -225,7 +225,7 @@ function ApplicationTerms({
                     ))}
                 </>
               )}
-              <div className="flex justify-between gap-3 border-t border-indigo-200 pt-2 text-sm">
+              <div className="flex justify-between gap-3 border-t border-blue-200 pt-2 text-sm">
                 <span className="font-bold">Total akad</span>
                 <strong>{formatRupiah(plan.totalObligation)}</strong>
               </div>
@@ -293,7 +293,7 @@ function ApplicationTerms({
           )}
 
           {verified && !closed && (
-            <div className="rounded-xl border border-indigo-100 bg-white p-3">
+            <div className="rounded-xl border border-blue-100 bg-white p-3">
               <p className="text-xs leading-5 text-slate-600">
                 Persetujuan ini mencatat bahwa Anda menerima rincian biaya di atas. Status akad
                 belum menjadi Disepakati sampai admin mencatat akad final yang sudah ditandatangani.

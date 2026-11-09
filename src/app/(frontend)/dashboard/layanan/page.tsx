@@ -57,7 +57,7 @@ export default function ServicesPage() {
         {services.map((service) => (
           <Link href={service.href} key={service.title}>
             <DashboardCard className="h-full p-4 transition hover:-translate-y-0.5 hover:shadow-md">
-              <span className="grid size-11 place-items-center rounded-2xl bg-indigo-50 text-[var(--primary)]">
+              <span className="grid size-11 place-items-center rounded-2xl bg-blue-50 text-[var(--primary)]">
                 <DashboardIcon name={service.icon} />
               </span>
               <h2 className="mt-4 text-sm font-bold text-slate-800">{service.title}</h2>

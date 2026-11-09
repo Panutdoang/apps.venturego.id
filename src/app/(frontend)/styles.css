@@ -7,8 +7,8 @@
   --ink: #0f172a;
   --body: #526174;
   --muted: #8b9aae;
-  --primary: #17158c;
-  --primary-soft: #f2f1ff;
+  --primary: #1a4691;
+  --primary-soft: #eef4fc;
   --accent: #5782f6;
   --success: #168248;
   --success-soft: #edf9f1;
@@ -575,7 +575,7 @@ input[type='checkbox'] {
     min-height: 844px;
     border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(23, 21, 140, 0.13);
+    box-shadow: 0 20px 60px rgba(26, 70, 145, 0.13);
   }
   .wizard-footer {
     position: sticky;
@@ -596,7 +596,7 @@ input[type='checkbox'] {
     linear-gradient(
       90deg,
       transparent 0 49.8%,
-      rgba(23, 21, 140, 0.035) 49.8% 50.2%,
+      rgba(26, 70, 145, 0.035) 49.8% 50.2%,
       transparent 50.2%
     ),
     #eef2f7;
@@ -679,7 +679,7 @@ input[type='checkbox'] {
   margin: -50px -24px 6px;
   padding: 44px 24px 28px;
   border-radius: 0 0 20px 20px;
-  background: #f2f1ff;
+  background: #eef4fc;
 }
 
 .intro-choice h2 {
@@ -713,7 +713,7 @@ input[type='checkbox'] {
 }
 
 .product-option:focus-visible::after {
-  box-shadow: 0 0 0 3px rgba(23, 21, 140, 0.14);
+  box-shadow: 0 0 0 3px rgba(26, 70, 145, 0.14);
 }
 
 .product-option:last-of-type {
@@ -932,7 +932,7 @@ input[type='checkbox'] {
 
 .need-checkbox-list .need-checkbox-row.selected {
   border-color: #bdbbfa;
-  background: #f7f6ff;
+  background: #f4f8fd;
 }
 
 .need-grid {
@@ -1090,7 +1090,7 @@ input[type='checkbox'] {
   .mobile-shell {
     min-height: 860px;
     border-radius: 16px;
-    box-shadow: 0 30px 80px rgba(23, 21, 140, 0.14);
+    box-shadow: 0 30px 80px rgba(26, 70, 145, 0.14);
   }
 }
 
@@ -1264,7 +1264,7 @@ body {
 .step-dots span.active {
   width: 8px;
   height: 8px;
-  background: #17158c;
+  background: #1a4691;
 }
 
 .wizard-footer .primary-button,
@@ -1285,12 +1285,12 @@ body {
 
 .wizard-footer .primary-button {
   background: var(--primary);
-  box-shadow: 0 8px 18px rgba(23, 21, 140, 0.2);
+  box-shadow: 0 8px 18px rgba(26, 70, 145, 0.2);
 }
 
 .wizard-footer .primary-button:hover {
-  background: #111077;
-  box-shadow: 0 10px 22px rgba(23, 21, 140, 0.24);
+  background: #143670;
+  box-shadow: 0 10px 22px rgba(26, 70, 145, 0.24);
 }
 
 .wizard-footer .primary-button:active,
@@ -1345,10 +1345,10 @@ body {
 
 /* Shared visual language for the application steps */
 .mobile-shell:not(.choice-step) {
-  --primary: #17158c;
-  --primary-soft: #f2f1ff;
+  --primary: #1a4691;
+  --primary-soft: #eef4fc;
   --border: #dfe1e7;
-  --ink: #15137d;
+  --ink: #1a4691;
   --body: #4f5368;
   background: #fff;
 }
@@ -1361,7 +1361,7 @@ body {
   border-radius: 0 0 42px 42px;
   background:
     radial-gradient(circle at 18% 28%, rgba(87, 130, 246, 0.32), transparent 38%),
-    linear-gradient(135deg, #17158c 0%, #17158c 100%);
+    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
   text-align: center;
 }
 
@@ -1400,7 +1400,7 @@ body {
 .mobile-shell:not(.choice-step) .intro-choice h2 {
   max-width: 340px;
   margin: 0 auto 12px;
-  color: #15137d;
+  color: #1a4691;
   font-size: 24px;
   line-height: 32px;
   font-weight: 750;
@@ -1435,11 +1435,11 @@ body {
   border: 1.5px solid #dfe1e7;
   border-radius: 16px;
   background: #fbfcff;
-  color: #15137d;
+  color: #1a4691;
   font-size: 14px;
   line-height: 22px;
   font-weight: 550;
-  box-shadow: 0 3px 12px rgba(23, 21, 140, 0.035);
+  box-shadow: 0 3px 12px rgba(26, 70, 145, 0.035);
 }
 
 .mobile-shell:not(.choice-step) .field select option {
@@ -1467,10 +1467,10 @@ body {
 .mobile-shell:not(.choice-step) .field input:focus,
 .mobile-shell:not(.choice-step) .field select:focus,
 .mobile-shell:not(.choice-step) .field textarea:focus {
-  border-color: #17158c;
+  border-color: #1a4691;
   background: #fff;
   outline: none;
-  box-shadow: 0 0 0 4px rgba(23, 21, 140, 0.08);
+  box-shadow: 0 0 0 4px rgba(26, 70, 145, 0.08);
 }
 
 .mobile-shell:not(.choice-step) .choice-list,
@@ -1508,21 +1508,21 @@ body {
 
 .mobile-shell:not(.choice-step) .need-section .need-checkbox-row.selected {
   border-color: #bdbbfa;
-  background: #f7f6ff;
+  background: #f4f8fd;
 }
 
 .mobile-shell:not(.choice-step) input[type='checkbox'] {
   flex: 0 0 22px;
   width: 22px;
   height: 22px;
-  accent-color: #17158c;
+  accent-color: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .soft-note {
   padding: 16px 17px;
   border: 0;
   border-radius: 16px;
-  background: #f7f6ff;
+  background: #f4f8fd;
   color: #4c4b69;
   font-size: 12px;
   line-height: 19px;
@@ -1567,8 +1567,8 @@ body {
 
 .mobile-shell:not(.choice-step) .need-chip.selected {
   border-color: #e0dfff;
-  background: #f2f1ff;
-  color: #17158c;
+  background: #eef4fc;
+  color: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .document-list > div,
@@ -1596,8 +1596,8 @@ body {
   border-radius: 22px;
   background:
     radial-gradient(circle at 92% 15%, rgba(87, 130, 246, 0.42), transparent 36%),
-    linear-gradient(135deg, #17158c 0%, #17158c 100%);
-  box-shadow: 0 14px 28px rgba(23, 21, 140, 0.16);
+    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
+  box-shadow: 0 14px 28px rgba(26, 70, 145, 0.16);
 }
 
 .mobile-shell:not(.choice-step) .summary-hero span,
@@ -1614,7 +1614,7 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .finance-grid .wide strong {
-  color: #17158c;
+  color: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .consent {
@@ -1636,7 +1636,7 @@ body {
   gap: 10px;
   border-top: 0;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 -12px 28px rgba(23, 21, 140, 0.06);
+  box-shadow: 0 -12px 28px rgba(26, 70, 145, 0.06);
 }
 
 .mobile-shell:not(.choice-step) .footer-progress {
@@ -1647,7 +1647,7 @@ body {
 
 .mobile-shell:not(.choice-step) .footer-progress span {
   border-radius: 999px;
-  background: #17158c;
+  background: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .primary-button,
@@ -1658,14 +1658,14 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .primary-button {
-  background: radial-gradient(circle at 12% 0%, rgba(87, 130, 246, 0.4), transparent 38%), #17158c;
-  box-shadow: 0 9px 20px rgba(23, 21, 140, 0.18);
+  background: radial-gradient(circle at 12% 0%, rgba(87, 130, 246, 0.4), transparent 38%), #1a4691;
+  box-shadow: 0 9px 20px rgba(26, 70, 145, 0.18);
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .back-button {
   border: 1.5px solid #dfe1e7;
   background: #fff;
-  color: #17158c;
+  color: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .success-state {
@@ -1676,23 +1676,23 @@ body {
 .mobile-shell:not(.choice-step) .success-mark {
   width: 76px;
   height: 76px;
-  border: 8px solid #f7f6ff;
-  background: #f2f1ff;
-  color: #17158c;
+  border: 8px solid #f4f8fd;
+  background: #eef4fc;
+  color: #1a4691;
   font-size: 28px;
-  box-shadow: 0 12px 26px rgba(23, 21, 140, 0.1);
+  box-shadow: 0 12px 26px rgba(26, 70, 145, 0.1);
 }
 
 .mobile-shell:not(.choice-step) .status-pill {
   margin-top: 20px;
   padding: 6px 13px;
-  background: #f2f1ff;
-  color: #17158c;
+  background: #eef4fc;
+  color: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .success-state h2 {
   max-width: 330px;
-  color: #15137d;
+  color: #1a4691;
   font-weight: 750;
 }
 
@@ -1712,15 +1712,15 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .timeline .done i {
-  border-color: #17158c;
-  background: #17158c;
+  border-color: #1a4691;
+  background: #1a4691;
 }
 
 .mobile-shell:not(.choice-step) .success-state .primary-button {
   min-height: 56px;
   border: 0;
   border-radius: 999px;
-  background: #17158c;
+  background: #1a4691;
   color: #fff;
 }
 
@@ -1738,8 +1738,8 @@ body {
 
 /* Welcome screen inspired by the Vworks travel and graduation reference. */
 .welcome-step {
-  --primary: #17158c;
-  --primary-soft: #f2f1ff;
+  --primary: #1a4691;
+  --primary-soft: #eef4fc;
   --accent: #5782f6;
   height: 100dvh;
   min-height: 100dvh;
@@ -1864,11 +1864,11 @@ body {
   border: 0;
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(23, 21, 140, 0.18);
+  box-shadow: 0 10px 24px rgba(26, 70, 145, 0.18);
 }
 
 .welcome-actions .welcome-primary:hover {
-  background: #111077;
+  background: #143670;
 }
 
 .welcome-actions .welcome-secondary {
@@ -1960,8 +1960,8 @@ body {
 
 /* Product selection screen */
 .choice-step {
-  --primary: #17158c;
-  --primary-soft: #f2f1ff;
+  --primary: #1a4691;
+  --primary-soft: #eef4fc;
   min-height: 100dvh;
 }
 
@@ -1973,7 +1973,7 @@ body {
   border-radius: 0 0 48px 48px;
   background:
     radial-gradient(circle at 18% 28%, rgba(87, 130, 246, 0.32), transparent 38%),
-    linear-gradient(135deg, #17158c 0%, #17158c 100%);
+    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
   text-align: center;
 }
 
@@ -2012,7 +2012,7 @@ body {
 .choice-step .intro-choice h2 {
   max-width: none;
   margin-bottom: 14px;
-  color: #15137d;
+  color: #1a4691;
   font-size: 24px;
   line-height: 32px;
   font-weight: 750;
@@ -2049,7 +2049,7 @@ body {
   border: 2px solid var(--primary);
   background:
     radial-gradient(circle at 98% 50%, rgba(255, 255, 255, 0.9), transparent 30%),
-    linear-gradient(105deg, #f2f1ff 0%, #fbfaff 100%);
+    linear-gradient(105deg, #eef4fc 0%, #fbfaff 100%);
 }
 
 .choice-step .product-option::after,
@@ -2130,7 +2130,7 @@ body {
   font-size: 15px;
   font-weight: 750;
   letter-spacing: 0.025em;
-  box-shadow: 0 10px 24px rgba(23, 21, 140, 0.16);
+  box-shadow: 0 10px 24px rgba(26, 70, 145, 0.16);
 }
 
 .choice-step .wizard-footer .back-button {
@@ -2209,13 +2209,13 @@ body {
   border: 1.5px solid #dfe1e7;
   border-radius: 16px;
   background: #fbfcff;
-  color: #15137d;
-  box-shadow: 0 3px 12px rgba(23, 21, 140, 0.035);
+  color: #1a4691;
+  box-shadow: 0 3px 12px rgba(26, 70, 145, 0.035);
 }
 
 .mobile-shell:not(.welcome-step) .currency-input > span {
   padding: 0;
-  color: #15137d;
+  color: #1a4691;
   font-size: 14px;
   line-height: 22px;
   font-weight: 600;
@@ -2232,9 +2232,9 @@ body {
 }
 
 .mobile-shell:not(.welcome-step) .currency-input:focus-within {
-  border-color: #17158c;
+  border-color: #1a4691;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(23, 21, 140, 0.08);
+  box-shadow: 0 0 0 4px rgba(26, 70, 145, 0.08);
 }
 
 .mobile-shell:not(.welcome-step) .field {

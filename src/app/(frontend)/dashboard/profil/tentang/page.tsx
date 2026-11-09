@@ -27,7 +27,7 @@ export default function AboutPage() {
           <DashboardIcon name="star" />
         </span>
         <h2 className="mt-4 text-lg font-bold">VSV — Vworks Student Venture</h2>
-        <p className="mt-1.5 text-xs leading-5 text-indigo-100">
+        <p className="mt-1.5 text-xs leading-5 text-blue-100">
           Platform pengajuan dan pemantauan pembiayaan syariah Wakalah bil Ujrah untuk siswa LPK —
           dari pengajuan, verifikasi berkas, hingga angsuran.
         </p>

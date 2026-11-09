@@ -49,7 +49,7 @@ export default function HelpPage() {
           <DashboardIcon name="help" />
         </span>
         <h2 className="mt-4 text-xl font-bold">Ada yang bisa kami bantu?</h2>
-        <p className="mt-2 text-xs leading-5 text-indigo-100">
+        <p className="mt-2 text-xs leading-5 text-blue-100">
           Temukan jawaban cepat atau hubungi tim layanan VSV pada jam operasional.
         </p>
       </DashboardCard>

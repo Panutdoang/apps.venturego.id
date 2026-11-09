@@ -249,7 +249,7 @@ export default function PaymentPage() {
                 className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
                   isClosed(application)
                     ? 'bg-red-50 text-red-700'
-                    : 'bg-indigo-50 text-[var(--primary)]'
+                    : 'bg-blue-50 text-[var(--primary)]'
                 }`}
               >
                 {APPLICATION_STATUS_LABELS[application.status] ?? application.status}
@@ -407,7 +407,7 @@ export default function PaymentPage() {
         </section>
       )}
 
-      <div className="flex gap-3 rounded-2xl bg-indigo-50 p-4">
+      <div className="flex gap-3 rounded-2xl bg-blue-50 p-4">
         <DashboardIcon className="mt-0.5 size-5 shrink-0 text-[var(--primary)]" name="lock" />
         <p className="text-[11px] leading-5 text-slate-600">
           Pembayaran diproses di halaman aman Xendit. Tersedia Virtual Account (BCA, Mandiri, BNI,

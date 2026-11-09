@@ -239,7 +239,7 @@ export default function NotificationsPage() {
             return (
               <Link
                 className={`relative flex gap-3 border-b border-slate-100 p-4 transition hover:bg-slate-50 last:border-0 ${
-                  unread ? 'bg-indigo-50/40' : ''
+                  unread ? 'bg-blue-50/40' : ''
                 }`}
                 href={item.href}
                 key={item.id}

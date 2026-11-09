@@ -295,7 +295,7 @@ export default function DashboardPage() {
                 <Icon name="profile" className="size-6" />
               </span>
               <div>
-                <p className="text-xs text-indigo-100">Selamat datang,</p>
+                <p className="text-xs text-blue-100">Selamat datang,</p>
                 {loading ? (
                   <SkeletonBlock className="mt-2 h-4 w-32 bg-white/25" />
                 ) : (
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                         ? 'bg-emerald-50 text-emerald-700'
                         : closed
                           ? 'bg-red-50 text-red-700'
-                          : 'bg-indigo-50 text-[var(--primary)]'
+                          : 'bg-blue-50 text-[var(--primary)]'
                     }`}
                   >
                     {statusLabel}
@@ -516,13 +516,13 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--primary)] to-indigo-900 p-5 text-white shadow-sm">
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--primary)] to-[#143670] p-5 text-white shadow-sm">
             <div className="relative z-10 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-bold tracking-tight text-white">
                   Ajukan Pembiayaan Baru
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-indigo-100">
+                <p className="mt-1 text-xs leading-relaxed text-blue-100">
                   Mulai pengajuan Full Cover atau Dana Keberangkatan dengan skema syariah.
                 </p>
               </div>
@@ -571,11 +571,11 @@ export default function DashboardPage() {
               <h2 className="text-base font-bold tracking-tight text-slate-900" id="progress-title">
                 Alur progress saat ini
               </h2>
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-[var(--primary)]">
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-[var(--primary)]">
                 {loading ? (
                   <span
                     aria-hidden="true"
-                    className="block h-3 w-16 animate-pulse rounded-full bg-indigo-200"
+                    className="block h-3 w-16 animate-pulse rounded-full bg-blue-200"
                   />
                 ) : application ? (
                   allDone ? (
@@ -690,7 +690,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <aside className="flex items-start gap-3 rounded-2xl bg-indigo-50 p-4" id="bantuan">
+          <aside className="flex items-start gap-3 rounded-2xl bg-blue-50 p-4" id="bantuan">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-[var(--primary)]">
               <Icon name="help" className="size-5" />
             </span>

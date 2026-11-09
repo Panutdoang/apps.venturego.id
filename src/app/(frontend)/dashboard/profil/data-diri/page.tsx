@@ -337,7 +337,7 @@ export default function PersonalDataPage() {
                 {lockedPersonalData ? null : (
                   <div className="p-4">
                     <button
-                      className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs font-bold text-[var(--primary)] transition hover:bg-indigo-100"
+                      className="w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-bold text-[var(--primary)] transition hover:bg-blue-100"
                       onClick={() => {
                         fillForm(selectedApplication)
                         setEditing(true)

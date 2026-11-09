@@ -50,7 +50,7 @@ function CostLines({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-[#17158c]">
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-[#1a4691]">
               {badge}
             </span>
           </div>
@@ -71,7 +71,7 @@ function CostLines({
             <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-3">
               <span>Komponen #{index + 1}</span>
               <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                 maxLength={120}
                 onChange={(event) => update(index, { label: event.target.value })}
                 placeholder="Nama komponen biaya"
@@ -81,7 +81,7 @@ function CostLines({
             <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-3">
               <span>Penerima pembayaran</span>
               <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                 maxLength={120}
                 onChange={(event) => update(index, { recipient: event.target.value })}
                 placeholder="LPK / Lembaga / Pihak ketiga"
@@ -91,7 +91,7 @@ function CostLines({
             <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2">
               <span>Nominal (Rp)</span>
               <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                 min={0}
                 onChange={(event) => update(index, { amount: Number(event.target.value) || 0 })}
                 step={1}
@@ -102,7 +102,7 @@ function CostLines({
             <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-3">
               <span>Referensi bukti pembayaran</span>
               <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                 maxLength={300}
                 onChange={(event) => update(index, { evidenceReference: event.target.value })}
                 placeholder="Nomor kuitansi / berkas"
@@ -177,7 +177,7 @@ export function FinanceTermsFields({
             <label className="space-y-1.5 text-xs font-semibold text-slate-700" key={name}>
               <span>{label}</span>
               <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
                 defaultValue={String(financialPlan[name] ?? '')}
                 min={name === 'tenorMonths' ? 1 : 0}
                 max={name === 'tenorMonths' ? 36 : undefined}
@@ -189,7 +189,7 @@ export function FinanceTermsFields({
           ))}
         </div>
         {Number.isFinite(financialPlan.totalObligationIfCoe) && (
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 text-xs leading-5 text-indigo-950">
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-[#1a4691]">
             <strong>Ringkasan Full Cover tersimpan:</strong> Nafaqah + Ujrah (di luar Ju’alah):{' '}
             <strong>Rp{Number(financialPlan.totalObligation).toLocaleString('id-ID')}</strong>. Jika
             COE terbit:{' '}
@@ -243,9 +243,9 @@ export function FinanceTermsFields({
             {amountLabel(effectiveQardh)} − {amountLabel(refundTotal)}
           </strong>
         </div>
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 p-3.5">
-          <span className="text-[11px] font-semibold text-indigo-700">Total Kewajiban Akad</span>
-          <strong className="mt-1 block text-base font-extrabold text-[#17158c]">
+        <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5">
+          <span className="text-[11px] font-semibold text-[#1a4691]">Total Kewajiban Akad</span>
+          <strong className="mt-1 block text-base font-extrabold text-[#1a4691]">
             {amountLabel(total)}
           </strong>
         </div>
@@ -303,7 +303,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600">
             <span>Uang saku qardh (Rp)</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               min={0}
               name="qardhAmount"
               onChange={(event) => setQardhAmount(Number(event.target.value) || 0)}
@@ -323,7 +323,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600">
             <span>Jumlah angsuran (1–36 bulan)</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               max={36}
               min={1}
               name="installmentCount"
@@ -337,7 +337,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600">
             <span>Tanggal angsuran pertama</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               defaultValue={String(financialPlan.firstPaymentDate ?? '')}
               name="firstPaymentDate"
               type="date"
@@ -346,7 +346,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600">
             <span>Refund / potongan disetujui (Rp)</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               min={0}
               name="refundTotal"
               onChange={(event) => setRefundTotal(Number(event.target.value) || 0)}
@@ -358,7 +358,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-3">
             <span>Referensi bukti refund / potongan</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               defaultValue={String(financialPlan.refundEvidenceReference ?? '')}
               maxLength={300}
               name="refundEvidenceReference"
@@ -368,7 +368,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-4">
             <span>Referensi akad final yang sudah ditandatangani</span>
             <input
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               defaultValue={String(financialPlan.finalAgreementReference ?? '')}
               maxLength={300}
               name="finalAgreementReference"
@@ -378,7 +378,7 @@ export function FinanceTermsFields({
           <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-4">
             <span>Catatan penyelesaian, refund, atau keringanan</span>
             <textarea
-              className="min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#17158c] focus:outline-none"
+              className="min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
               defaultValue={String(financialPlan.settlementNotes ?? '')}
               maxLength={1000}
               name="settlementNotes"

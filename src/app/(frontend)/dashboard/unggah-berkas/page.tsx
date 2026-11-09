@@ -164,7 +164,7 @@ export default function UploadDocumentsPage() {
       subtitle="Lengkapi dokumen pengajuan"
       title="Unggah berkas"
     >
-      <div className="flex items-start gap-3 rounded-2xl bg-indigo-50 p-4">
+      <div className="flex items-start gap-3 rounded-2xl bg-blue-50 p-4">
         <DashboardIcon name="shield" className="size-5 shrink-0 text-[var(--primary)]" />
         <p className="text-[11px] leading-5 text-slate-600">
           Unggah dokumen PDF, JPG, atau PNG. Maksimal 10 MB untuk setiap berkas.
@@ -275,8 +275,8 @@ export default function UploadDocumentsPage() {
                             : needsRevision
                               ? 'bg-amber-50 text-amber-700'
                               : isUploaded
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'bg-indigo-50 text-[var(--primary)]'
+                                ? 'bg-blue-50 text-[var(--primary)]'
+                                : 'bg-blue-50 text-[var(--primary)]'
                         }`}
                       >
                         <DashboardIcon
@@ -301,7 +301,7 @@ export default function UploadDocumentsPage() {
                                   ? 'bg-emerald-50 text-emerald-700'
                                   : needsRevision
                                     ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-blue-50 text-blue-700'
+                                    : 'bg-blue-50 text-[var(--primary)]'
                               }`}
                             >
                               {statusBadge}

@@ -156,7 +156,7 @@ export default function AccountSecurityPage() {
 
       <DashboardCard className="p-4">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-[var(--primary)]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-[var(--primary)]">
             <DashboardIcon name="lock" />
           </span>
           <div className="min-w-0 flex-1">

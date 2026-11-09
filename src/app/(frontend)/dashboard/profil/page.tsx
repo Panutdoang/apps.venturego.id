@@ -157,7 +157,7 @@ export default function ProfilePage() {
           {account?.photoUrl && !photoFailed ? (
             <Image
               alt={`Foto profil ${displayName}`}
-              className="size-16 shrink-0 rounded-full object-cover ring-2 ring-indigo-100"
+              className="size-16 shrink-0 rounded-full object-cover ring-2 ring-blue-100"
               height={64}
               onError={() => setPhotoFailed(true)}
               src={account.photoUrl}
@@ -165,7 +165,7 @@ export default function ProfilePage() {
               width={64}
             />
           ) : (
-            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-indigo-50 text-[var(--primary)]">
+            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-blue-50 text-[var(--primary)]">
               <DashboardIcon name="profile" className="size-8" />
             </span>
           )}
@@ -185,7 +185,7 @@ export default function ProfilePage() {
               </>
             )}
             {firstApplication && (
-              <span className="mt-1.5 inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-[var(--primary)]">
+              <span className="mt-1.5 inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-[var(--primary)]">
                 {firstApplication.applicationId} · {firstApplication.lpkName}
               </span>
             )}

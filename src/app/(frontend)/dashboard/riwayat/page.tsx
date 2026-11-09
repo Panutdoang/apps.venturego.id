@@ -209,7 +209,7 @@ export default function HistoryPage() {
           </p>
           <div className="mt-3 flex justify-center gap-2">
             <Link
-              className="rounded-full bg-indigo-50 px-3.5 py-2 text-[11px] font-bold text-[var(--primary)]"
+              className="rounded-full bg-blue-50 px-3.5 py-2 text-[11px] font-bold text-[var(--primary)]"
               href="/?step=1"
             >
               Ajukan pembiayaan
@@ -237,7 +237,7 @@ export default function HistoryPage() {
                     ? 'bg-emerald-50 text-emerald-600'
                     : item.tone === 'amber'
                       ? 'bg-amber-50 text-amber-700'
-                      : 'bg-indigo-50 text-[var(--primary)]'
+                      : 'bg-blue-50 text-[var(--primary)]'
                 }`}
               >
                 <DashboardIcon name={item.icon} />

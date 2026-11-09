@@ -3,8 +3,8 @@
   "short_name": "VentureGo",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#17158c",
-  "theme_color": "#17158c",
+  "background_color": "#1a4691",
+  "theme_color": "#1a4691",
   "icons": [
     {
       "src": "/icon-192.png",

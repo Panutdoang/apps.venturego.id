@@ -91,7 +91,7 @@ export default function DocumentsPage() {
 
   return (
     <DashboardScaffold active="profil" subtitle="Arsip pembiayaan Anda" title="Dokumen saya">
-      <div className="flex gap-3 rounded-2xl bg-indigo-50 p-4">
+      <div className="flex gap-3 rounded-2xl bg-blue-50 p-4">
         <DashboardIcon name="shield" className="size-5 shrink-0 text-[var(--primary)]" />
         <p className="text-[11px] leading-5 text-slate-600">
           Seluruh berkas persyaratan dan ringkasan akad yang tertaut pada akun Anda.
@@ -148,7 +148,7 @@ export default function DocumentsPage() {
                     href="/dashboard/angsuran"
                     key={app.id}
                   >
-                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-[var(--primary)]">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-[var(--primary)]">
                       <DashboardIcon name="document" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -208,7 +208,7 @@ export default function DocumentsPage() {
                           ? 'bg-emerald-50 text-emerald-600'
                           : doc.status === 'REVISION_REQUIRED'
                             ? 'bg-amber-50 text-amber-700'
-                            : 'bg-indigo-50 text-[var(--primary)]'
+                            : 'bg-blue-50 text-[var(--primary)]'
                       }`}
                     >
                       <DashboardIcon
@@ -231,7 +231,7 @@ export default function DocumentsPage() {
                           ? 'bg-emerald-50 text-emerald-700'
                           : doc.status === 'REVISION_REQUIRED'
                             ? 'bg-amber-50 text-amber-800'
-                            : 'bg-blue-50 text-blue-700'
+                            : 'bg-blue-50 text-[var(--primary)]'
                       }`}
                     >
                       {DOC_STATUS_LABELS[doc.status] ?? doc.status}

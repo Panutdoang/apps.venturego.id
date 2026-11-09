@@ -12,7 +12,7 @@ export default function AgreementInfoPage() {
     >
       <DashboardCard className="bg-[var(--primary)] p-4 text-white ring-0">
         <h2 className="text-sm font-bold">Akad Wakalah bil Ujrah</h2>
-        <p className="mt-1 text-xs leading-5 text-indigo-100">
+        <p className="mt-1 text-xs leading-5 text-blue-100">
           Skema pembiayaan syariah yang dipakai VSV — Anda memberi kuasa kepada VentureGo untuk
           mengurus dan membayarkan kebutuhan yang disepakati.
         </p>
