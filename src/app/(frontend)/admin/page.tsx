@@ -27,11 +27,11 @@ export default async function AdminPage() {
 
   const db = getFirebaseFirestore()
   const [snapshot, paymentSnapshot] = await Promise.all([
-    db.collection('applications').orderBy('createdAt', 'desc').limit(100).get(),
+    db.collection('applications').orderBy('createdAt', 'desc').limit(500).get(),
     db
       .collection('payments')
       .orderBy('createdAt', 'desc')
-      .limit(100)
+      .limit(500)
       .get()
       .catch(() => null),
   ])

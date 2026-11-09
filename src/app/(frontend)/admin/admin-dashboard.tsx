@@ -70,6 +70,30 @@ const PRICING_BADGE_STYLES: Record<string, string> = {
   AGREED: 'bg-emerald-50 text-emerald-800',
 }
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Menunggu',
+  PAID: 'Lunas',
+  EXPIRED: 'Kedaluwarsa',
+  FAILED: 'Gagal',
+}
+
+const PAYMENT_BADGE_STYLES: Record<string, string> = {
+  PENDING: 'bg-amber-50 text-amber-800',
+  PAID: 'bg-emerald-50 text-emerald-700',
+  EXPIRED: 'bg-slate-100 text-slate-600',
+  FAILED: 'bg-red-50 text-red-700',
+}
+
+const ACTIVE_INSTALLMENT_FILTERS: {
+  id: 'ALL' | 'OVERDUE' | 'DUE_SOON' | 'CURRENT'
+  label: string
+}[] = [
+  { id: 'ALL', label: 'Semua' },
+  { id: 'OVERDUE', label: 'Terlambat' },
+  { id: 'DUE_SOON', label: 'Jatuh tempo' },
+  { id: 'CURRENT', label: 'Berjalan' },
+]
+
 const RELIGION_LABELS: Record<string, string> = {
   ISLAM: 'Islam',
   PROTESTANT: 'Kristen Protestan',
@@ -113,6 +137,7 @@ type MenuId =
   | 'students'
   | 'contracts'
   | 'installments'
+  | 'activeInstallments'
   | 'statistics'
   | 'audit'
 
@@ -158,6 +183,12 @@ const SIDEBAR_GROUPS: {
         id: 'installments',
         label: 'Angsuran & Kas',
         subtitle: 'Pemantauan jadwal cicilan siswa, pembayaran Xendit, & permohonan keringanan',
+        defaultTab: 'installments',
+      },
+      {
+        id: 'activeInstallments',
+        label: 'Angsuran Aktif',
+        subtitle: 'Siswa yang sedang mengangsur atau masih memiliki tanggungan',
         defaultTab: 'installments',
       },
     ],
@@ -261,6 +292,19 @@ function MenuIcon({ id }: { id: MenuId }) {
           <path d="M2 10h20M6 15h4" strokeLinecap="round" />
         </svg>
       )
+    case 'activeInstallments':
+      return (
+        <svg
+          className="size-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <rect height="14" rx="2" width="20" x="2" y="5" />
+          <path d="M8 12.5l2.5 2.5L16 9.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
     case 'statistics':
       return (
         <svg
@@ -328,6 +372,104 @@ const readScheduleRows = (value: unknown): ScheduleRow[] => {
   )
 }
 
+const getLocalIsoDate = (offsetDays = 0) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`
+}
+
+const getDaysBetween = (fromIso: string, toIso: string) =>
+  Math.round((Date.parse(toIso) - Date.parse(fromIso)) / 86_400_000)
+
+type InstallmentSummary = {
+  schedule: ScheduleRow[]
+  paidCount: number
+  paidAmount: number
+  obligation: number | null
+  remaining: number
+  unpaidCount: number
+  nextDue: ScheduleRow | null
+  overdueCount: number
+  dueSoon: boolean
+  openRelief: number
+}
+
+const summarizeInstallments = (app: FinancingApplicationRecord): InstallmentSummary => {
+  const schedule = readScheduleRows(app.financialPlan?.schedule)
+  const paidSet = new Set(Array.isArray(app.paidInstallments) ? app.paidInstallments : [])
+  const paidRows = schedule.filter((row) => paidSet.has(row.installment))
+  const paidCount = paidRows.length
+  const paidAmount = paidRows.reduce((sum, row) => sum + row.amount, 0)
+  const obligation =
+    typeof app.financialPlan?.totalObligation === 'number'
+      ? app.financialPlan.totalObligation
+      : null
+  const unpaidRows = schedule.filter((row) => !paidSet.has(row.installment))
+  const remaining =
+    obligation !== null
+      ? Math.max(0, obligation - paidAmount)
+      : unpaidRows.reduce((sum, row) => sum + row.amount, 0)
+  const today = getLocalIsoDate()
+  const soon = getLocalIsoDate(7)
+  const nextDue = unpaidRows[0] ?? null
+  const overdueCount = unpaidRows.filter((row) => row.dueDate < today).length
+  const openRelief = (app.supportRequests ?? []).filter((req) => req.status === 'OPEN').length
+  return {
+    schedule,
+    paidCount,
+    paidAmount,
+    obligation,
+    remaining,
+    unpaidCount: unpaidRows.length,
+    nextDue,
+    overdueCount,
+    dueSoon: Boolean(nextDue && nextDue.dueDate >= today && nextDue.dueDate <= soon),
+    openRelief,
+  }
+}
+
+const hasActiveInstallment = (app: FinancingApplicationRecord, summary: InstallmentSummary) =>
+  app.status === 'ACTIVE' || summary.remaining > 0 || summary.unpaidCount > 0
+
+function DrawerAction({
+  label,
+  onClick,
+  variant = 'secondary',
+  ariaLabel,
+}: {
+  label: string
+  onClick: () => void
+  variant?: 'primary' | 'secondary'
+  ariaLabel?: string
+}) {
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+        variant === 'primary'
+          ? 'bg-[#17158c] text-white hover:bg-[#111077]'
+          : 'border border-slate-200 bg-white text-[#17158c] hover:border-[#17158c]/30 hover:bg-indigo-50'
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+      <svg
+        aria-hidden="true"
+        className="size-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
+}
+
 function ApplicationDrawerForm({
   application,
   payments,
@@ -380,6 +522,8 @@ function ApplicationDrawerForm({
     typeof application.financialPlan?.totalObligation === 'number'
       ? application.financialPlan.totalObligation
       : null
+  const nextUnpaidRow = schedule.find((row) => !paidSet.has(row.installment)) ?? null
+  const nextDueOverdue = Boolean(nextUnpaidRow && nextUnpaidRow.dueDate < getLocalIsoDate())
 
   const personal = application.personalDetails ?? {}
   const eligibility = application.eligibility ?? {}
@@ -420,10 +564,10 @@ function ApplicationDrawerForm({
       action={(formData) => onSave(application, formData)}
       className="flex h-full flex-col bg-white"
     >
-      {/* Sticky Drawer Header */}
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-6 py-4">
+      {/* Drawer Header: identity + close */}
+      <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-[#17158c] px-2 py-0.5 text-[11px] font-bold text-white">
                 {application.applicationId}
@@ -458,73 +602,27 @@ function ApplicationDrawerForm({
                   : 'Folder draft'}
               </span>
             </div>
-            <h2 className="mt-1.5 text-lg font-bold text-slate-900">{application.applicantName}</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="mt-2 text-xl font-bold text-slate-900">{application.applicantName}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
               {application.phone} · {application.lpkName} ·{' '}
               {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'} ·{' '}
               {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
             </p>
           </div>
           <button
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+            aria-label="Tutup panel pengajuan"
+            className="shrink-0 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c]"
             onClick={onClose}
             type="button"
           >
             Tutup ✕
           </button>
         </div>
+      </div>
 
-        {/* Compact Control Bar */}
-        <div className="mt-4 grid gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.6fr_auto]">
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
-            <span>Status Pengajuan</span>
-            <select
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
-              defaultValue={application.status}
-              name="status"
-            >
-              {APPLICATION_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
-            <span>Status Biaya</span>
-            <select
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
-              defaultValue={pricingStatus}
-              name="pricingStatus"
-            >
-              {PRICING_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {PRICING_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
-            <span>Catatan Internal</span>
-            <input
-              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-900"
-              defaultValue={application.internalNotes ?? ''}
-              maxLength={2000}
-              name="internalNotes"
-              placeholder="Catatan internal staf…"
-            />
-          </label>
-          <button
-            className="self-end rounded-lg bg-[#17158c] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#111077] disabled:opacity-60"
-            disabled={pending}
-            type="submit"
-          >
-            {pending ? 'Menyimpan…' : 'Simpan'}
-          </button>
-        </div>
-
-        {/* Drawer Navigation Tabs */}
-        <div className="mt-3 flex flex-wrap gap-1">
+      {/* Drawer Navigation Tabs */}
+      <div className="border-b border-slate-200 bg-white px-6 py-2.5">
+        <div className="flex flex-wrap gap-1.5">
           {DETAIL_TABS.map((tab) => {
             const isActive = activeTab === tab.id
             let badge = ''
@@ -536,7 +634,7 @@ function ApplicationDrawerForm({
 
             return (
               <button
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
                   isActive
                     ? 'bg-slate-900 text-white'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -886,7 +984,7 @@ function ApplicationDrawerForm({
 
         {/* TAB: INSTALLMENTS */}
         <div className={activeTab === 'installments' ? 'block space-y-4' : 'hidden'}>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
               <span className="text-slate-500">Total Kewajiban Akad</span>
               <strong className="mt-1 block text-sm font-bold text-slate-900">
@@ -906,6 +1004,31 @@ function ApplicationDrawerForm({
                   ? formatRupiah(Math.max(0, totalObligation - paidAmountTotal))
                   : '—'}
               </strong>
+            </div>
+            <div
+              className={`rounded-xl border p-3.5 text-xs ${
+                nextDueOverdue ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'
+              }`}
+            >
+              <span className={nextDueOverdue ? 'text-red-700' : 'text-slate-500'}>
+                Cicilan Berikutnya
+              </span>
+              <strong
+                className={`mt-1 block text-sm font-bold ${
+                  nextDueOverdue ? 'text-red-700' : 'text-slate-900'
+                }`}
+              >
+                {nextUnpaidRow
+                  ? `${formatDateShort(nextUnpaidRow.dueDate)} · ${formatRupiah(nextUnpaidRow.amount)}`
+                  : schedule.length > 0
+                    ? 'Semua lunas'
+                    : '—'}
+              </strong>
+              {nextDueOverdue && nextUnpaidRow && (
+                <span className="mt-1 block text-[11px] font-semibold text-red-700">
+                  Terlambat {getDaysBetween(nextUnpaidRow.dueDate, getLocalIsoDate())} hari
+                </span>
+              )}
             </div>
           </div>
 
@@ -965,6 +1088,14 @@ function ApplicationDrawerForm({
                 Transaksi Xendit ({payments.length})
               </div>
               <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500">
+                    <th className="px-3.5 py-2.5">Keterangan</th>
+                    <th className="px-3.5 py-2.5">Nominal</th>
+                    <th className="px-3.5 py-2.5">Status</th>
+                    <th className="px-3.5 py-2.5">Dibayar</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-slate-100">
                   {payments.map((payment) => (
                     <tr key={payment.id}>
@@ -974,7 +1105,15 @@ function ApplicationDrawerForm({
                       <td className="px-3.5 py-2.5 font-semibold text-slate-900">
                         {formatRupiah(payment.amount)}
                       </td>
-                      <td className="px-3.5 py-2.5">{payment.status}</td>
+                      <td className="px-3.5 py-2.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            PAYMENT_BADGE_STYLES[payment.status] ?? 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}
+                        </span>
+                      </td>
                       <td className="px-3.5 py-2.5 text-slate-500">
                         {payment.paidAt ? formatDateTime(payment.paidAt) : '—'}
                       </td>
@@ -1065,6 +1204,61 @@ function ApplicationDrawerForm({
           </section>
         </div>
       </div>
+
+      {/* Sticky Footer: status, biaya, catatan, simpan */}
+      <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
+          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
+            <span>Status Pengajuan</span>
+            <select
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
+              defaultValue={application.status}
+              name="status"
+            >
+              {APPLICATION_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-[11px] font-semibold text-slate-600">
+            <span>Status Biaya</span>
+            <select
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900"
+              defaultValue={pricingStatus}
+              name="pricingStatus"
+            >
+              {PRICING_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {PRICING_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-[11px] font-semibold text-slate-600 sm:col-span-2 lg:col-span-1">
+            <span>Catatan Internal</span>
+            <input
+              className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-900"
+              defaultValue={application.internalNotes ?? ''}
+              maxLength={2000}
+              name="internalNotes"
+              placeholder="Catatan internal staf…"
+            />
+          </label>
+          <button
+            className="rounded-lg bg-[#17158c] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#111077] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] disabled:opacity-60 sm:col-span-2 lg:col-span-1"
+            disabled={pending}
+            type="submit"
+          >
+            {pending ? 'Menyimpan…' : 'Simpan'}
+          </button>
+        </div>
+        <p className="mt-2.5 text-[11px] text-slate-500">
+          Tekan Simpan untuk menerapkan status pengajuan, status biaya, dokumen, dan catatan
+          internal.
+        </p>
+      </div>
     </form>
   )
 }
@@ -1092,6 +1286,9 @@ export function AdminDashboard({
     'ALL',
   )
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [activeInstallmentFilter, setActiveInstallmentFilter] = useState<
+    'ALL' | 'OVERDUE' | 'DUE_SOON' | 'CURRENT'
+  >('ALL')
 
   const logout = async () => {
     await fetch('/api/admin/session', { method: 'DELETE' })
@@ -1225,6 +1422,57 @@ export function AdminDashboard({
     return [...map.values()].sort((a, b) => b.count - a.count)
   }, [applications])
 
+  // Angsuran Aktif: siswa yang sedang mengangsur atau masih memiliki tanggungan
+  const activeInstallmentSummaries = useMemo(
+    () =>
+      filteredApplications
+        .map((app) => ({ app, summary: summarizeInstallments(app) }))
+        .filter(({ app, summary }) => hasActiveInstallment(app, summary)),
+    [filteredApplications],
+  )
+
+  const activeInstallmentMetrics = useMemo(() => {
+    let overdue = 0
+    let dueSoon = 0
+    let openRelief = 0
+    let totalRemaining = 0
+    for (const { summary } of activeInstallmentSummaries) {
+      if (summary.overdueCount > 0) overdue += 1
+      else if (summary.dueSoon) dueSoon += 1
+      openRelief += summary.openRelief
+      totalRemaining += summary.remaining
+    }
+    return {
+      count: activeInstallmentSummaries.length,
+      totalRemaining,
+      overdue,
+      dueSoon,
+      openRelief,
+    }
+  }, [activeInstallmentSummaries])
+
+  const visibleActiveInstallments = useMemo(() => {
+    const rows = activeInstallmentSummaries.filter(({ summary }) => {
+      if (activeInstallmentFilter === 'OVERDUE') return summary.overdueCount > 0
+      if (activeInstallmentFilter === 'DUE_SOON') {
+        return summary.overdueCount === 0 && summary.dueSoon
+      }
+      if (activeInstallmentFilter === 'CURRENT') {
+        return summary.overdueCount === 0 && !summary.dueSoon
+      }
+      return true
+    })
+    return rows.sort((a, b) => {
+      const aOverdue = a.summary.overdueCount > 0 ? 0 : 1
+      const bOverdue = b.summary.overdueCount > 0 ? 0 : 1
+      if (aOverdue !== bOverdue) return aOverdue - bOverdue
+      const aDue = a.summary.nextDue?.dueDate ?? '9999-99-99'
+      const bDue = b.summary.nextDue?.dueDate ?? '9999-99-99'
+      if (aDue !== bDue) return aDue.localeCompare(bDue)
+      return b.summary.remaining - a.summary.remaining
+    })
+  }, [activeInstallmentSummaries, activeInstallmentFilter])
+
   const save = (application: FinancingApplicationRecord, formData: FormData) => {
     setError('')
     setSavedNotice('')
@@ -1306,6 +1554,8 @@ export function AdminDashboard({
         ).length
       case 'installments':
         return metrics.openReliefCount > 0 ? metrics.openReliefCount : metrics.activeCount
+      case 'activeInstallments':
+        return activeInstallmentMetrics.count
       case 'audit':
         return auditEntries.length
       default:
@@ -1368,7 +1618,10 @@ export function AdminDashboard({
                               ? 'bg-white text-[#17158c]'
                               : item.id === 'installments' && metrics.openReliefCount > 0
                                 ? 'bg-amber-400 text-slate-950'
-                                : 'bg-white/10 text-indigo-200'
+                                : item.id === 'activeInstallments' &&
+                                    activeInstallmentMetrics.overdue > 0
+                                  ? 'bg-amber-400 text-slate-950'
+                                  : 'bg-white/10 text-indigo-200'
                           }`}
                         >
                           {badge}
@@ -1587,13 +1840,11 @@ export function AdminDashboard({
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-right">
-                              <button
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-semibold text-[#17158c] transition hover:bg-indigo-50"
+                              <DrawerAction
+                                ariaLabel={`Kelola pengajuan ${app.applicationId}`}
+                                label="Kelola"
                                 onClick={() => openApplicationDrawer(app.id, 'profile')}
-                                type="button"
-                              >
-                                Kelola
-                              </button>
+                              />
                             </td>
                           </tr>
                         )
@@ -1681,13 +1932,11 @@ export function AdminDashboard({
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-right">
-                              <button
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-semibold text-[#17158c] hover:bg-indigo-50"
+                              <DrawerAction
+                                ariaLabel={`Kelola pengajuan ${app.applicationId}`}
+                                label="Kelola"
                                 onClick={() => openApplicationDrawer(app.id, 'profile')}
-                                type="button"
-                              >
-                                Kelola
-                              </button>
+                              />
                             </td>
                           </tr>
                         )
@@ -1757,20 +2006,16 @@ export function AdminDashboard({
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
                             <div className="flex justify-end gap-1.5">
-                              <button
-                                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-100"
+                              <DrawerAction
+                                ariaLabel={`Buka biodata ${app.applicationId}`}
+                                label="Biodata"
                                 onClick={() => openApplicationDrawer(app.id, 'profile')}
-                                type="button"
-                              >
-                                Biodata
-                              </button>
-                              <button
-                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-semibold text-[#17158c] hover:bg-indigo-100"
+                              />
+                              <DrawerAction
+                                ariaLabel={`Buka berkas ${app.applicationId}`}
+                                label="Berkas"
                                 onClick={() => openApplicationDrawer(app.id, 'documents')}
-                                type="button"
-                              >
-                                Berkas
-                              </button>
+                              />
                             </div>
                           </td>
                         </tr>
@@ -1858,13 +2103,12 @@ export function AdminDashboard({
                               : '—'}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
-                            <button
-                              className="rounded-lg bg-[#17158c] px-3 py-1 font-semibold text-white hover:bg-[#111077]"
+                            <DrawerAction
+                              ariaLabel={`Susun akad ${app.applicationId}`}
+                              label="Susun Akad"
                               onClick={() => openApplicationDrawer(app.id, 'pricing')}
-                              type="button"
-                            >
-                              Susun Akad
-                            </button>
+                              variant="primary"
+                            />
                           </td>
                         </tr>
                       )
@@ -1952,18 +2196,16 @@ export function AdminDashboard({
                               )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-right">
-                              <button
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-semibold text-[#17158c] hover:bg-indigo-50"
+                              <DrawerAction
+                                ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
+                                label="Rincian"
                                 onClick={() =>
                                   openApplicationDrawer(
                                     app.id,
                                     openRelief > 0 ? 'support' : 'installments',
                                   )
                                 }
-                                type="button"
-                              >
-                                Rincian
-                              </button>
+                              />
                             </td>
                           </tr>
                         )
@@ -1975,7 +2217,282 @@ export function AdminDashboard({
             </div>
           )}
 
-          {/* 6. MENU: STATISTIK (Portfolio Analytics & LPK Partner Table) */}
+          {/* 6. MENU: ANGSURAN AKTIF (Outstanding & Active Installments) */}
+          {activeMenu === 'activeInstallments' && (
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">
+                    Siswa dengan Tanggungan
+                  </span>
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#17158c]">
+                    {activeInstallmentMetrics.count}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Aktif mengangsur atau sisa tanggungan
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">Total Sisa Kewajiban</span>
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-slate-900">
+                    {formatRupiah(activeInstallmentMetrics.totalRemaining)}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Akumulasi seluruh tanggungan
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">Terlambat Bayar</span>
+                  <strong
+                    className={`mt-1.5 block text-2xl font-extrabold ${
+                      activeInstallmentMetrics.overdue > 0 ? 'text-red-600' : 'text-slate-900'
+                    }`}
+                  >
+                    {activeInstallmentMetrics.overdue}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Lewat tanggal jatuh tempo
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-medium text-slate-500">Jatuh Tempo ≤ 7 Hari</span>
+                  <strong
+                    className={`mt-1.5 block text-2xl font-extrabold ${
+                      activeInstallmentMetrics.dueSoon > 0 ? 'text-amber-600' : 'text-slate-900'
+                    }`}
+                  >
+                    {activeInstallmentMetrics.dueSoon}
+                  </strong>
+                  <span className="mt-1 block text-[11px] text-amber-700">
+                    {activeInstallmentMetrics.openRelief} permohonan keringanan terbuka
+                  </span>
+                </div>
+              </div>
+
+              <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Siswa dengan Tanggungan ({visibleActiveInstallments.length}
+                    {activeInstallmentFilter !== 'ALL'
+                      ? ` dari ${activeInstallmentMetrics.count}`
+                      : ''}
+                    )
+                  </h2>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ACTIVE_INSTALLMENT_FILTERS.map((filter) => (
+                      <button
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17158c] ${
+                          activeInstallmentFilter === filter.id
+                            ? 'bg-[#17158c] text-white'
+                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                        key={filter.id}
+                        onClick={() => setActiveInstallmentFilter(filter.id)}
+                        type="button"
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {visibleActiveInstallments.length === 0 ? (
+                  <p className="px-5 py-8 text-center text-xs text-slate-400">
+                    Tidak ada siswa dengan tanggungan pada filter ini.
+                  </p>
+                ) : (
+                  <>
+                    {/* Mobile cards */}
+                    <ul className="divide-y divide-slate-100 lg:hidden">
+                      {visibleActiveInstallments.map(({ app, summary }) => {
+                        const today = getLocalIsoDate()
+                        const overdueDays =
+                          summary.nextDue && summary.overdueCount > 0
+                            ? getDaysBetween(summary.nextDue.dueDate, today)
+                            : 0
+                        return (
+                          <li className="p-4" key={app.id}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-slate-900">
+                                  {app.applicantName}
+                                </p>
+                                <p className="truncate text-[11px] text-slate-400">
+                                  {app.applicationId} · {app.lpkName}
+                                </p>
+                              </div>
+                              <span
+                                className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+                                  STATUS_BADGE_STYLES[app.status] ??
+                                  'bg-slate-100 text-slate-700 ring-slate-200'
+                                }`}
+                              >
+                                {STATUS_LABELS[app.status as keyof typeof STATUS_LABELS] ??
+                                  app.status}
+                              </span>
+                            </div>
+                            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                              <div className="rounded-lg bg-slate-50 p-2">
+                                <dt className="text-slate-400">Sisa Kewajiban</dt>
+                                <dd className="mt-0.5 font-bold text-slate-900">
+                                  {formatRupiah(summary.remaining)}
+                                </dd>
+                              </div>
+                              <div className="rounded-lg bg-slate-50 p-2">
+                                <dt className="text-slate-400">Progres</dt>
+                                <dd className="mt-0.5 font-bold text-slate-900">
+                                  {summary.paidCount}/{summary.schedule.length} lunas
+                                </dd>
+                              </div>
+                              <div className="col-span-2 rounded-lg bg-slate-50 p-2">
+                                <dt className="text-slate-400">Jatuh Tempo Berikutnya</dt>
+                                <dd className="mt-0.5 flex flex-wrap items-center gap-1.5 font-bold text-slate-900">
+                                  {summary.nextDue ? formatDateShort(summary.nextDue.dueDate) : '—'}
+                                  {overdueDays > 0 && (
+                                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                                      Terlambat {overdueDays} hr
+                                    </span>
+                                  )}
+                                  {overdueDays === 0 && summary.dueSoon && (
+                                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                      ≤7 hari
+                                    </span>
+                                  )}
+                                </dd>
+                              </div>
+                            </dl>
+                            <div className="mt-3">
+                              <DrawerAction
+                                ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
+                                label="Rincian"
+                                onClick={() => openApplicationDrawer(app.id, 'installments')}
+                              />
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+
+                    {/* Desktop table */}
+                    <div className="hidden overflow-x-auto lg:block">
+                      <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
+                            <th className="whitespace-nowrap px-4 py-3">ID Pengajuan</th>
+                            <th className="whitespace-nowrap px-4 py-3">Nama Siswa</th>
+                            <th className="whitespace-nowrap px-4 py-3">LPK Mitra</th>
+                            <th className="whitespace-nowrap px-4 py-3">Status</th>
+                            <th className="whitespace-nowrap px-4 py-3">Total Kewajiban</th>
+                            <th className="whitespace-nowrap px-4 py-3">Terbayar</th>
+                            <th className="whitespace-nowrap px-4 py-3">Sisa & Progres</th>
+                            <th className="whitespace-nowrap px-4 py-3">Jatuh Tempo</th>
+                            <th className="whitespace-nowrap px-4 py-3">Keringanan</th>
+                            <th className="whitespace-nowrap px-4 py-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {visibleActiveInstallments.map(({ app, summary }) => {
+                            const today = getLocalIsoDate()
+                            const overdueDays =
+                              summary.nextDue && summary.overdueCount > 0
+                                ? getDaysBetween(summary.nextDue.dueDate, today)
+                                : 0
+                            const progressPercent =
+                              summary.schedule.length > 0
+                                ? Math.round((summary.paidCount / summary.schedule.length) * 100)
+                                : 0
+                            return (
+                              <tr className="hover:bg-slate-50/80" key={app.id}>
+                                <td className="whitespace-nowrap px-4 py-3 font-bold text-[#17158c]">
+                                  {app.applicationId}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
+                                  {app.applicantName}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                                  {app.lpkName}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3">
+                                  <span
+                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+                                      STATUS_BADGE_STYLES[app.status] ??
+                                      'bg-slate-100 text-slate-700 ring-slate-200'
+                                    }`}
+                                  >
+                                    {STATUS_LABELS[app.status as keyof typeof STATUS_LABELS] ??
+                                      app.status}
+                                  </span>
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                                  {formatRupiah(summary.obligation)}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-emerald-700">
+                                  {summary.paidAmount > 0
+                                    ? formatRupiah(summary.paidAmount)
+                                    : 'Rp0'}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3">
+                                  <span className="font-bold text-slate-900">
+                                    {formatRupiah(summary.remaining)}
+                                  </span>
+                                  <span className="mt-0.5 block text-[11px] text-slate-400">
+                                    {summary.paidCount}/{summary.schedule.length} lunas
+                                  </span>
+                                  {summary.schedule.length > 0 && (
+                                    <span className="mt-1 block h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                                      <span
+                                        className="block h-full rounded-full bg-[#17158c]"
+                                        style={{ width: `${progressPercent}%` }}
+                                      />
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3">
+                                  <span className="font-medium text-slate-700">
+                                    {summary.nextDue
+                                      ? formatDateShort(summary.nextDue.dueDate)
+                                      : '—'}
+                                  </span>
+                                  {overdueDays > 0 && (
+                                    <span className="ml-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                                      Terlambat {overdueDays} hr
+                                    </span>
+                                  )}
+                                  {overdueDays === 0 && summary.dueSoon && (
+                                    <span className="ml-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                      ≤7 hari
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3">
+                                  {summary.openRelief > 0 ? (
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                                      {summary.openRelief} menunggu
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400">—</span>
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-right">
+                                  <DrawerAction
+                                    ariaLabel={`Lihat rincian angsuran ${app.applicationId}`}
+                                    label="Rincian"
+                                    onClick={() => openApplicationDrawer(app.id, 'installments')}
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </section>
+            </div>
+          )}
+
+          {/* 7. MENU: STATISTIK (Portfolio Analytics & LPK Partner Table) */}
           {activeMenu === 'statistics' && (
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -2034,7 +2551,7 @@ export function AdminDashboard({
             </div>
           )}
 
-          {/* 7. MENU: LOG AUDIT (Financial Plan History Table) */}
+          {/* 8. MENU: LOG AUDIT (Financial Plan History Table) */}
           {activeMenu === 'audit' && (
             <section className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xs">
               <div className="overflow-x-auto">
@@ -2097,13 +2614,11 @@ export function AdminDashboard({
                             {item.finalAgreementReference || item.settlementNotes || '—'}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right">
-                            <button
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-semibold text-[#17158c] hover:bg-indigo-50"
+                            <DrawerAction
+                              ariaLabel={`Lihat detail audit ${item.app.applicationId}`}
+                              label="Detail"
                               onClick={() => openApplicationDrawer(item.app.id, 'support')}
-                              type="button"
-                            >
-                              Detail
-                            </button>
+                            />
                           </td>
                         </tr>
                       ))
