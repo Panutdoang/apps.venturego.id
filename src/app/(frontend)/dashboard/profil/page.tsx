@@ -39,6 +39,30 @@ const PROFILE_MENU: { href: string; label: string; detail: string; icon: Dashboa
     icon: 'receipt',
   },
   {
+    href: '/dashboard/profil/keamanan',
+    label: 'Keamanan Akun',
+    detail: 'Verifikasi email dan kata sandi',
+    icon: 'lock',
+  },
+  {
+    href: '/dashboard/profil/persetujuan',
+    label: 'Kebijakan & Persetujuan',
+    detail: 'Salinan persetujuan dan kebijakan data',
+    icon: 'check',
+  },
+  {
+    href: '/dashboard/profil/kartu',
+    label: 'Kartu Identitas Siswa',
+    detail: 'Kartu ringkas NIS untuk dicetak',
+    icon: 'card',
+  },
+  {
+    href: '/dashboard/profil/tentang',
+    label: 'Tentang Aplikasi',
+    detail: 'Identitas, situs, dan kontak',
+    icon: 'info',
+  },
+  {
     href: '/dashboard/bantuan',
     label: 'Pusat Bantuan',
     detail: 'FAQ dan kontak layanan',

@@ -82,6 +82,10 @@ export type UserApplicationDetail = {
   }
   documents: UserDocumentItem[]
   schedule: UserScheduleItem[]
+  consent: {
+    understandsWakalah: boolean
+    acceptsDataProcessing: boolean
+  }
   supportRequests: {
     message: string
     requestedAt: string
@@ -563,6 +567,10 @@ export async function getUserActivityFeed(token: string): Promise<UserActivityFe
           },
           documents,
           schedule,
+          consent: {
+            understandsWakalah: data.understandsWakalah === true,
+            acceptsDataProcessing: data.acceptsDataProcessing === true,
+          },
           supportRequests,
         }
         return [detail]

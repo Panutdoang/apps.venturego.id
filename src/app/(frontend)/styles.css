@@ -2275,3 +2275,23 @@ body {
   min-height: 40px;
   padding-inline: 11px;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #student-card,
+  #student-card * {
+    visibility: visible;
+  }
+  #student-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
