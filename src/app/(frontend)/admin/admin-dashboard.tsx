@@ -235,8 +235,8 @@ const SIDEBAR_GROUPS: {
 
 const DETAIL_TABS: { id: DetailTabId; label: string }[] = [
   { id: 'profile', label: 'Profil' },
-  { id: 'nominal', label: 'Nominal Pengajuan' },
   { id: 'documents', label: 'Berkas' },
+  { id: 'nominal', label: 'Nominal Pengajuan' },
   { id: 'pricing', label: 'Draft Akad' },
   { id: 'contract', label: 'Status Persetujuan' },
 ]
@@ -247,7 +247,7 @@ function TabIcon({ id }: { id: DetailTabId }) {
       return (
         <svg
           aria-hidden="true"
-          className="size-3.5 shrink-0"
+          className="size-3 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.8}
@@ -261,7 +261,7 @@ function TabIcon({ id }: { id: DetailTabId }) {
       return (
         <svg
           aria-hidden="true"
-          className="size-3.5 shrink-0"
+          className="size-3 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.8}
@@ -276,7 +276,7 @@ function TabIcon({ id }: { id: DetailTabId }) {
       return (
         <svg
           aria-hidden="true"
-          className="size-3.5 shrink-0"
+          className="size-3 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.8}
@@ -290,7 +290,7 @@ function TabIcon({ id }: { id: DetailTabId }) {
       return (
         <svg
           aria-hidden="true"
-          className="size-3.5 shrink-0"
+          className="size-3 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.8}
@@ -304,7 +304,7 @@ function TabIcon({ id }: { id: DetailTabId }) {
       return (
         <svg
           aria-hidden="true"
-          className="size-3.5 shrink-0"
+          className="size-3 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.8}
@@ -503,6 +503,25 @@ const formatDateShort = (value: unknown) => {
   return Number.isNaN(date.getTime())
     ? value
     : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const formatDateLong = (value: unknown) => {
+  if (typeof value !== 'string' || !value) return '—'
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!iso) return value
+  const date = new Date(Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])))
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+const SCHEME_LABELS: Record<string, string> = {
+  WAKALAH_BIL_UJRAH: 'Wakalah bil Ujrah',
+  WAKALAH_BIL_UJRAH_AND_JUALAH: "Wakalah bil Ujrah + Ju'alah",
 }
 
 const formatDateTime = (value: unknown) => {
@@ -748,6 +767,18 @@ function ApplicationDrawerForm({
     parsedNewNominal > 0 &&
     (nominalCap === null || parsedNewNominal <= nominalCap)
 
+  const pricingStatusLabel =
+    pricingStatus === 'ESTIMATED'
+      ? 'Nominal'
+      : (PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
+        pricingStatus)
+
+  const planNafaqah = Number(application.financialPlan?.nafaqahTotal) || 0
+  const planUjrah = Number(application.financialPlan?.ujrahTotal) || 0
+  const planTotal = Number(application.financialPlan?.totalObligation) || 0
+  const planApproved =
+    (pricingStatus === 'VERIFIED' || pricingStatus === 'AGREED') && planNafaqah > 0 && planUjrah > 0
+
   const workflowDirty =
     workflowStatus !== application.status || workflowNotes !== (application.internalNotes ?? '')
 
@@ -851,7 +882,7 @@ function ApplicationDrawerForm({
             return (
               <button
                 aria-selected={isActive}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] ${
                   isActive
                     ? 'bg-[#0b57d0] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900'
@@ -944,7 +975,7 @@ function ApplicationDrawerForm({
                   <div>
                     <dt className="text-slate-400">Tempat, Tgl Lahir</dt>
                     <dd className="mt-0.5 font-semibold text-slate-900">
-                      {String(personal.birthPlace ?? '—')}, {String(personal.birthDate ?? '—')}
+                      {String(personal.birthPlace ?? '—')}, {formatDateLong(personal.birthDate)}
                     </dd>
                   </div>
                   <div>
@@ -978,29 +1009,46 @@ function ApplicationDrawerForm({
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Program LPK & Kesiapan Keberangkatan
               </h4>
-              <dl className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                <div>
-                  <dt className="text-slate-400">LPK Mitra</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">{application.lpkName}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-400">Tujuan & Skema</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
-                    {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'} ·{' '}
-                    {application.contractScheme ?? 'WAKALAH_BIL_UJRAH'}
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-4">
+                <div className="min-w-0">
+                  <dt className="truncate text-slate-400">LPK Mitra</dt>
+                  <dd
+                    className="mt-0.5 truncate font-semibold text-slate-900"
+                    title={application.lpkName}
+                  >
+                    {application.lpkName}
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-slate-400">Status COE & Visa</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
+                <div className="min-w-0">
+                  <dt className="truncate text-slate-400">Tujuan & Skema</dt>
+                  <dd
+                    className="mt-0.5 truncate font-semibold text-slate-900"
+                    title={`${application.destination === 'JAPAN' ? 'Jepang' : 'Turki'} · ${
+                      SCHEME_LABELS[String(application.contractScheme ?? 'WAKALAH_BIL_UJRAH')] ??
+                      String(application.contractScheme ?? '—')
+                    }`}
+                  >
+                    {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'} ·{' '}
+                    {SCHEME_LABELS[String(application.contractScheme ?? 'WAKALAH_BIL_UJRAH')] ??
+                      String(application.contractScheme ?? '—')}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="truncate text-slate-400">Status COE & Visa</dt>
+                  <dd
+                    className="mt-0.5 truncate font-semibold text-slate-900"
+                    title={`COE: ${
+                      DOC_PROGRESS_LABELS[String(eligibility.coeStatus ?? '')] ?? '—'
+                    } · Visa: ${DOC_PROGRESS_LABELS[String(eligibility.visaStatus ?? '')] ?? '—'}`}
+                  >
                     COE: {DOC_PROGRESS_LABELS[String(eligibility.coeStatus ?? '')] ?? '—'} · Visa:{' '}
                     {DOC_PROGRESS_LABELS[String(eligibility.visaStatus ?? '')] ?? '—'}
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-slate-400">Est. Keberangkatan</dt>
-                  <dd className="mt-0.5 font-semibold text-slate-900">
-                    {String(eligibility.estimatedDeparture ?? '—')}
+                <div className="min-w-0">
+                  <dt className="truncate text-slate-400">Perkiraan Keberangkatan</dt>
+                  <dd className="mt-0.5 truncate font-semibold text-slate-900">
+                    {formatDateLong(eligibility.estimatedDeparture)}
                   </dd>
                 </div>
               </dl>
@@ -1014,13 +1062,13 @@ function ApplicationDrawerForm({
                   ['Izin orang tua/wali', eligibility.guardianApproval],
                 ].map(([label, val]) => (
                   <div
-                    className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${
+                    className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 ${
                       val ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-50 text-slate-500'
                     }`}
                     key={String(label)}
                   >
-                    <span>{String(label)}</span>
-                    <strong>{val ? 'Ya' : 'Tidak'}</strong>
+                    <span className="truncate whitespace-nowrap">{String(label)}</span>
+                    <strong className="shrink-0">{val ? 'Ya' : 'Tidak'}</strong>
                   </div>
                 ))}
               </div>
@@ -1087,8 +1135,7 @@ function ApplicationDrawerForm({
               >
                 {application.product === 'DEPARTURE_BRIDGING'
                   ? formatRupiah(departure.outstandingLPKAmount)
-                  : (PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
-                    pricingStatus)}
+                  : pricingStatusLabel}
               </strong>
               <span className="mt-1 block text-[11px] text-slate-400">
                 {application.product === 'DEPARTURE_BRIDGING'
@@ -1114,21 +1161,35 @@ function ApplicationDrawerForm({
           {application.product === 'DEPARTURE_BRIDGING' && (
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               <div className="border-b border-slate-100 px-5 py-4">
-                <h3 className="text-sm font-bold text-slate-900">Estimasi Wakalah (Sistem)</h3>
+                <h3 className="text-sm font-bold text-slate-900">Nominal Wakalah (Sistem)</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Perhitungan otomatis berbasis nominal yang diajukan: ujrah 2,4% per bulan
-                  dikalikan 12 bulan dan biaya admin 5%.
+                  {planApproved
+                    ? 'Rincian tersimpan sesuai nominal yang disetujui: ujrah 2,4% per bulan dikalikan 12 bulan dan biaya admin 5%.'
+                    : 'Perhitungan otomatis berbasis nominal yang diajukan: ujrah 2,4% per bulan dikalikan 12 bulan dan biaya admin 5%.'}
                 </p>
               </div>
               <dl className="divide-y divide-slate-100 px-5 text-xs">
-                {[
-                  ['Principal (nominal diajukan)', formatRupiah(requestedAmount)],
-                  ['Ujrah per bulan (2,4%)', formatRupiah(estimatedMonthlyUjrah)],
-                  ['Ujrah × 12 bulan', formatRupiah(estimatedTotalUjrah)],
-                  ['Biaya admin (5%)', formatRupiah(estimatedAdminFee)],
-                  ['Pencairan bersih ke pemohon', formatRupiah(estimatedCashDisbursed)],
-                  ['Total estimasi kewajiban', formatRupiah(estimatedFinancingTotal)],
-                ].map(([label, value], index, rows) => (
+                {(planApproved
+                  ? ([
+                      ['Principal (nominal disetujui)', formatRupiah(planNafaqah)],
+                      ['Ujrah per bulan (2,4%)', formatRupiah(Math.round(planUjrah / 12))],
+                      ['Ujrah × 12 bulan', formatRupiah(planUjrah)],
+                      ['Biaya admin (5%)', formatRupiah(Math.round(planNafaqah * 0.05))],
+                      [
+                        'Pencairan bersih ke pemohon',
+                        formatRupiah(planNafaqah - Math.round(planNafaqah * 0.05)),
+                      ],
+                      ['Total nominal kewajiban', formatRupiah(planTotal)],
+                    ] as const)
+                  : ([
+                      ['Principal (nominal diajukan)', formatRupiah(requestedAmount)],
+                      ['Ujrah per bulan (2,4%)', formatRupiah(estimatedMonthlyUjrah)],
+                      ['Ujrah × 12 bulan', formatRupiah(estimatedTotalUjrah)],
+                      ['Biaya admin (5%)', formatRupiah(estimatedAdminFee)],
+                      ['Pencairan bersih ke pemohon', formatRupiah(estimatedCashDisbursed)],
+                      ['Total nominal kewajiban', formatRupiah(estimatedFinancingTotal)],
+                    ] as const)
+                ).map(([label, value], index, rows) => (
                   <div
                     className={`flex items-center justify-between py-2.5 ${
                       index === rows.length - 1 ? 'font-bold text-[#0b57d0]' : 'text-slate-600'
@@ -1162,8 +1223,7 @@ function ApplicationDrawerForm({
                   PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
                 } ring-slate-200`}
               >
-                {PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
-                  pricingStatus}
+                {pricingStatusLabel}
               </span>
             </div>
             <dl className="grid gap-x-6 gap-y-3 px-5 py-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
@@ -1253,7 +1313,7 @@ function ApplicationDrawerForm({
                   <DrawerAction
                     disabled={pending}
                     label="Setujui dengan Nominal Baru"
-                    onClick={() => setShowNominalInput((current) => !current)}
+                    onClick={() => setShowNominalInput(true)}
                   />
                 </>
               )}
@@ -1268,7 +1328,7 @@ function ApplicationDrawerForm({
                   <DrawerAction
                     disabled={pending}
                     label="Setujui dengan Nominal Baru"
-                    onClick={() => setShowNominalInput((current) => !current)}
+                    onClick={() => setShowNominalInput(true)}
                   />
                 </>
               )}
@@ -1278,48 +1338,6 @@ function ApplicationDrawerForm({
                 </span>
               )}
             </div>
-            {(pricingStatus === 'ESTIMATED' || pricingStatus === 'VERIFIED') &&
-              showNominalInput && (
-                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Nominal baru (Rp)
-                    <input
-                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-                      min={1}
-                      onChange={(event) => setNewNominal(event.target.value)}
-                      placeholder="Contoh: 120000000"
-                      step={1}
-                      type="number"
-                      value={newNominal}
-                    />
-                  </label>
-                  <p className="mt-1.5 text-[11px] text-slate-500">
-                    {nominalCap !== null
-                      ? `Maksimal ${formatRupiah(nominalCap)} (nominal yang diajukan siswa). Rincian biaya & jadwal dihitung ulang otomatis.`
-                      : 'Rincian biaya & jadwal dihitung ulang otomatis agar totalnya sama dengan nominal baru.'}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <DrawerAction
-                      disabled={pending || !newNominalValid}
-                      label={pending ? 'Menyimpan…' : 'Setujui Nominal Baru'}
-                      onClick={() => {
-                        if (!newNominalValid) return
-                        onApprovePricing(application.id, parsedNewNominal)
-                        setShowNominalInput(false)
-                        setNewNominal('')
-                      }}
-                      variant="primary"
-                    />
-                    <DrawerAction
-                      label="Batal"
-                      onClick={() => {
-                        setShowNominalInput(false)
-                        setNewNominal('')
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
           </section>
         </div>
 
@@ -1706,6 +1724,125 @@ function ApplicationDrawerForm({
                   </a>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-over khusus: Setujui dengan Nominal Baru */}
+      {showNominalInput && (pricingStatus === 'ESTIMATED' || pricingStatus === 'VERIFIED') && (
+        <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
+          <div className="flex h-dvh w-full max-w-md flex-col bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900">Setujui dengan Nominal Baru</h3>
+                <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                  {application.applicantName} · {application.applicationId}
+                </p>
+              </div>
+              <button
+                aria-label="Tutup pengaturan nominal baru"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                onClick={() => {
+                  setShowNominalInput(false)
+                  setNewNominal('')
+                }}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">Nominal diajukan (maksimal)</span>
+                  <strong className="text-slate-900">
+                    {nominalCap !== null ? formatRupiah(nominalCap) : '—'}
+                  </strong>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">Total kewajiban saat ini</span>
+                  <strong className="text-slate-900">
+                    {formatRupiah(application.financialPlan?.totalObligation ?? null)}
+                  </strong>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-500">Status biaya</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset ${
+                      PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
+                    } ring-slate-200`}
+                  >
+                    {pricingStatusLabel}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">
+                Rincian Nafaqah &amp; Ujrah disesuaikan secara proporsional agar totalnya sama
+                dengan nominal baru, lalu jadwal angsuran dihitung ulang. Status biaya menjadi
+                Terverifikasi.
+              </p>
+              <label className="block text-xs font-semibold text-slate-700">
+                Nominal baru (Rp)
+                <input
+                  autoFocus
+                  className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                  min={1}
+                  onChange={(event) => setNewNominal(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.preventDefault()
+                  }}
+                  placeholder="Contoh: 120000000"
+                  step={1}
+                  type="number"
+                  value={newNominal}
+                />
+              </label>
+              {newNominal !== '' && !newNominalValid && (
+                <p className="text-[11px] font-semibold text-red-600" role="alert">
+                  Nominal harus lebih dari 0
+                  {nominalCap !== null ? ` dan maksimal ${formatRupiah(nominalCap)}.` : '.'}
+                </p>
+              )}
+              <p className="text-[11px] text-slate-500">
+                {nominalCap !== null
+                  ? `Maksimal ${formatRupiah(nominalCap)} (nominal yang diajukan siswa).`
+                  : 'Masukkan nominal baru minimal Rp1.'}
+              </p>
+              {nominalCap !== null && (
+                <button
+                  className="text-[11px] font-semibold text-[#0b57d0] underline"
+                  onClick={() => setNewNominal(String(nominalCap))}
+                  type="button"
+                >
+                  Gunakan nominal diajukan ({formatRupiah(nominalCap)})
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 border-t border-slate-200 px-5 py-4">
+              <button
+                className="inline-flex flex-1 items-center justify-center rounded-lg bg-[#0b57d0] px-3.5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#0842a0] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={pending || !newNominalValid}
+                onClick={() => {
+                  if (!newNominalValid) return
+                  onApprovePricing(application.id, parsedNewNominal)
+                  setShowNominalInput(false)
+                  setNewNominal('')
+                }}
+                type="button"
+              >
+                {pending ? 'Menyimpan…' : 'Setujui Nominal Baru'}
+              </button>
+              <button
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                onClick={() => {
+                  setShowNominalInput(false)
+                  setNewNominal('')
+                }}
+                type="button"
+              >
+                Batal
+              </button>
             </div>
           </div>
         </div>
