@@ -69,3 +69,20 @@ friendly "not configured" message instead of failing.
   the installment number to the owning application's `paidInstallments` array.
 - Firestore rules stay deny-all: the `payments` collection is only accessible
   through verified server actions and this webhook route.
+
+## 6. Shared Xendit account (forwarded callbacks)
+
+The Xendit account is shared with other apps, so `/api/webhooks/xendit` forwards
+callbacks that belong to them **before** any payment logic runs. The raw body and the
+original `x-callback-token` are passed through unchanged; a non-2xx answer from the
+target returns `502` so Xendit retries.
+
+| `external_id` prefix | Owner                                                      | Target (env, optional)                                                                     |
+| -------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `trm-`               | Turrima / Agrisys (store & distributor VAs)                | `TURRIMA_WEBHOOK_URL` (default `https://turrima.integratedfarming.id/api/xendit/callback`) |
+| `vsv-`               | Previous VentureGo app (36 legacy contracts, own database) | `LEGACY_VSV_WEBHOOK_URL` (default `https://venture-go.vercel.app/api/webhooks/xendit`)     |
+
+- `XENDIT_CALLBACK_TOKEN` must be **identical** in every app sharing the account.
+- Do not remove these routes. Without them the callback is answered `200` and lost —
+  Xendit will not retry.
+- Keep the previous VentureGo deployment running until its contracts are migrated here.

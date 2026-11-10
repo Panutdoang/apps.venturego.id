@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { isAppAccount, resolveUserDestination } from '@/lib/auth-client'
-import { DashboardPageSkeleton } from './_components/dashboard-ui'
+import { RocketLoader } from '../_components/orbit-mark'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router])
 
   if (!ready) {
-    return <DashboardPageSkeleton />
+    return <RocketLoader message="Menyiapkan akunmu…" />
   }
 
   return <>{children}</>

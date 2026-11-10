@@ -96,7 +96,7 @@ export default function StudentCardPage() {
         </DashboardCard>
       ) : (
         <div
-          className="overflow-hidden rounded-3xl bg-[var(--primary)] text-white shadow-[0_12px_32px_rgba(26,70,145,0.28)]"
+          className="overflow-hidden rounded-3xl brand-card text-white shadow-[0_12px_32px_rgba(11,87,208,0.28)]"
           id="student-card"
         >
           <div className="flex items-center justify-between border-b border-white/15 px-5 py-4">

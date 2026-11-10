@@ -288,7 +288,7 @@ export default function DashboardPage() {
         </div>
       )}
       <section className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-[#f8f9fd] shadow-[0_0_48px_rgba(15,23,42,0.08)]">
-        <header className="rounded-b-[32px] bg-[var(--primary)] px-5 pb-24 pt-6 text-white">
+        <header className="rounded-b-[32px] brand-surface px-5 pb-24 pt-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="grid size-11 place-items-center rounded-full bg-white/15 ring-1 ring-white/25">
@@ -516,7 +516,7 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--primary)] to-[#143670] p-5 text-white shadow-sm">
+          <section className="relative overflow-hidden rounded-3xl brand-card p-5 text-white shadow-sm">
             <div className="relative z-10 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-bold tracking-tight text-white">

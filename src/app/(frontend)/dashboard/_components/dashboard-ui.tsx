@@ -246,9 +246,9 @@ export function DashboardBottomNav({ active }: { active: PrimaryRoute }) {
                 <span
                   className={
                     isHome && isActive
-                      ? 'grid size-10 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-[0_4px_12px_rgba(26,70,145,0.24)] ring-2 ring-blue-100 transition group-hover:opacity-90'
+                      ? 'grid size-10 place-items-center rounded-2xl brand-fill text-white shadow-[0_4px_12px_rgba(11,87,208,0.24)] ring-2 ring-blue-100 transition group-hover:opacity-90'
                       : isActive
-                        ? 'grid size-9 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm transition group-hover:opacity-90'
+                        ? 'grid size-9 place-items-center rounded-2xl brand-fill text-white shadow-sm transition group-hover:opacity-90'
                         : 'grid size-9 place-items-center rounded-2xl text-slate-400 transition group-hover:bg-slate-100 group-hover:text-slate-600'
                   }
                 >

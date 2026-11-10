@@ -7,11 +7,29 @@
   --ink: #0f172a;
   --body: #526174;
   --muted: #8b9aae;
-  --primary: #1a4691;
-  --primary-soft: #eef4fc;
-  --accent: #5782f6;
+  --primary: #0b57d0;
+  --primary-soft: #e8f0fe;
+  --accent: #4285f4;
   --success: #168248;
   --success-soft: #edf9f1;
+  /* Palet cerah ala Google (Material 3) untuk halaman awal & layar loading. */
+  --hero-top: #4285f4;
+  --hero-mid: #1a73e8;
+  --hero-deep: #0b57d0;
+  --hero-depth: #0842a0;
+  --hero-glow: #c2e7ff;
+  --dot-green: #6dd58c;
+  --dot-yellow: #fdd663;
+  --dot-red: #f28b82;
+  --welcome-ink: #1f1f1f;
+  --welcome-body: #444746;
+  --welcome-font:
+    var(--font-google-sans), 'Google Sans', var(--font-plus-jakarta), 'Plus Jakarta Sans',
+    system-ui, sans-serif;
+  --hero-gradient:
+    radial-gradient(110% 70% at 90% -10%, rgba(194, 231, 255, 0.55), transparent 55%),
+    radial-gradient(90% 60% at -10% 108%, rgba(8, 66, 160, 0.55), transparent 62%),
+    linear-gradient(165deg, var(--hero-top) 0%, var(--hero-mid) 48%, var(--hero-deep) 100%);
 }
 
 * {
@@ -575,7 +593,7 @@ input[type='checkbox'] {
     min-height: 844px;
     border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(26, 70, 145, 0.13);
+    box-shadow: 0 20px 60px rgba(11, 87, 208, 0.13);
   }
   .wizard-footer {
     position: sticky;
@@ -596,7 +614,7 @@ input[type='checkbox'] {
     linear-gradient(
       90deg,
       transparent 0 49.8%,
-      rgba(26, 70, 145, 0.035) 49.8% 50.2%,
+      rgba(11, 87, 208, 0.035) 49.8% 50.2%,
       transparent 50.2%
     ),
     #eef2f7;
@@ -713,7 +731,7 @@ input[type='checkbox'] {
 }
 
 .product-option:focus-visible::after {
-  box-shadow: 0 0 0 3px rgba(26, 70, 145, 0.14);
+  box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.14);
 }
 
 .product-option:last-of-type {
@@ -1090,7 +1108,7 @@ input[type='checkbox'] {
   .mobile-shell {
     min-height: 860px;
     border-radius: 16px;
-    box-shadow: 0 30px 80px rgba(26, 70, 145, 0.14);
+    box-shadow: 0 30px 80px rgba(11, 87, 208, 0.14);
   }
 }
 
@@ -1264,7 +1282,7 @@ body {
 .step-dots span.active {
   width: 8px;
   height: 8px;
-  background: #1a4691;
+  background: #0b57d0;
 }
 
 .wizard-footer .primary-button,
@@ -1285,12 +1303,12 @@ body {
 
 .wizard-footer .primary-button {
   background: var(--primary);
-  box-shadow: 0 8px 18px rgba(26, 70, 145, 0.2);
+  box-shadow: 0 8px 18px rgba(11, 87, 208, 0.2);
 }
 
 .wizard-footer .primary-button:hover {
-  background: #143670;
-  box-shadow: 0 10px 22px rgba(26, 70, 145, 0.24);
+  background: #0842a0;
+  box-shadow: 0 10px 22px rgba(11, 87, 208, 0.24);
 }
 
 .wizard-footer .primary-button:active,
@@ -1345,10 +1363,10 @@ body {
 
 /* Shared visual language for the application steps */
 .mobile-shell:not(.choice-step) {
-  --primary: #1a4691;
+  --primary: #0b57d0;
   --primary-soft: #eef4fc;
   --border: #dfe1e7;
-  --ink: #1a4691;
+  --ink: #0b57d0;
   --body: #4f5368;
   background: #fff;
 }
@@ -1360,8 +1378,8 @@ body {
   align-items: center;
   border-radius: 0 0 42px 42px;
   background:
-    radial-gradient(circle at 18% 28%, rgba(87, 130, 246, 0.32), transparent 38%),
-    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
+    radial-gradient(circle at 18% 28%, rgba(194, 231, 255, 0.32), transparent 38%),
+    linear-gradient(135deg, #1a73e8 0%, #0b57d0 100%);
   text-align: center;
 }
 
@@ -1400,7 +1418,7 @@ body {
 .mobile-shell:not(.choice-step) .intro-choice h2 {
   max-width: 340px;
   margin: 0 auto 12px;
-  color: #1a4691;
+  color: #0b57d0;
   font-size: 24px;
   line-height: 32px;
   font-weight: 750;
@@ -1435,11 +1453,11 @@ body {
   border: 1.5px solid #dfe1e7;
   border-radius: 16px;
   background: #fbfcff;
-  color: #1a4691;
+  color: #0b57d0;
   font-size: 14px;
   line-height: 22px;
   font-weight: 550;
-  box-shadow: 0 3px 12px rgba(26, 70, 145, 0.035);
+  box-shadow: 0 3px 12px rgba(11, 87, 208, 0.035);
 }
 
 .mobile-shell:not(.choice-step) .field select option {
@@ -1467,10 +1485,10 @@ body {
 .mobile-shell:not(.choice-step) .field input:focus,
 .mobile-shell:not(.choice-step) .field select:focus,
 .mobile-shell:not(.choice-step) .field textarea:focus {
-  border-color: #1a4691;
+  border-color: #0b57d0;
   background: #fff;
   outline: none;
-  box-shadow: 0 0 0 4px rgba(26, 70, 145, 0.08);
+  box-shadow: 0 0 0 4px rgba(11, 87, 208, 0.08);
 }
 
 .mobile-shell:not(.choice-step) .choice-list,
@@ -1515,7 +1533,7 @@ body {
   flex: 0 0 22px;
   width: 22px;
   height: 22px;
-  accent-color: #1a4691;
+  accent-color: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .soft-note {
@@ -1568,7 +1586,7 @@ body {
 .mobile-shell:not(.choice-step) .need-chip.selected {
   border-color: #e0dfff;
   background: #eef4fc;
-  color: #1a4691;
+  color: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .document-list > div,
@@ -1595,9 +1613,9 @@ body {
   padding: 24px 22px;
   border-radius: 22px;
   background:
-    radial-gradient(circle at 92% 15%, rgba(87, 130, 246, 0.42), transparent 36%),
-    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
-  box-shadow: 0 14px 28px rgba(26, 70, 145, 0.16);
+    radial-gradient(circle at 92% 15%, rgba(194, 231, 255, 0.42), transparent 36%),
+    linear-gradient(135deg, #1a73e8 0%, #0b57d0 100%);
+  box-shadow: 0 14px 28px rgba(11, 87, 208, 0.16);
 }
 
 .mobile-shell:not(.choice-step) .summary-hero span,
@@ -1614,7 +1632,7 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .finance-grid .wide strong {
-  color: #1a4691;
+  color: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .consent {
@@ -1636,7 +1654,7 @@ body {
   gap: 10px;
   border-top: 0;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 -12px 28px rgba(26, 70, 145, 0.06);
+  box-shadow: 0 -12px 28px rgba(11, 87, 208, 0.06);
 }
 
 .mobile-shell:not(.choice-step) .footer-progress {
@@ -1647,7 +1665,7 @@ body {
 
 .mobile-shell:not(.choice-step) .footer-progress span {
   border-radius: 999px;
-  background: #1a4691;
+  background: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .primary-button,
@@ -1658,14 +1676,14 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .primary-button {
-  background: radial-gradient(circle at 12% 0%, rgba(87, 130, 246, 0.4), transparent 38%), #1a4691;
-  box-shadow: 0 9px 20px rgba(26, 70, 145, 0.18);
+  background: radial-gradient(circle at 12% 0%, rgba(194, 231, 255, 0.4), transparent 38%), #0b57d0;
+  box-shadow: 0 9px 20px rgba(11, 87, 208, 0.18);
 }
 
 .mobile-shell:not(.choice-step) .wizard-footer .back-button {
   border: 1.5px solid #dfe1e7;
   background: #fff;
-  color: #1a4691;
+  color: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .success-state {
@@ -1678,21 +1696,21 @@ body {
   height: 76px;
   border: 8px solid #f4f8fd;
   background: #eef4fc;
-  color: #1a4691;
+  color: #0b57d0;
   font-size: 28px;
-  box-shadow: 0 12px 26px rgba(26, 70, 145, 0.1);
+  box-shadow: 0 12px 26px rgba(11, 87, 208, 0.1);
 }
 
 .mobile-shell:not(.choice-step) .status-pill {
   margin-top: 20px;
   padding: 6px 13px;
   background: #eef4fc;
-  color: #1a4691;
+  color: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .success-state h2 {
   max-width: 330px;
-  color: #1a4691;
+  color: #0b57d0;
   font-weight: 750;
 }
 
@@ -1712,15 +1730,15 @@ body {
 }
 
 .mobile-shell:not(.choice-step) .timeline .done i {
-  border-color: #1a4691;
-  background: #1a4691;
+  border-color: #0b57d0;
+  background: #0b57d0;
 }
 
 .mobile-shell:not(.choice-step) .success-state .primary-button {
   min-height: 56px;
   border: 0;
   border-radius: 999px;
-  background: #1a4691;
+  background: #0b57d0;
   color: #fff;
 }
 
@@ -1738,9 +1756,11 @@ body {
 
 /* Welcome screen inspired by the Vworks travel and graduation reference. */
 .welcome-step {
-  --primary: #1a4691;
-  --primary-soft: #eef4fc;
-  --accent: #5782f6;
+  /* Palet cerah ala Google (Material 3): biru terang → biru tua untuk kesan aman. */
+  --primary: #0b57d0;
+  --primary-soft: #e8f0fe;
+  --accent: #4285f4;
+  font-family: var(--welcome-font);
   height: 100dvh;
   min-height: 100dvh;
   max-height: 100dvh;
@@ -1761,56 +1781,213 @@ body {
   gap: 14px;
   overflow: hidden;
   border-radius: 0 0 50% 50% / 0 0 18% 18%;
-  background: var(--primary);
+  background: var(--hero-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   color: #fff;
   text-align: center;
 }
 
-.welcome-hero::before {
+/* ---------- Sistem orbit: roket + cincin + tiga satelit berputar ---------- */
+.orbit-system {
+  --ring: 46px; /* jarak antar cincin; satelit berada di cincin ke-2 dan ke-3 */
+  --logo-size: min(30vw, 105px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+}
+
+.orbit-system--compact {
+  --ring: 34px;
+  --logo-size: 72px;
+}
+
+/* Cincin orbit tipis, memudar ke tepi. */
+.orbit-system::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 82% 18%, rgba(87, 130, 246, 0.2), transparent 34%);
+  left: 50%;
+  top: 50%;
+  z-index: -2;
+  width: calc(var(--ring) * 9);
+  height: calc(var(--ring) * 9);
+  transform: translate(-50%, -50%);
+  background: repeating-radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.13) 0 1px,
+    transparent 1.5px var(--ring)
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0 30%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 0 30%, transparent 70%);
   pointer-events: none;
 }
 
-.welcome-illustration {
-  position: relative;
-  width: min(50vw, 190px);
-  height: auto;
-  overflow: visible;
+/* Kilau lembut di belakang roket. */
+.orbit-system::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: calc(var(--ring) * 4.2);
+  height: calc(var(--ring) * 4.2);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(194, 231, 255, 0.28), transparent 62%);
+  pointer-events: none;
 }
 
-.welcome-logo {
+.orbit-logo {
   position: relative;
-  width: min(30vw, 105px);
+  z-index: 1;
+  width: var(--logo-size);
   height: auto;
+  filter: drop-shadow(0 10px 22px rgba(8, 40, 110, 0.4));
+}
+
+/* Titik pusat satelit = pusat roket; titiknya digeser sejauh --r lalu diputar. */
+.orbit-sat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--start));
+  animation: orbit-spin var(--duration) linear infinite;
+}
+
+.orbit-sat::after {
+  content: '';
+  position: absolute;
+  left: var(--r);
+  top: 0;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2);
+  border-radius: 50%;
+  background: var(--color);
+  box-shadow: 0 0 10px var(--color);
+}
+
+.orbit-sat--yellow {
+  --r: calc(var(--ring) * 2);
+  --start: -50deg;
+  --duration: 9s;
+  --size: 9px;
+  --color: var(--dot-yellow);
+}
+
+.orbit-sat--red {
+  --r: calc(var(--ring) * 2);
+  --start: 130deg;
+  --duration: 9s;
+  --size: 7px;
+  --color: var(--dot-red);
+}
+
+.orbit-sat--green {
+  --r: calc(var(--ring) * 3);
+  --start: 200deg;
+  --duration: 15s;
+  --size: 8px;
+  --color: var(--dot-green);
+  animation-direction: reverse;
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(var(--start));
+  }
+  to {
+    transform: rotate(calc(var(--start) + 360deg));
+  }
+}
+
+/* ---------- Layar loading roket ---------- */
+.rocket-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 88px;
+  overflow: hidden;
+  background: var(--hero-gradient);
+  color: #fff;
+  font-family: var(--welcome-font);
+  animation: rocket-loader-in 220ms ease-out both;
+}
+
+.rocket-loader p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--hero-glow);
+}
+
+.rocket-loader .orbit-sat {
+  animation-duration: calc(var(--duration) / 3); /* lebih cepat saat memuat */
+}
+
+.rocket-loader .orbit-logo {
+  animation: rocket-float 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes rocket-loader-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rocket-float {
+  from {
+    transform: translateY(3px);
+  }
+  to {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-sat,
+  .rocket-loader,
+  .rocket-loader .orbit-logo {
+    animation: none;
+  }
 }
 
 .welcome-brand {
   position: relative;
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  z-index: 1;
+  font-family: var(--welcome-font);
 }
 
 .welcome-brand h1 {
   margin: 0;
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-size: 11px;
-  line-height: 15px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-family: var(--welcome-font);
+  font-size: clamp(19px, 5.6vw, 23px);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0;
   white-space: nowrap;
+  text-shadow:
+    0 1px 2px rgba(8, 40, 110, 0.45),
+    0 2px 14px rgba(8, 40, 110, 0.35);
 }
 
 .welcome-brand span {
   display: block;
-  margin-top: 2px;
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-size: 9px;
-  line-height: 12px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  opacity: 0.88;
+  margin-top: 4px;
+  font-family: var(--welcome-font);
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(8, 40, 110, 0.45);
 }
 
 .mobile-shell.welcome-step .wizard-body {
@@ -1832,16 +2009,18 @@ body {
 .welcome-copy h2 {
   margin: 0 0 6px;
   color: var(--primary);
+  font-family: var(--welcome-font);
   font-size: 30px;
   line-height: 38px;
-  font-weight: 750;
-  letter-spacing: 0.005em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .welcome-copy > p:not(.welcome-note) {
   max-width: 320px;
   margin: 0 auto;
-  color: #4b4b60;
+  color: var(--welcome-body);
+  font-family: var(--welcome-font);
   font-size: 12px;
   line-height: 18px;
 }
@@ -1860,19 +2039,104 @@ body {
   justify-content: center;
   gap: 12px;
   border-radius: 999px;
+  font-family: var(--welcome-font);
   font-size: 16px;
   line-height: 22px;
-  font-weight: 750;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-decoration: none;
   border: 0;
-  background: var(--primary);
+  background: linear-gradient(
+    135deg,
+    var(--hero-top) 0%,
+    var(--hero-mid) 50%,
+    var(--hero-deep) 100%
+  );
   color: #fff;
-  box-shadow: 0 10px 24px rgba(26, 70, 145, 0.18);
+  box-shadow:
+    0 10px 24px rgba(11, 87, 208, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.welcome-actions .welcome-primary > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Lapisan status Material: sedikit lebih terang saat hover/tekan. */
+.welcome-actions .welcome-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 150ms linear;
+  pointer-events: none;
+}
+
+.welcome-actions .welcome-primary:hover::before {
+  opacity: 0.08;
+}
+
+.welcome-actions .welcome-primary:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow:
+    0 4px 12px rgba(11, 87, 208, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.welcome-actions .welcome-primary:active:not(:disabled)::before {
+  opacity: 0.12;
+}
+
+.welcome-actions .welcome-primary:focus-visible {
+  outline: 3px solid var(--hero-glow);
+  outline-offset: 3px;
+}
+
+/* Riak dari titik sentuh (posisi diisi oleh triggerRipple di page.tsx). */
+.welcome-actions .welcome-primary[data-ripple]::after {
+  content: '';
+  position: absolute;
+  left: var(--ripple-x);
+  top: var(--ripple-y);
+  width: var(--ripple-size);
+  height: var(--ripple-size);
+  margin: calc(var(--ripple-size) / -2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+  animation: welcome-ripple 600ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes welcome-ripple {
+  from {
+    transform: scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-actions .welcome-primary,
+  .welcome-actions .welcome-primary[data-ripple]::after {
+    transition: none;
+    animation: none;
+  }
 }
 
 .welcome-actions .welcome-primary:hover {
-  background: #143670;
+  background: linear-gradient(135deg, #5a95f5 0%, #2a7fee 50%, var(--hero-depth) 100%);
 }
 
 .welcome-actions .welcome-secondary {
@@ -1941,9 +2205,29 @@ body {
 
 .welcome-note {
   margin: 18px 0 0;
-  color: #68687a;
+  color: var(--welcome-body, #68687a);
+  font-family: var(--welcome-font, inherit);
   font-size: 11px;
   line-height: 18px;
+}
+
+.welcome-legal {
+  margin: 6px 0 0;
+  color: var(--welcome-body, #68687a);
+  font-family: var(--welcome-font, inherit);
+  font-size: 10.5px;
+  line-height: 16px;
+}
+
+.welcome-legal a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.welcome-legal a:hover,
+.welcome-legal a:focus-visible {
+  text-decoration: underline;
 }
 
 @media (max-width: 380px) {
@@ -1964,7 +2248,7 @@ body {
 
 /* Product selection screen */
 .choice-step {
-  --primary: #1a4691;
+  --primary: #0b57d0;
   --primary-soft: #eef4fc;
   min-height: 100dvh;
 }
@@ -1976,8 +2260,8 @@ body {
   align-items: center;
   border-radius: 0 0 48px 48px;
   background:
-    radial-gradient(circle at 18% 28%, rgba(87, 130, 246, 0.32), transparent 38%),
-    linear-gradient(135deg, #1a4691 0%, #1a4691 100%);
+    radial-gradient(circle at 18% 28%, rgba(194, 231, 255, 0.32), transparent 38%),
+    linear-gradient(135deg, #1a73e8 0%, #0b57d0 100%);
   text-align: center;
 }
 
@@ -2016,7 +2300,7 @@ body {
 .choice-step .intro-choice h2 {
   max-width: none;
   margin-bottom: 14px;
-  color: #1a4691;
+  color: #0b57d0;
   font-size: 24px;
   line-height: 32px;
   font-weight: 750;
@@ -2130,11 +2414,11 @@ body {
   min-height: 58px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 12% 0%, rgba(87, 130, 246, 0.4), transparent 38%), var(--primary);
+    radial-gradient(circle at 12% 0%, rgba(194, 231, 255, 0.4), transparent 38%), var(--primary);
   font-size: 15px;
   font-weight: 750;
   letter-spacing: 0.025em;
-  box-shadow: 0 10px 24px rgba(26, 70, 145, 0.16);
+  box-shadow: 0 10px 24px rgba(11, 87, 208, 0.16);
 }
 
 .choice-step .wizard-footer .back-button {
@@ -2213,13 +2497,13 @@ body {
   border: 1.5px solid #dfe1e7;
   border-radius: 16px;
   background: #fbfcff;
-  color: #1a4691;
-  box-shadow: 0 3px 12px rgba(26, 70, 145, 0.035);
+  color: #0b57d0;
+  box-shadow: 0 3px 12px rgba(11, 87, 208, 0.035);
 }
 
 .mobile-shell:not(.welcome-step) .currency-input > span {
   padding: 0;
-  color: #1a4691;
+  color: #0b57d0;
   font-size: 14px;
   line-height: 22px;
   font-weight: 600;
@@ -2236,9 +2520,9 @@ body {
 }
 
 .mobile-shell:not(.welcome-step) .currency-input:focus-within {
-  border-color: #1a4691;
+  border-color: #0b57d0;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(26, 70, 145, 0.08);
+  box-shadow: 0 0 0 4px rgba(11, 87, 208, 0.08);
 }
 
 .mobile-shell:not(.welcome-step) .field {
@@ -2298,4 +2582,28 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* ---------- Gradasi brand (selaras dengan halaman awal) ---------- */
+/* Bidang besar seperti header dashboard. */
+.brand-surface {
+  background: var(--hero-gradient);
+}
+
+/* Kartu biru: gradasi diagonal + kilau lembut di pojok kanan atas. */
+.brand-card {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(194, 231, 255, 0.35), transparent 55%),
+    linear-gradient(135deg, var(--hero-top) 0%, var(--hero-mid) 45%, var(--hero-deep) 100%);
+}
+
+/* Elemen kecil yang terisi biru, mis. tombol aktif di navigasi bawah. */
+.brand-fill {
+  background: linear-gradient(135deg, var(--hero-mid) 0%, var(--hero-deep) 100%);
+}
+
+/* Halaman legal: teks paragraf mengikuti ukuran baca normal, bukan 11px dashboard. */
+.dashboard-app .legal-content p {
+  font-size: 14px;
+  line-height: 1.6;
 }

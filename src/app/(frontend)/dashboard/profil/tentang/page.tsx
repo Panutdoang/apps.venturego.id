@@ -22,7 +22,7 @@ export default function AboutPage() {
       subtitle="Keterangan aplikasi"
       title="Tentang Aplikasi"
     >
-      <DashboardCard className="bg-[var(--primary)] p-5 text-white ring-0">
+      <DashboardCard className="brand-card p-5 text-white ring-0">
         <span className="grid size-12 place-items-center rounded-2xl bg-white/15">
           <DashboardIcon name="star" />
         </span>

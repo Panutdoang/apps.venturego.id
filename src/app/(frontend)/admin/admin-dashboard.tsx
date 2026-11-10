@@ -38,8 +38,8 @@ const STATUS_LABELS: Record<(typeof APPLICATION_STATUSES)[number], string> = {
 }
 
 const STATUS_BADGE_STYLES: Record<string, string> = {
-  SUBMITTED: 'bg-blue-50 text-[#1a4691] ring-blue-200',
-  ELIGIBILITY_REVIEW: 'bg-blue-50 text-[#1a4691] ring-blue-200',
+  SUBMITTED: 'bg-blue-50 text-[#0b57d0] ring-blue-200',
+  ELIGIBILITY_REVIEW: 'bg-blue-50 text-[#0b57d0] ring-blue-200',
   DOCUMENT_REVIEW: 'bg-purple-50 text-purple-700 ring-purple-200',
   REVISION_REQUIRED: 'bg-amber-50 text-amber-800 ring-amber-200',
   COST_VERIFICATION: 'bg-cyan-50 text-cyan-800 ring-cyan-200',
@@ -623,10 +623,10 @@ function DrawerAction({
   return (
     <button
       aria-label={ariaLabel}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:cursor-not-allowed disabled:opacity-60 ${
         variant === 'primary'
-          ? 'bg-[#1a4691] text-white hover:bg-[#143670]'
-          : 'border border-slate-200 bg-white text-[#1a4691] hover:border-[#1a4691]/30 hover:bg-blue-50'
+          ? 'bg-[#0b57d0] text-white hover:bg-[#0842a0]'
+          : 'border border-slate-200 bg-white text-[#0b57d0] hover:border-[#0b57d0]/30 hover:bg-blue-50'
       }`}
       disabled={disabled}
       onClick={onClick}
@@ -783,16 +783,16 @@ function ApplicationDrawerForm({
       <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-[#1a4691] px-2.5 py-1 text-xs font-bold text-white">
+            <span className="inline-flex items-center rounded-md bg-[#0b57d0] px-2.5 py-1 text-xs font-bold text-white">
               {application.applicationId}
             </span>
-            <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#1a4691] ring-1 ring-inset ring-blue-200">
+            <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#0b57d0] ring-1 ring-inset ring-blue-200">
               {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
             </span>
           </div>
           <button
             aria-label="Tutup panel pengajuan"
-            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691]"
+            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0]"
             onClick={onClose}
             type="button"
           >
@@ -851,9 +851,9 @@ function ApplicationDrawerForm({
             return (
               <button
                 aria-selected={isActive}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] ${
                   isActive
-                    ? 'bg-[#1a4691] text-white shadow-xs'
+                    ? 'bg-[#0b57d0] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-white hover:text-slate-900'
                 }`}
                 key={tab.id}
@@ -918,7 +918,7 @@ function ApplicationDrawerForm({
                 </div>
                 {ktpDocument?.fileId && (
                   <a
-                    className="mt-1.5 inline-block text-[11px] font-semibold text-[#1a4691] underline"
+                    className="mt-1.5 inline-block text-[11px] font-semibold text-[#0b57d0] underline"
                     href={`/api/admin/applications/${application.id}/documents/${ktpIndex}`}
                   >
                     Unduh KTP {formatSizeMb(ktpDocument.size)}
@@ -1053,7 +1053,7 @@ function ApplicationDrawerForm({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <span className="text-[11px] font-medium text-slate-500">Nominal Diajukan</span>
-              <strong className="mt-1 block text-xl font-extrabold text-[#1a4691]">
+              <strong className="mt-1 block text-xl font-extrabold text-[#0b57d0]">
                 {application.product === 'DEPARTURE_BRIDGING'
                   ? formatRupiah(departure.requestedFinancingAmount)
                   : formatRupiah(
@@ -1131,7 +1131,7 @@ function ApplicationDrawerForm({
                 ].map(([label, value], index, rows) => (
                   <div
                     className={`flex items-center justify-between py-2.5 ${
-                      index === rows.length - 1 ? 'font-bold text-[#1a4691]' : 'text-slate-600'
+                      index === rows.length - 1 ? 'font-bold text-[#0b57d0]' : 'text-slate-600'
                     }`}
                     key={label}
                   >
@@ -1284,7 +1284,7 @@ function ApplicationDrawerForm({
                   <label className="block text-xs font-semibold text-slate-700">
                     Nominal baru (Rp)
                     <input
-                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
+                      className="mt-1.5 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
                       min={1}
                       onChange={(event) => setNewNominal(event.target.value)}
                       placeholder="Contoh: 120000000"
@@ -1389,7 +1389,7 @@ function ApplicationDrawerForm({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             aria-label={`Pratinjau ${document.documentType}`}
-                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-[#1a4691]/30 hover:text-[#1a4691] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-[#0b57d0]/30 hover:text-[#0b57d0] disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={!document.fileId}
                             onClick={() => setPreviewIndex(index)}
                             title="Pratinjau berkas"
@@ -1472,7 +1472,7 @@ function ApplicationDrawerForm({
           />
           <div className="flex justify-end border-t border-slate-100 pt-4">
             <button
-              className="rounded-lg bg-[#1a4691] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#143670] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:opacity-60"
+              className="rounded-lg bg-[#0b57d0] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:opacity-60"
               disabled={pending}
               type="submit"
             >
@@ -1505,7 +1505,7 @@ function ApplicationDrawerForm({
               <label className="space-y-1 text-[11px] font-semibold text-slate-600">
                 <span>Status Pengajuan</span>
                 <select
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-[#1a4691] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-900 focus:border-[#0b57d0] focus:outline-none"
                   onChange={(event) => setWorkflowStatus(event.target.value)}
                   value={workflowStatus}
                 >
@@ -1519,7 +1519,7 @@ function ApplicationDrawerForm({
               <label className="space-y-1 text-[11px] font-semibold text-slate-600">
                 <span>Catatan Internal</span>
                 <input
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[11px] font-normal text-slate-900 focus:border-[#1a4691] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[11px] font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
                   maxLength={2000}
                   onChange={(event) => setWorkflowNotes(event.target.value)}
                   placeholder="Catatan internal staf…"
@@ -1532,7 +1532,7 @@ function ApplicationDrawerForm({
                 Perubahan disimpan terpisah dari rincian biaya.
               </span>
               <button
-                className="rounded-lg bg-[#1a4691] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#143670] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] disabled:opacity-60"
+                className="rounded-lg bg-[#0b57d0] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:opacity-60"
                 disabled={pending || !workflowDirty}
                 onClick={() => onWorkflow(application.id, workflowStatus, workflowNotes)}
                 type="button"
@@ -1576,7 +1576,7 @@ function ApplicationDrawerForm({
               </div>
               {agreementPdfCurrent ? (
                 <a
-                  className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1a4691] hover:bg-blue-100"
+                  className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#0b57d0] hover:bg-blue-100"
                   href={`/api/admin/applications/${application.id}/agreement`}
                 >
                   Buka PDF
@@ -1588,7 +1588,7 @@ function ApplicationDrawerForm({
                 PDF final dapat diunggah setelah status biaya menjadi Disepakati.
               </p>
             ) : (
-              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#1a4691] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#143670]">
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#0b57d0] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#0842a0]">
                 <span>
                   {agreementUploading
                     ? 'Mengunggah PDF…'
@@ -1699,7 +1699,7 @@ function ApplicationDrawerForm({
                     Pratinjau tidak tersedia untuk jenis berkas ini.
                   </p>
                   <a
-                    className="rounded-lg bg-[#1a4691] px-4 py-2 text-xs font-semibold text-white hover:bg-[#143670]"
+                    className="rounded-lg bg-[#0b57d0] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0842a0]"
                     href={`/api/admin/applications/${application.id}/documents/${previewIndex}`}
                   >
                     Unduh berkas
@@ -2129,7 +2129,7 @@ export function AdminDashboard({
   return (
     <div className="flex min-h-dvh flex-col bg-[#f8fafc] text-slate-900 lg:h-dvh lg:flex-row lg:overflow-hidden">
       {/* FIXED 100dvh SIDEBAR */}
-      <aside className="flex w-full flex-col justify-between border-b border-slate-200 bg-[#1a4691] text-white lg:h-dvh lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#143670]">
+      <aside className="flex w-full flex-col justify-between border-b border-slate-200 bg-[#0b57d0] text-white lg:h-dvh lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-[#0842a0]">
         {/* Brand Header */}
         <div className="flex items-center gap-2.5 border-b border-white/10 px-4 py-3.5">
           <img
@@ -2163,7 +2163,7 @@ export function AdminDashboard({
                     <button
                       className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs font-medium transition lg:w-full ${
                         active
-                          ? 'bg-[#143670] font-semibold text-white shadow-2xs ring-1 ring-white/20'
+                          ? 'bg-[#0842a0] font-semibold text-white shadow-2xs ring-1 ring-white/20'
                           : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
                       }`}
                       key={item.id}
@@ -2178,7 +2178,7 @@ export function AdminDashboard({
                         <span
                           className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
                             active
-                              ? 'bg-white text-[#1a4691]'
+                              ? 'bg-white text-[#0b57d0]'
                               : item.id === 'installments' && metrics.openReliefCount > 0
                                 ? 'bg-amber-400 text-slate-950'
                                 : item.id === 'relief' && metrics.openReliefCount > 0
@@ -2239,7 +2239,7 @@ export function AdminDashboard({
           <div className="flex flex-wrap items-center gap-2">
             <input
               aria-label="Cari pengajuan atau siswa"
-              className="w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-[#1a4691] focus:bg-white focus:outline-none"
+              className="w-52 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-[#0b57d0] focus:bg-white focus:outline-none"
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari ID, nama, WA, LPK…"
               value={searchQuery}
@@ -2313,7 +2313,7 @@ export function AdminDashboard({
                 </div>
                 <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
                   <span className="text-xs font-medium text-slate-500">Menunggu Verifikasi</span>
-                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#1a4691]">
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#0b57d0]">
                     {metrics.pendingReview}
                   </strong>
                   <span className="mt-1 block text-[11px] text-slate-400">
@@ -2349,7 +2349,7 @@ export function AdminDashboard({
                     Pengajuan Terbaru ({filteredApplications.slice(0, 8).length})
                   </h2>
                   <button
-                    className="text-xs font-semibold text-[#1a4691] hover:underline"
+                    className="text-xs font-semibold text-[#0b57d0] hover:underline"
                     onClick={() => setActiveMenu('applications')}
                     type="button"
                   >
@@ -2375,7 +2375,7 @@ export function AdminDashboard({
                         const uploaded = app.documents.filter((d) => Boolean(d.fileId)).length
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-slate-500">
@@ -2453,7 +2453,7 @@ export function AdminDashboard({
                         const pricing = String(app.financialPlan?.pricingStatus ?? 'ESTIMATED')
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-slate-500">
@@ -2622,7 +2622,7 @@ export function AdminDashboard({
 
                       return (
                         <tr className="hover:bg-slate-50/80" key={app.id}>
-                          <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
+                          <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
                             {app.applicationId}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2728,7 +2728,7 @@ export function AdminDashboard({
 
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
-                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
                               {app.applicationId}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2785,7 +2785,7 @@ export function AdminDashboard({
                   <span className="text-xs font-medium text-slate-500">
                     Siswa dengan Tanggungan
                   </span>
-                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#1a4691]">
+                  <strong className="mt-1.5 block text-2xl font-extrabold text-[#0b57d0]">
                     {activeInstallmentMetrics.count}
                   </strong>
                   <span className="mt-1 block text-[11px] text-slate-400">
@@ -2841,9 +2841,9 @@ export function AdminDashboard({
                   <div className="flex flex-wrap gap-1.5">
                     {ACTIVE_INSTALLMENT_FILTERS.map((filter) => (
                       <button
-                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a4691] ${
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] ${
                           activeInstallmentFilter === filter.id
-                            ? 'bg-[#1a4691] text-white'
+                            ? 'bg-[#0b57d0] text-white'
                             : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                         key={filter.id}
@@ -2961,7 +2961,7 @@ export function AdminDashboard({
                                 : 0
                             return (
                               <tr className="hover:bg-slate-50/80" key={app.id}>
-                                <td className="whitespace-nowrap px-4 py-3 font-bold text-[#1a4691]">
+                                <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
                                   {app.applicationId}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
@@ -2999,7 +2999,7 @@ export function AdminDashboard({
                                   {summary.schedule.length > 0 && (
                                     <span className="mt-1 block h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
                                       <span
-                                        className="block h-full rounded-full bg-[#1a4691]"
+                                        className="block h-full rounded-full bg-[#0b57d0]"
                                         style={{ width: `${progressPercent}%` }}
                                       />
                                     </span>
@@ -3081,7 +3081,7 @@ export function AdminDashboard({
                         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-bold text-[#1a4691]">{app.applicationId}</span>
+                              <span className="font-bold text-[#0b57d0]">{app.applicationId}</span>
                               <span className="font-semibold text-slate-900">
                                 {app.applicantName}
                               </span>
@@ -3149,7 +3149,7 @@ export function AdminDashboard({
                               </div>
                               <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                                 <span className="text-[11px] text-slate-400">Sisa Kewajiban</span>
-                                <strong className="mt-1 block text-lg font-extrabold text-[#1a4691]">
+                                <strong className="mt-1 block text-lg font-extrabold text-[#0b57d0]">
                                   {formatRupiah(summary.remaining)}
                                 </strong>
                               </div>
@@ -3520,7 +3520,7 @@ export function AdminDashboard({
                             {formatDateTime(item.changedAt)}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            <span className="font-bold text-[#1a4691]">
+                            <span className="font-bold text-[#0b57d0]">
                               {item.app.applicationId}
                             </span>{' '}
                             ·{' '}
