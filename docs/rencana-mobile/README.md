@@ -38,13 +38,13 @@ berbasis **koperasi syariah**, di mana setiap anggota (siswa) memiliki:
 
 ## Daftar dokumen
 
-| File | Isi |
-|---|---|
-| [01-PRODUK-DAN-REGULASI.md](01-PRODUK-DAN-REGULASI.md) | Model koperasi, jenis saldo & tanggungan, batasan hukum & syariah yang wajib dicek |
-| [02-ARSITEKTUR.md](02-ARSITEKTUR.md) | Arsitektur target: mobile + web + API + data + pembayaran |
-| [03-LEDGER-SALDO-TAGIHAN.md](03-LEDGER-SALDO-TAGIHAN.md) | Desain buku besar (double-entry), contoh jurnal, aturan alokasi pembayaran |
-| [04-KEAMANAN.md](04-KEAMANAN.md) | Model ancaman dan kontrol keamanan berlapis, termasuk temuan pada kode saat ini |
-| [05-ROADMAP.md](05-ROADMAP.md) | Fase pengerjaan dari fondasi sampai rilis di Play Store & App Store |
+| File                                                     | Isi                                                                                |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [01-PRODUK-DAN-REGULASI.md](01-PRODUK-DAN-REGULASI.md)   | Model koperasi, jenis saldo & tanggungan, batasan hukum & syariah yang wajib dicek |
+| [02-ARSITEKTUR.md](02-ARSITEKTUR.md)                     | Arsitektur target: mobile + web + API + data + pembayaran                          |
+| [03-LEDGER-SALDO-TAGIHAN.md](03-LEDGER-SALDO-TAGIHAN.md) | Desain buku besar (double-entry), contoh jurnal, aturan alokasi pembayaran         |
+| [04-KEAMANAN.md](04-KEAMANAN.md)                         | Model ancaman dan kontrol keamanan berlapis, termasuk temuan pada kode saat ini    |
+| [05-ROADMAP.md](05-ROADMAP.md)                           | Fase pengerjaan dari fondasi sampai rilis di Play Store & App Store                |
 
 ## Lima keputusan yang perlu diambil lebih dulu
 
@@ -53,8 +53,8 @@ Urutannya sesuai dampak. Tanpa keputusan 1–2, pengembangan fitur saldo sebaikn
 1. **Badan hukum.** Saldo anggota hanya boleh dikelola oleh **koperasi** berbadan hukum
    (mis. KSPPS — Koperasi Simpan Pinjam dan Pembiayaan Syariah), bukan oleh PT Vworks
    Kolaborasi Bersama. Perlu konsultan hukum. Lihat 01 §3.
-2. **Lingkup layanan.** Hanya untuk anggota (*closed loop*, pengawasan Kemenkop) atau juga
-   non-anggota (*open loop*, masuk pengawasan OJK). Rekomendasi: **closed loop**.
+2. **Lingkup layanan.** Hanya untuk anggota (_closed loop_, pengawasan Kemenkop) atau juga
+   non-anggota (_open loop_, masuk pengawasan OJK). Rekomendasi: **closed loop**.
 3. **Database buku besar.** Rekomendasi: **PostgreSQL** untuk ledger (saldo, tanggungan,
    pembayaran), Firestore tetap untuk data pengajuan/profil. Lihat 02 §4 untuk alasan dan
    alternatifnya.
@@ -67,11 +67,11 @@ Urutannya sesuai dampak. Tanpa keputusan 1–2, pengembangan fitur saldo sebaikn
 
 1. **Uang hanya berubah lewat jurnal.** Tidak ada field `saldo` yang di-update langsung;
    saldo = jumlah entri jurnal. Koreksi = jurnal pembalik, bukan edit/hapus.
-2. **Server yang menghitung nominal.** Aplikasi mobile hanya mengirim *niat* ("bayar
+2. **Server yang menghitung nominal.** Aplikasi mobile hanya mengirim _niat_ ("bayar
    angsuran ke-3"), tidak pernah nominal final.
 3. **Setiap pembayaran idempoten.** Callback Xendit yang sama dikirim dua kali tetap hanya
    tercatat sekali.
-4. **Aksi uang keluar memakai dua orang** (*maker-checker*): penarikan, koreksi, pencairan.
+4. **Aksi uang keluar memakai dua orang** (_maker-checker_): penarikan, koreksi, pencairan.
 5. **Tanpa denda yang menambah pendapatan.** Sesuai akad yang berlaku: total kewajiban
    tidak bertambah karena waktu atau keterlambatan.
 6. **Webhook bersama tetap meneruskan `trm-`** ke Turrima (akun Xendit dipakai bersama).

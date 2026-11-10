@@ -79,11 +79,11 @@ membuat nomor n tetap satu; uang kedua tidak dicatat sebagai kelebihan.
 
 Tambah satu field di `applications`:
 
-| Field | Tipe | Isi |
-|---|---|---|
-| `paidAmount` | integer rupiah | Total uang yang sudah diterima untuk pengajuan ini (semua jenis pembayaran) |
-| `overpaidAmount` | integer rupiah | Kelebihan di atas total kewajiban (untuk ditindaklanjuti admin) |
-| `fullyPaidAt` | ISO string \| null | Waktu sisa kewajiban mencapai 0 |
+| Field            | Tipe               | Isi                                                                         |
+| ---------------- | ------------------ | --------------------------------------------------------------------------- |
+| `paidAmount`     | integer rupiah     | Total uang yang sudah diterima untuk pengajuan ini (semua jenis pembayaran) |
+| `overpaidAmount` | integer rupiah     | Kelebihan di atas total kewajiban (untuk ditindaklanjuti admin)             |
+| `fullyPaidAt`    | ISO string \| null | Waktu sisa kewajiban mencapai 0                                             |
 
 Status tiap angsuran **dihitung** dengan mengalirkan `paidAmount` ke jadwal secara urut
 jatuh tempo: angsuran 1 terisi penuh dulu, lalu 2, dst. Angsuran yang terisi sebagian
@@ -127,7 +127,9 @@ export function getPaymentOptions(schedule: ScheduleRow[], paidAmount: number, t
   const remaining = Math.max(0, total - paidAmount)
   const open = rows.filter((row) => row.outstanding > 0)
   // Minimal = semua yang sudah jatuh tempo; bila tidak ada tunggakan, angsuran berikutnya.
-  const dueNow = open.filter((row) => row.dueDate <= todayIso).reduce((s, r) => s + r.outstanding, 0)
+  const dueNow = open
+    .filter((row) => row.dueDate <= todayIso)
+    .reduce((s, r) => s + r.outstanding, 0)
   const minimum = Math.min(remaining, Math.max(dueNow, open[0]?.outstanding ?? 0))
 
   const options: { label: string; amount: number; monthsAhead: number }[] = []
@@ -171,14 +173,14 @@ Di dalam transaksi yang sudah ada (baca dulu, baru tulis — aturan transaksi Fi
 
 ```ts
 const appRef = db.collection('applications').doc(applicationDocId)
-const appSnap = await transaction.get(appRef)            // baca sebelum update apa pun
+const appSnap = await transaction.get(appRef) // baca sebelum update apa pun
 const app = appSnap.data() ?? {}
 const schedule = readSchedule(app.financialPlan?.schedule)
 const total = schedule.reduce((sum, row) => sum + row.amount, 0)
 const nextPaid = (Number.isSafeInteger(app.paidAmount) ? app.paidAmount : 0) + data.amount
 const rows = allocatePaid(schedule, nextPaid)
 
-transaction.update(paymentRef, { status: 'PAID', /* …field yang sudah ada… */ })
+transaction.update(paymentRef, { status: 'PAID' /* …field yang sudah ada… */ })
 transaction.update(appRef, {
   paidAmount: nextPaid,
   paidInstallments: rows.filter((r) => r.status === 'LUNAS').map((r) => r.installment),
@@ -215,12 +217,12 @@ Satu kartu **Bayar tagihan** menggantikan kartu "Pembayaran bebas":
 
 Dorongan yang aman secara syariah (tanpa mengubah nilai akad):
 
-- Pilihan **lebih besar dari minimal** diberi tanda *Disarankan* dan dipilih lebih dulu.
+- Pilihan **lebih besar dari minimal** diberi tanda _Disarankan_ dan dipilih lebih dulu.
 - Tampilkan **perkiraan tanggal lunas** yang maju bila memilih nominal lebih besar.
 - Progress bar + pencapaian (mis. "Separuh perjalanan", "Lunas lebih cepat").
 - Pengingat jatuh tempo menyertakan tautan "Bayar 2 bulan sekaligus".
 
-Potongan nominal untuk pelunasan dipercepat (*ibra'*) **tidak** termasuk usulan ini — bila
+Potongan nominal untuk pelunasan dipercepat (_ibra'_) **tidak** termasuk usulan ini — bila
 nanti diinginkan, perlu persetujuan Dewan Pengawas Syariah lebih dulu.
 
 ### 3.6 Tampilan admin
@@ -243,17 +245,17 @@ konfirmasi sebelum dijalankan**.
    lama, `paidAmount` baru, angsuran lunas versi baru, selisih.
 2. Tim keuangan mencocokkan hasil dry-run dengan rekap manual.
 3. Jalankan `--commit` (idempoten: hanya mengisi bila `paidAmount` belum ada).
-4. Field baru bersifat tambahan (*additive*); field lama tidak dihapus.
+4. Field baru bersifat tambahan (_additive_); field lama tidak dihapus.
 
 ## 5. Yang perlu diputuskan
 
-| # | Pertanyaan | Usulan |
-|---|---|---|
-| 1 | Minimal bayar | Semua yang sudah jatuh tempo; bila tidak ada tunggakan, angsuran berikutnya |
-| 2 | Kelebihan bayar | Dicegah saat membuat invoice; bila tetap terjadi (dua invoice dibayar), dicatat di `overpaidAmount` untuk refund oleh admin |
-| 3 | Lunas otomatis jadi `COMPLETED`? | Tidak — admin yang menutup |
-| 4 | Pengajuan Full Cover | Ikut aturan yang sama begitu ada jadwal & `AGREED` |
-| 5 | Potongan pelunasan (*ibra'*) | Tidak sekarang; perlu DPS |
+| #   | Pertanyaan                       | Usulan                                                                                                                      |
+| --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Minimal bayar                    | Semua yang sudah jatuh tempo; bila tidak ada tunggakan, angsuran berikutnya                                                 |
+| 2   | Kelebihan bayar                  | Dicegah saat membuat invoice; bila tetap terjadi (dua invoice dibayar), dicatat di `overpaidAmount` untuk refund oleh admin |
+| 3   | Lunas otomatis jadi `COMPLETED`? | Tidak — admin yang menutup                                                                                                  |
+| 4   | Pengajuan Full Cover             | Ikut aturan yang sama begitu ada jadwal & `AGREED`                                                                          |
+| 5   | Potongan pelunasan (_ibra'_)     | Tidak sekarang; perlu DPS                                                                                                   |
 
 ## 6. Urutan pengerjaan yang disarankan
 

@@ -2,15 +2,15 @@
 
 ## 1. Peran pengguna
 
-| Peran | Siapa | Bisa apa |
-|---|---|---|
-| `calon_anggota` | Siswa yang baru login | Isi pengajuan, unggah berkas, KYC |
-| `anggota` | Siswa yang sudah disahkan sebagai anggota koperasi | Lihat saldo & tanggungan, setor, bayar angsuran, ajukan penarikan |
-| `staf_cs` | Customer service | Lihat data anggota, verifikasi berkas, tanggapi keringanan |
-| `staf_keuangan` | Bagian keuangan | Susun akad & jadwal, *buat* (maker) pencairan/penarikan/koreksi |
-| `pengurus` | Ketua/bendahara koperasi | *Setujui* (checker) aksi uang keluar, lihat laporan |
-| `pengawas` | Pengawas & Dewan Pengawas Syariah (DPS) | Baca-saja: laporan, audit log |
-| `superadmin` | Pemilik sistem | Kelola peran & pengaturan; **tidak** bisa memindahkan uang sendirian |
+| Peran           | Siapa                                              | Bisa apa                                                             |
+| --------------- | -------------------------------------------------- | -------------------------------------------------------------------- |
+| `calon_anggota` | Siswa yang baru login                              | Isi pengajuan, unggah berkas, KYC                                    |
+| `anggota`       | Siswa yang sudah disahkan sebagai anggota koperasi | Lihat saldo & tanggungan, setor, bayar angsuran, ajukan penarikan    |
+| `staf_cs`       | Customer service                                   | Lihat data anggota, verifikasi berkas, tanggapi keringanan           |
+| `staf_keuangan` | Bagian keuangan                                    | Susun akad & jadwal, _buat_ (maker) pencairan/penarikan/koreksi      |
+| `pengurus`      | Ketua/bendahara koperasi                           | _Setujui_ (checker) aksi uang keluar, lihat laporan                  |
+| `pengawas`      | Pengawas & Dewan Pengawas Syariah (DPS)            | Baca-saja: laporan, audit log                                        |
+| `superadmin`    | Pemilik sistem                                     | Kelola peran & pengaturan; **tidak** bisa memindahkan uang sendirian |
 
 Peran disimpan sebagai **Firebase custom claims** + tabel peran di server, menggantikan
 daftar email `FIREBASE_ADMIN_EMAILS` yang dipakai sekarang.
@@ -19,19 +19,19 @@ daftar email `FIREBASE_ADMIN_EMAILS` yang dipakai sekarang.
 
 ### Saldo (simpanan anggota)
 
-| Jenis | Sifat | Catatan |
-|---|---|---|
-| **Simpanan pokok** | Sekali saat jadi anggota, tidak bisa ditarik selama masih anggota | Nominal ditetapkan AD/ART |
-| **Simpanan wajib** | Rutin (mis. bulanan), tidak bisa ditarik selama masih anggota | Bisa ditagihkan bersama angsuran |
-| **Simpanan sukarela** | Bebas setor & tarik — inilah "saldo" yang tampil besar di app | Akad syariah: *wadiah* (titipan) atau *mudharabah* (bagi hasil) — keputusan DPS |
+| Jenis                 | Sifat                                                             | Catatan                                                                         |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Simpanan pokok**    | Sekali saat jadi anggota, tidak bisa ditarik selama masih anggota | Nominal ditetapkan AD/ART                                                       |
+| **Simpanan wajib**    | Rutin (mis. bulanan), tidak bisa ditarik selama masih anggota     | Bisa ditagihkan bersama angsuran                                                |
+| **Simpanan sukarela** | Bebas setor & tarik — inilah "saldo" yang tampil besar di app     | Akad syariah: _wadiah_ (titipan) atau _mudharabah_ (bagi hasil) — keputusan DPS |
 
 ### Tanggungan
 
-| Jenis | Sumber |
-|---|---|
-| **Pembiayaan Wakalah bil Ujrah** | Produk yang sudah ada: Dana Keberangkatan & Full Cover (Nafaqah + Ujrah + qardh − refund) |
-| **Simpanan wajib yang belum dibayar** | Dari ketentuan keanggotaan |
-| Produk baru (nanti) | Mis. talangan tiket, biaya dokumen — tiap produk = akad sendiri |
+| Jenis                                 | Sumber                                                                                    |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Pembiayaan Wakalah bil Ujrah**      | Produk yang sudah ada: Dana Keberangkatan & Full Cover (Nafaqah + Ujrah + qardh − refund) |
+| **Simpanan wajib yang belum dibayar** | Dari ketentuan keanggotaan                                                                |
+| Produk baru (nanti)                   | Mis. talangan tiket, biaya dokumen — tiap produk = akad sendiri                           |
 
 ### Cara bayar tanggungan
 
@@ -65,7 +65,7 @@ daftar email `FIREBASE_ADMIN_EMAILS` yang dipakai sekarang.
    termasuk data yang perlu perlindungan ketat.
 6. **Toko aplikasi.**
    - **Google Play**: aplikasi pinjaman/pembiayaan di Indonesia punya persyaratan khusus
-     (deklarasi layanan keuangan, bukti izin). Cek kebijakan *Financial Services* yang
+     (deklarasi layanan keuangan, bukti izin). Cek kebijakan _Financial Services_ yang
      berlaku saat pendaftaran — ini bisa menjadi penghambat rilis jika izin belum ada.
    - **Apple App Store**: aplikasi keuangan harus dipublikasikan oleh akun **organisasi**
      (atas nama badan hukum), bukan akun perorangan.

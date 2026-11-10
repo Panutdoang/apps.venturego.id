@@ -17,14 +17,12 @@ const FORWARD_ROUTES: { prefix: string; label: string; url: string }[] = [
     prefix: 'trm-',
     label: 'turrima',
     url:
-      process.env.TURRIMA_WEBHOOK_URL ||
-      'https://turrima.integratedfarming.id/api/xendit/callback',
+      process.env.TURRIMA_WEBHOOK_URL || 'https://turrima.integratedfarming.id/api/xendit/callback',
   },
   {
     prefix: 'vsv-',
     label: 'vsv-legacy',
-    url:
-      process.env.LEGACY_VSV_WEBHOOK_URL || 'https://venture-go.vercel.app/api/webhooks/xendit',
+    url: process.env.LEGACY_VSV_WEBHOOK_URL || 'https://venture-go.vercel.app/api/webhooks/xendit',
   },
 ]
 

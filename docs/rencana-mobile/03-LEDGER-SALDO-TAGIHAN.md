@@ -23,20 +23,20 @@ ledger, setiap rupiah yang masuk/keluar selalu punya pasangan pencatatan.
 
 ## 3. Bagan akun (awal)
 
-| Kode | Akun | Jenis | Per anggota? |
-|---|---|---|---|
-| 1100 | Kas di Xendit | Aset | – |
-| 1200 | Kas di bank koperasi | Aset | – |
-| 1300 | **Piutang pembiayaan** | Aset | per akad |
-| 1900 | Dana belum teridentifikasi (suspense) | Aset/Kewajiban | – |
-| 2100 | **Simpanan sukarela** | Kewajiban | ✅ |
-| 2200 | Simpanan wajib | Ekuitas/Kewajiban* | ✅ |
-| 2300 | Simpanan pokok | Ekuitas* | ✅ |
-| 2400 | Utang ke LPK / pihak ketiga (Nafaqah) | Kewajiban | – |
-| 2500 | Ujrah ditangguhkan | Kewajiban | per akad |
-| 4100 | Pendapatan ujrah | Pendapatan | – |
-| 5100 | Biaya admin payment gateway | Beban | – |
-| 2900 | Dana sosial / kebajikan | Kewajiban | – |
+| Kode | Akun                                  | Jenis              | Per anggota? |
+| ---- | ------------------------------------- | ------------------ | ------------ |
+| 1100 | Kas di Xendit                         | Aset               | –            |
+| 1200 | Kas di bank koperasi                  | Aset               | –            |
+| 1300 | **Piutang pembiayaan**                | Aset               | per akad     |
+| 1900 | Dana belum teridentifikasi (suspense) | Aset/Kewajiban     | –            |
+| 2100 | **Simpanan sukarela**                 | Kewajiban          | ✅           |
+| 2200 | Simpanan wajib                        | Ekuitas/Kewajiban* | ✅           |
+| 2300 | Simpanan pokok                        | Ekuitas*           | ✅           |
+| 2400 | Utang ke LPK / pihak ketiga (Nafaqah) | Kewajiban          | –            |
+| 2500 | Ujrah ditangguhkan                    | Kewajiban          | per akad     |
+| 4100 | Pendapatan ujrah                      | Pendapatan         | –            |
+| 5100 | Biaya admin payment gateway           | Beban              | –            |
+| 2900 | Dana sosial / kebajikan               | Kewajiban          | –            |
 
 \* Klasifikasi akhir mengikuti standar akuntansi koperasi syariah — **wajib direview akuntan
 dan DPS** sebelum dipakai.
@@ -45,28 +45,28 @@ dan DPS** sebelum dipakai.
 
 **a. Anggota setor ke VA Rp500.000 (masuk saldo sukarela)**
 
-| Akun | Debit | Kredit |
-|---|---:|---:|
-| 1100 Kas di Xendit | 500.000 | |
-| 2100 Simpanan sukarela · anggota A | | 500.000 |
+| Akun                               |   Debit |  Kredit |
+| ---------------------------------- | ------: | ------: |
+| 1100 Kas di Xendit                 | 500.000 |         |
+| 2100 Simpanan sukarela · anggota A |         | 500.000 |
 
 **b. Akad Dana Keberangkatan disepakati & dicairkan** (Nafaqah Rp33.000.000, Ujrah
 Rp9.504.000, tenor 12)
 
-| Akun | Debit | Kredit |
-|---|---:|---:|
-| 1300 Piutang pembiayaan · akad X | 42.504.000 | |
-| 2400 Utang ke LPK | | 33.000.000 |
-| 2500 Ujrah ditangguhkan · akad X | | 9.504.000 |
+| Akun                             |      Debit |     Kredit |
+| -------------------------------- | ---------: | ---------: |
+| 1300 Piutang pembiayaan · akad X | 42.504.000 |            |
+| 2400 Utang ke LPK                |            | 33.000.000 |
+| 2500 Ujrah ditangguhkan · akad X |            |  9.504.000 |
 
 Saat dana dibayarkan ke LPK: Dr 2400 / Cr 1200 sebesar 33.000.000.
 
 **c. Bayar angsuran Rp3.542.000 dari VA**
 
-| Akun | Debit | Kredit |
-|---|---:|---:|
-| 1100 Kas di Xendit | 3.542.000 | |
-| 1300 Piutang pembiayaan · akad X | | 3.542.000 |
+| Akun                             |     Debit |    Kredit |
+| -------------------------------- | --------: | --------: |
+| 1100 Kas di Xendit               | 3.542.000 |           |
+| 1300 Piutang pembiayaan · akad X |           | 3.542.000 |
 
 Pengakuan ujrah per angsuran (proporsional): Dr 2500 / Cr 4100 sebesar 792.000.
 

@@ -45,17 +45,17 @@ Aplikasi mobile **tidak bisa** memanggil Server Actions. Jadi:
 
 Contoh endpoint awal:
 
-| Method | Path | Fungsi |
-|---|---|---|
-| GET | `/api/v1/me` | Profil, status keanggotaan, NIS |
-| GET | `/api/v1/saldo` | Ringkasan simpanan per jenis |
-| GET | `/api/v1/tanggungan` | Daftar akad + sisa + jadwal |
-| GET | `/api/v1/mutasi?cursor=` | Riwayat transaksi (paginasi cursor) |
-| POST | `/api/v1/pembayaran/angsuran` | Niat bayar angsuran (header `Idempotency-Key`) |
-| POST | `/api/v1/pembayaran/potong-saldo` | Bayar dari saldo (butuh token step-up PIN/biometrik) |
-| GET | `/api/v1/va` | Nomor VA tetap anggota + cara bayar per bank |
-| POST | `/api/v1/berkas/unggah` | Unggah berkas (mengganti `/api/applicant/uploads`) |
-| POST | `/api/v1/perangkat` | Daftarkan perangkat + token push |
+| Method | Path                              | Fungsi                                               |
+| ------ | --------------------------------- | ---------------------------------------------------- |
+| GET    | `/api/v1/me`                      | Profil, status keanggotaan, NIS                      |
+| GET    | `/api/v1/saldo`                   | Ringkasan simpanan per jenis                         |
+| GET    | `/api/v1/tanggungan`              | Daftar akad + sisa + jadwal                          |
+| GET    | `/api/v1/mutasi?cursor=`          | Riwayat transaksi (paginasi cursor)                  |
+| POST   | `/api/v1/pembayaran/angsuran`     | Niat bayar angsuran (header `Idempotency-Key`)       |
+| POST   | `/api/v1/pembayaran/potong-saldo` | Bayar dari saldo (butuh token step-up PIN/biometrik) |
+| GET    | `/api/v1/va`                      | Nomor VA tetap anggota + cara bayar per bank         |
+| POST   | `/api/v1/berkas/unggah`           | Unggah berkas (mengganti `/api/applicant/uploads`)   |
+| POST   | `/api/v1/perangkat`               | Daftarkan perangkat + token push                     |
 
 Versi `v1` di path supaya app lama di HP pengguna tidak rusak saat API berubah.
 
@@ -63,11 +63,11 @@ Versi `v1` di path supaya app lama di HP pengguna tidak rusak saat API berubah.
 
 **Rekomendasi: React Native + Expo** (Android & iOS satu kode).
 
-| Pilihan | Kelebihan | Kekurangan |
-|---|---|---|
-| **Expo / React Native** ✅ | TypeScript & React sama dengan web; bisa berbagi tipe & validasi; EAS Build untuk build tanpa Mac lokal | Perlu belajar pola mobile (navigasi, storage) |
-| Flutter | Performa & UI konsisten | Bahasa Dart, tidak bisa berbagi kode dengan web |
-| Capacitor (bungkus web) | Paling cepat | Rasa "web di dalam app", sulit lolos review untuk app keuangan, keamanan perangkat terbatas |
+| Pilihan                    | Kelebihan                                                                                               | Kekurangan                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Expo / React Native** ✅ | TypeScript & React sama dengan web; bisa berbagi tipe & validasi; EAS Build untuk build tanpa Mac lokal | Perlu belajar pola mobile (navigasi, storage)                                               |
+| Flutter                    | Performa & UI konsisten                                                                                 | Bahasa Dart, tidak bisa berbagi kode dengan web                                             |
+| Capacitor (bungkus web)    | Paling cepat                                                                                            | Rasa "web di dalam app", sulit lolos review untuk app keuangan, keamanan perangkat terbatas |
 
 Struktur repo yang disarankan (monorepo pnpm, karena repo sudah memakai pnpm):
 
@@ -90,20 +90,20 @@ perubahan yang tidak mengubah fungsi utama (sesuai kebijakan toko).
 Firestore cocok untuk data dokumen (pengajuan, profil, berkas) — itu tetap.
 Untuk **uang**, PostgreSQL lebih tepat:
 
-| Kebutuhan ledger | PostgreSQL | Firestore |
-|---|---|---|
-| Satu transaksi menulis banyak baris sekaligus (debit+kredit) | ✅ ACID penuh | ✅ transaksi, tapi batas 500 tulis & kontensi pada dokumen saldo |
-| Aturan di level database (jumlah debit = kredit, saldo ≥ 0, unik per idempotency key) | ✅ constraint/trigger | ❌ hanya di kode |
-| Laporan (neraca, SHU, RAT, aging piutang) | ✅ SQL | ❌ harus diekspor/agregasi manual |
-| Rekonsiliasi harian vs laporan Xendit/bank | ✅ join & query | Sulit |
-| Audit oleh akuntan/pengawas | ✅ ekspor standar | Sulit |
+| Kebutuhan ledger                                                                      | PostgreSQL            | Firestore                                                        |
+| ------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------- |
+| Satu transaksi menulis banyak baris sekaligus (debit+kredit)                          | ✅ ACID penuh         | ✅ transaksi, tapi batas 500 tulis & kontensi pada dokumen saldo |
+| Aturan di level database (jumlah debit = kredit, saldo ≥ 0, unik per idempotency key) | ✅ constraint/trigger | ❌ hanya di kode                                                 |
+| Laporan (neraca, SHU, RAT, aging piutang)                                             | ✅ SQL                | ❌ harus diekspor/agregasi manual                                |
+| Rekonsiliasi harian vs laporan Xendit/bank                                            | ✅ join & query       | Sulit                                                            |
+| Audit oleh akuntan/pengawas                                                           | ✅ ekspor standar     | Sulit                                                            |
 
 Pilihan hosting: **Cloud SQL (region `asia-southeast2` Jakarta)** — satu ekosistem
 Google dengan Firebase; atau Neon/Supabase (lebih murah di awal, cek region).
 Akses dari Vercel memakai koneksi pooled + kredensial server-only.
 
 Alternatif bila tim ingin tetap satu database: ledger di Firestore dengan koleksi jurnal
-*append-only*, dokumen saldo per akun yang di-update dalam transaksi yang sama, dan
+_append-only_, dokumen saldo per akun yang di-update dalam transaksi yang sama, dan
 validasi ketat di kode. Bisa jalan untuk skala kecil, tapi laporan & rekonsiliasi akan
 menjadi pekerjaan manual. **Keputusan ada di Panut.**
 
@@ -113,17 +113,17 @@ yang sensitif.
 
 ## 5. Pembayaran (Xendit)
 
-| Kebutuhan | Produk Xendit | Catatan |
-|---|---|---|
-| Setor/bayar rutin | **Fixed VA** per anggota (open, reusable) | `external_id = kop-va-{memberId}-{bank}`; satu VA per bank pilihan |
-| Bayar sekali | Invoice / QRIS (sudah ada) | `external_id = id dokumen payments` |
-| Penarikan ke rekening | **Payouts/Disbursement** | Hanya ke rekening atas nama anggota yang sudah divalidasi; wajib maker-checker |
+| Kebutuhan             | Produk Xendit                             | Catatan                                                                        |
+| --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
+| Setor/bayar rutin     | **Fixed VA** per anggota (open, reusable) | `external_id = kop-va-{memberId}-{bank}`; satu VA per bank pilihan             |
+| Bayar sekali          | Invoice / QRIS (sudah ada)                | `external_id = id dokumen payments`                                            |
+| Penarikan ke rekening | **Payouts/Disbursement**                  | Hanya ke rekening atas nama anggota yang sudah divalidasi; wajib maker-checker |
 
 Webhook gateway (`/api/webhooks/xendit`) tetap satu pintu:
 
 1. Verifikasi `x-callback-token` (sudah ada, `timingSafeEqual`).
 2. Simpan **payload mentah** ke tabel `webhook_events` (unik per id event) → idempotensi
-   + forensik.
+   - forensik.
 3. Routing berdasarkan awalan `external_id`: `trm-` → teruskan ke Turrima; `kop-va-` →
    alokasi ledger; id `payments` → alur invoice; lainnya → simpan & tandai `UNMATCHED`.
 4. Balas cepat; proses berat (notifikasi, PDF) dijalankan terpisah.
@@ -150,4 +150,4 @@ tercatat. Folder Drive bisa tetap dipakai sebagai salinan kerja staf selama masa
 - **Observability**: Sentry (web + mobile), log terstruktur tanpa data pribadi, monitor
   uptime khusus endpoint webhook.
 - **Lingkungan**: `production` dan `staging` terpisah penuh (project Firebase, database,
-  Xendit *test mode*). Mobile punya build `staging` sendiri.
+  Xendit _test mode_). Mobile punya build `staging` sendiri.

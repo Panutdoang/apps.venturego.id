@@ -10,7 +10,7 @@ bukan janji jadwal.
 - [ ] Bentuk Dewan Pengawas Syariah; review akad simpanan & aturan alokasi (03 §5).
 - [ ] Rekening bank atas nama koperasi; akun Xendit untuk koperasi (atau sub-akun).
 - [ ] Akun developer **organisasi** di Google Play & Apple atas nama badan hukum.
-- [ ] Cek kebijakan Google Play *Financial Services* untuk Indonesia.
+- [ ] Cek kebijakan Google Play _Financial Services_ untuk Indonesia.
 - [ ] Kebijakan privasi & syarat layanan (UU PDP).
 
 ## Fase 1 — Fondasi backend (±3–4 minggu)
