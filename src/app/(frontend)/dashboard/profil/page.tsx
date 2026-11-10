@@ -203,7 +203,7 @@ export default function ProfilePage() {
                 </strong>
                 {!studentNumber && (
                   <span className="mt-1 block text-[10px] leading-4 text-slate-400">
-                    Terbit setelah pengajuan berstatus Aktif.
+                    Terbit setelah dokumen akad diterbitkan.
                   </span>
                 )}
               </>

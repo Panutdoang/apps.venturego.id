@@ -10,11 +10,13 @@ import {
   serializeStable,
   type FinancingCostLine,
 } from '@/lib/departure-financing'
-import { deleteDriveFile } from '@/lib/gdrive'
-import { promoteApplicationFolder } from '@/lib/drive-folders'
+import { deleteDriveFile, uploadDriveFile } from '@/lib/gdrive'
+import { ensureApplicationDriveFolder, promoteApplicationFolder } from '@/lib/drive-folders'
+import { buildDocumentFileName } from '@/lib/documents'
+import { buildAkadDocument } from '@/lib/akad-document'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
-import { ensureStudentNumber } from '@/lib/student-number'
+import { ensureStudentNumber, studentNumberSequence } from '@/lib/student-number'
 
 type ActionResult = { ok: true } | { ok: false; message: string }
 
@@ -185,6 +187,7 @@ export async function saveFinancialPlan(
     'settlementNotes',
     'refundEvidenceReference',
     'refundTotal',
+    'nikNumber',
   ] as const
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
@@ -215,6 +218,10 @@ export async function saveFinancialPlan(
   if (!Number.isSafeInteger(refundTotal)) {
     return { ok: false, message: 'Nominal pengembalian tidak valid.' }
   }
+  const nikValue = financialValues.nikNumber.trim()
+  if (nikValue.length > 20 || !/^\d*$/.test(nikValue)) {
+    return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
+  }
   if (firstPaymentDate && !calculateInstallmentSchedule(0, 1, firstPaymentDate)) {
     return { ok: false, message: 'Tanggal angsuran pertama tidak valid.' }
   }
@@ -223,6 +230,9 @@ export async function saveFinancialPlan(
     const application = await applicationRef.get()
     if (!application.exists) return { ok: false, message: 'Pengajuan tidak ditemukan.' }
     const applicationData = application.data() ?? {}
+    if (applicationData.financialPlan?.akadDocument) {
+      return { ok: false, message: 'Dokumen akad telah terbit. Rincian biaya terkunci.' }
+    }
     const currentPricingStatus = String(applicationData.financialPlan?.pricingStatus ?? 'ESTIMATED')
     if (!PRICING_STATUSES.includes(currentPricingStatus as (typeof PRICING_STATUSES)[number])) {
       return { ok: false, message: 'Status biaya tidak valid. Muat ulang halaman.' }
@@ -409,6 +419,12 @@ export async function saveFinancialPlan(
         settlementNotes: String(nextFinancialPlan.settlementNotes ?? ''),
       })
     }
+    const existingPersonal = (applicationData.personalDetails ?? {}) as Record<string, unknown>
+    const existingNik =
+      typeof existingPersonal.idCardNumber === 'string' ? existingPersonal.idCardNumber : ''
+    if (nikValue !== existingNik) {
+      updateValues.personalDetails = { ...existingPersonal, idCardNumber: nikValue }
+    }
     await applicationRef.update({
       financialPlan: { ...nextFinancialPlan, pricingStatus: currentPricingStatus },
       ...updateValues,
@@ -461,9 +477,6 @@ export async function updateApplicationWorkflow(
         typeof applicationData.ownerFirebaseUid === 'string' ? applicationData.ownerFirebaseUid : ''
       const applicantName =
         typeof applicationData.applicantName === 'string' ? applicationData.applicantName : ''
-      if (ownerUid) {
-        await ensureStudentNumber(ownerUid)
-      }
       if (ownerUid && applicantName) {
         const currentDocuments = Array.isArray(applicationData.documents)
           ? applicationData.documents
@@ -664,6 +677,9 @@ export async function approveApplicationPricing(
     const application = await applicationRef.get()
     if (!application.exists) return { ok: false, message: 'Pengajuan tidak ditemukan.' }
     const applicationData = application.data() ?? {}
+    if (applicationData.financialPlan?.akadDocument) {
+      return { ok: false, message: 'Dokumen akad telah terbit. Rincian biaya terkunci.' }
+    }
     const product = applicationData.product
     const plan = { ...(applicationData.financialPlan ?? {}) } as Record<string, unknown>
     const previousOffer = plan.offerSnapshot
@@ -1033,5 +1049,179 @@ export async function setApplicationPricingAgreed(documentId: string): Promise<A
     return { ok: true }
   } catch {
     return { ok: false, message: 'Status biaya belum dapat disimpan. Coba lagi.' }
+  }
+}
+
+type IssueAkadResult =
+  | { ok: true; documentNumber: string; studentNumber: string }
+  | { ok: false; message: string }
+
+export async function issueAkadDocument(documentId: string): Promise<IssueAkadResult> {
+  const { staff, error } = await assertStaffDocumentId(documentId)
+  if (error) return error.ok ? { ok: false, message: 'Sesi staf berakhir.' } : error
+  try {
+    const firestore = getFirebaseFirestore()
+    const applicationRef = firestore.collection('applications').doc(documentId)
+    const application = await applicationRef.get()
+    if (!application.exists) return { ok: false, message: 'Pengajuan tidak ditemukan.' }
+    const applicationData = application.data() ?? {}
+    const plan = { ...(applicationData.financialPlan ?? {}) } as Record<string, unknown>
+    if (plan.akadDocument) {
+      return { ok: false, message: 'Dokumen akad sudah terbit untuk pengajuan ini.' }
+    }
+    const pricingStatus = String(plan.pricingStatus ?? '')
+    if (pricingStatus !== 'VERIFIED' && pricingStatus !== 'AGREED') {
+      return {
+        ok: false,
+        message: 'Terbitkan dokumen akad setelah rincian biaya berstatus Terverifikasi.',
+      }
+    }
+    const product = String(applicationData.product ?? '')
+    if (product === 'DEPARTURE_BRIDGING') {
+      const nafaqahItems = coerceFinancingLines(plan.nafaqahItems)
+      const ujrahItems = coerceFinancingLines(plan.ujrahItems)
+      if (
+        !nafaqahItems ||
+        !ujrahItems ||
+        getFinancingLineTotal(nafaqahItems) <= 0 ||
+        getFinancingLineTotal(ujrahItems) <= 0
+      ) {
+        return {
+          ok: false,
+          message:
+            'Lengkapi rincian Nafaqah dan Ujrah pada tab Draft Akad sebelum menerbitkan dokumen.',
+        }
+      }
+    } else if (product === 'FULL_COVER') {
+      if (
+        !(Number(plan.nafaqahTotal) > 0) ||
+        !(Number(plan.ujrahTotal) > 0) ||
+        !(Number(plan.tenorMonths) >= 1)
+      ) {
+        return {
+          ok: false,
+          message:
+            'Lengkapi Nafaqah, Ujrah, dan tenor pada tab Draft Akad sebelum menerbitkan dokumen.',
+        }
+      }
+    } else {
+      return { ok: false, message: 'Jenis pengajuan tidak dikenal.' }
+    }
+
+    const ownerUid =
+      typeof applicationData.ownerFirebaseUid === 'string' ? applicationData.ownerFirebaseUid : ''
+    if (!ownerUid) {
+      return { ok: false, message: 'Pengajuan belum terhubung ke akun pemohon.' }
+    }
+
+    const studentNumber = await ensureStudentNumber(ownerUid)
+    if (!studentNumber) {
+      return { ok: false, message: 'NIS belum dapat diterbitkan. Coba lagi.' }
+    }
+    const sequence = studentNumberSequence(studentNumber)
+    if (!sequence) {
+      return { ok: false, message: 'NIS tidak valid. Muat ulang halaman.' }
+    }
+
+    const issuedAt = new Date()
+    const built = await buildAkadDocument({
+      application: applicationData,
+      studentSequence: sequence,
+      issuedAt,
+    })
+
+    const applicantName =
+      typeof applicationData.applicantName === 'string' ? applicationData.applicantName : ''
+    const label =
+      product === 'FULL_COVER' ? 'Akad Wakalah bil Ujrah dan Jualah' : 'Akad Wakalah bil Ujrah'
+    const fileName = applicantName.trim()
+      ? buildDocumentFileName(label, applicantName, 'akad.docx')
+      : `${documentId}-akad.docx`
+
+    const existingFolderId =
+      typeof applicationData.driveFolderId === 'string' ? applicationData.driveFolderId : ''
+    const folderId = existingFolderId || (await ensureApplicationDriveFolder(applicationData))
+    const uploaded = await uploadDriveFile({
+      parentFolderId: folderId,
+      fileName,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      bytes: built.bytes,
+    })
+
+    const akadDocument = {
+      documentNumber: built.documentNumber,
+      studentNumber,
+      template: built.template,
+      fileName,
+      driveFileId: uploaded.fileId,
+      size: uploaded.size,
+      issuedAt: FieldValue.serverTimestamp(),
+      issuedBy: staff?.email ?? staff?.uid,
+    }
+
+    let linked = false
+    try {
+      linked = await firestore.runTransaction(async (transaction) => {
+        const latest = await transaction.get(applicationRef)
+        const latestData = latest.data()
+        if (!latest.exists || latestData?.financialPlan?.akadDocument) return false
+        const latestPlan = { ...(latestData?.financialPlan ?? {}) } as Record<string, unknown>
+        transaction.update(applicationRef, {
+          financialPlan: {
+            ...latestPlan,
+            ...(String(latestPlan.finalAgreementReference ?? '').trim()
+              ? {}
+              : { finalAgreementReference: built.documentNumber }),
+            akadDocument,
+          },
+          ...(existingFolderId ? {} : { driveFolderId: folderId }),
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedBy: staff?.email ?? staff?.uid,
+        })
+        return true
+      })
+    } catch {
+      try {
+        await deleteDriveFile(uploaded.fileId)
+      } catch {
+        // best-effort cleanup
+      }
+      return {
+        ok: false,
+        message: 'Dokumen sudah dibuat, tetapi belum dapat disimpan ke pengajuan. Coba lagi.',
+      }
+    }
+    if (!linked) {
+      try {
+        await deleteDriveFile(uploaded.fileId)
+      } catch {
+        // best-effort cleanup
+      }
+      return { ok: false, message: 'Dokumen akad sudah terbit untuk pengajuan ini.' }
+    }
+
+    if (String(applicationData.status) === 'ACTIVE' && ownerUid && applicantName.trim()) {
+      const currentDocuments = Array.isArray(applicationData.documents)
+        ? applicationData.documents
+        : []
+      const driveFiles = currentDocuments
+        .filter((document: Record<string, unknown>) => typeof document.fileId === 'string')
+        .map((document: Record<string, unknown>) => ({
+          fileId: String(document.fileId),
+          fileName: typeof document.fileName === 'string' ? document.fileName : '',
+          label: String(document.documentType ?? ''),
+        }))
+      driveFiles.push({ fileId: uploaded.fileId, fileName, label })
+      await promoteApplicationFolder({
+        folderId,
+        ownerUid,
+        applicantName,
+        files: driveFiles,
+      })
+    }
+
+    return { ok: true, documentNumber: built.documentNumber, studentNumber }
+  } catch {
+    return { ok: false, message: 'Dokumen akad belum dapat diterbitkan. Coba lagi.' }
   }
 }

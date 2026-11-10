@@ -16,6 +16,7 @@ import {
   approveApplicationDocument,
   approveApplicationPricing,
   deleteApplicationDocument,
+  issueAkadDocument,
   saveFinancialPlan,
   setApplicationPricingAgreed,
   updateApplicationWorkflow,
@@ -708,6 +709,14 @@ function ApplicationDrawerForm({
   const [workflowNotes, setWorkflowNotes] = useState(application.internalNotes ?? '')
   const [agreementUploading, setAgreementUploading] = useState(false)
   const [agreementUploadError, setAgreementUploadError] = useState('')
+  const [akadIssuing, setAkadIssuing] = useState(false)
+  const [akadIssueError, setAkadIssueError] = useState('')
+  const [akadPreviewOpen, setAkadPreviewOpen] = useState(false)
+  const [akadPreviewHtml, setAkadPreviewHtml] = useState<string | null>(null)
+  const [akadPreviewLoading, setAkadPreviewLoading] = useState(false)
+  const [akadPreviewError, setAkadPreviewError] = useState('')
+
+  const router = useRouter()
 
   const definitions =
     DOCUMENT_DEFINITIONS[application.product] ?? DOCUMENT_DEFINITIONS.DEPARTURE_BRIDGING
@@ -772,6 +781,66 @@ function ApplicationDrawerForm({
       ? 'Nominal'
       : (PRICING_STATUS_LABELS[pricingStatus as keyof typeof PRICING_STATUS_LABELS] ??
         pricingStatus)
+
+  const akadMeta = (application.financialPlan?.akadDocument ?? null) as {
+    documentNumber?: string
+    studentNumber?: string
+    issuedAt?: string
+    fileName?: string
+  } | null
+  const akadIssued = Boolean(akadMeta)
+  const akadGateOpen = pricingStatus === 'VERIFIED' || pricingStatus === 'AGREED' || akadIssued
+
+  const openAkadPreview = async () => {
+    setAkadPreviewOpen(true)
+    setAkadPreviewError('')
+    setAkadPreviewLoading(true)
+    setAkadPreviewHtml(null)
+    try {
+      const response = await fetch(`/api/admin/applications/${application.id}/akad`)
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null
+        throw new Error(body?.message || 'Pratinjau dokumen akad belum dapat dimuat.')
+      }
+      setAkadPreviewHtml(await response.text())
+    } catch (err) {
+      setAkadPreviewError(
+        err instanceof Error ? err.message : 'Pratinjau dokumen akad belum dapat dimuat.',
+      )
+    } finally {
+      setAkadPreviewLoading(false)
+    }
+  }
+
+  const issueAkad = () => {
+    if (
+      !window.confirm(
+        'Terbitkan dokumen akad? NIS akan diterbitkan dan rincian biaya terkunci permanen.',
+      )
+    ) {
+      return
+    }
+    setAkadIssueError('')
+    setAkadIssuing(true)
+    void (async () => {
+      try {
+        const result = await issueAkadDocument(application.id)
+        if (!result.ok) {
+          setAkadIssueError(result.message)
+          return
+        }
+        setAkadPreviewOpen(false)
+        setAkadPreviewHtml(null)
+        router.refresh()
+      } catch (err) {
+        setAkadIssueError(
+          err instanceof Error ? err.message : 'Dokumen akad belum dapat diterbitkan.',
+        )
+      } finally {
+        setAkadIssuing(false)
+      }
+    })()
+  }
 
   const planNafaqah = Number(application.financialPlan?.nafaqahTotal) || 0
   const planUjrah = Number(application.financialPlan?.ujrahTotal) || 0
@@ -1325,11 +1394,13 @@ function ApplicationDrawerForm({
                     onClick={() => onAgreePricing(application.id)}
                     variant="primary"
                   />
-                  <DrawerAction
-                    disabled={pending}
-                    label="Setujui dengan Nominal Baru"
-                    onClick={() => setShowNominalInput(true)}
-                  />
+                  {!akadIssued && (
+                    <DrawerAction
+                      disabled={pending}
+                      label="Setujui dengan Nominal Baru"
+                      onClick={() => setShowNominalInput(true)}
+                    />
+                  )}
                 </>
               )}
               {pricingStatus === 'AGREED' && (
@@ -1483,20 +1554,114 @@ function ApplicationDrawerForm({
 
         {/* TAB: PRICING & DRAFT AKAD */}
         <div className={activeTab === 'pricing' ? 'block space-y-4' : 'hidden'}>
-          <FinanceTermsFields
-            financialPlan={application.financialPlan}
-            key={JSON.stringify(application.financialPlan ?? {})}
-            product={application.product}
-          />
-          <div className="flex justify-end border-t border-slate-100 pt-4">
-            <button
-              className="rounded-lg bg-[#0b57d0] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:opacity-60"
-              disabled={pending}
-              type="submit"
-            >
-              {pending ? 'Menyimpan…' : 'Simpan Rincian Biaya'}
-            </button>
-          </div>
+          <fieldset
+            className="m-0 min-w-0 border-0 p-0 disabled:opacity-75 [&_button]:disabled:cursor-not-allowed [&_input]:disabled:bg-slate-50"
+            disabled={akadIssued}
+          >
+            <FinanceTermsFields
+              financialPlan={application.financialPlan}
+              key={JSON.stringify(application.financialPlan ?? {})}
+              nikNumber={String(application.personalDetails?.idCardNumber ?? '')}
+              product={application.product}
+            />
+          </fieldset>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Dokumen Akad</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  {akadIssued
+                    ? 'Dokumen akad final tersimpan di penyimpanan berkas dan tidak dapat diubah lagi.'
+                    : 'Susun dokumen akad dari template resmi VSV dengan data pengajuan ini.'}
+                </p>
+              </div>
+              {akadIssued && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                  Dokumen akad telah terbit
+                </span>
+              )}
+            </div>
+
+            {akadIssued && akadMeta ? (
+              <div className="mt-3 grid gap-3 rounded-xl bg-emerald-50/70 p-4 ring-1 ring-inset ring-emerald-200 sm:grid-cols-3">
+                <div>
+                  <dt className="text-[11px] font-semibold text-emerald-700">Nomor Dokumen</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-emerald-950">
+                    {akadMeta.documentNumber || '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold text-emerald-700">NIS Pemohon</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-emerald-950">
+                    {akadMeta.studentNumber || '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold text-emerald-700">Diterbitkan</dt>
+                  <dd className="mt-0.5 text-sm font-bold text-emerald-950">
+                    {formatDateTime(akadMeta.issuedAt)}
+                  </dd>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                Nomor dokumen mengikuti urutan NIS pemohon. Status biaya harus Terverifikasi sebelum
+                dokumen dapat diterbitkan.
+              </p>
+            )}
+
+            {akadIssueError && (
+              <p className="mt-2 text-xs text-red-700" role="alert">
+                {akadIssueError}
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0]"
+                disabled={akadPreviewLoading}
+                onClick={openAkadPreview}
+                type="button"
+              >
+                Preview Dokumen
+              </button>
+              {akadIssued ? (
+                <a
+                  className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0]"
+                  href={`/api/admin/applications/${application.id}/akad?mode=docx`}
+                >
+                  Unduh .docx
+                </a>
+              ) : (
+                <button
+                  className="rounded-lg bg-[#0b57d0] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:opacity-60"
+                  disabled={!akadGateOpen || pending || akadIssuing}
+                  onClick={issueAkad}
+                  type="button"
+                >
+                  {akadIssuing ? 'Menerbitkan…' : 'Terbitkan Dokumen Akad'}
+                </button>
+              )}
+            </div>
+            {!akadIssued && !akadGateOpen && (
+              <p className="mt-2 text-[11px] text-amber-700">
+                Status biaya harus Terverifikasi sebelum dokumen dapat diterbitkan.
+              </p>
+            )}
+          </section>
+
+          {!akadIssued && (
+            <div className="flex justify-end border-t border-slate-100 pt-4">
+              <button
+                className="rounded-lg bg-[#0b57d0] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:opacity-60"
+                disabled={pending}
+                type="submit"
+              >
+                {pending ? 'Menyimpan…' : 'Simpan Rincian Biaya'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* TAB: CONTRACT APPROVAL */}
@@ -1723,6 +1888,67 @@ function ApplicationDrawerForm({
                     Unduh berkas
                   </a>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slide-over pratinjau dokumen akad */}
+      {akadPreviewOpen && (
+        <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
+          <div className="flex h-dvh w-full max-w-4xl flex-col bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900">Pratinjau Dokumen Akad</h3>
+                <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                  {akadIssued
+                    ? `No. ${akadMeta?.documentNumber ?? '-'} · ${akadMeta?.fileName ?? 'dokumen akad'}`
+                    : 'Draft dari data pengajuan terkini'}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <a
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  href={`/api/admin/applications/${application.id}/akad?mode=docx`}
+                >
+                  Unduh .docx
+                </a>
+                {!akadIssued && (
+                  <button
+                    className="rounded-lg bg-[#0b57d0] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0842a0] disabled:opacity-60"
+                    disabled={!akadGateOpen || pending || akadIssuing}
+                    onClick={issueAkad}
+                    type="button"
+                  >
+                    {akadIssuing ? 'Menerbitkan…' : 'Terbitkan Dokumen Akad'}
+                  </button>
+                )}
+                <button
+                  aria-label="Tutup pratinjau dokumen akad"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                  onClick={() => setAkadPreviewOpen(false)}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-100 p-4">
+              {akadPreviewLoading && (
+                <p className="text-sm text-slate-500">Memuat pratinjau dokumen akad…</p>
+              )}
+              {akadPreviewError && (
+                <p className="text-sm text-red-700" role="alert">
+                  {akadPreviewError}
+                </p>
+              )}
+              {akadPreviewHtml && !akadPreviewLoading && (
+                <iframe
+                  className="h-full min-h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
+                  srcDoc={akadPreviewHtml}
+                  title="Pratinjau dokumen akad"
+                />
               )}
             </div>
           </div>
@@ -2091,6 +2317,7 @@ export function AdminDashboard({
         refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
         finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
         settlementNotes: String(formData.get('settlementNotes') ?? ''),
+        nikNumber: String(formData.get('nikNumber') ?? ''),
       })
       if (!result.ok) {
         setError(result.message)

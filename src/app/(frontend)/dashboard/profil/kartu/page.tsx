@@ -120,7 +120,7 @@ export default function StudentCardPage() {
             </p>
             {!studentNumber && !loading && !studentNumberError && (
               <p className="mt-1 text-[10px] text-blue-200">
-                Terbit setelah pengajuan berstatus Aktif.
+                Terbit setelah dokumen akad diterbitkan.
               </p>
             )}
             {studentNumberError && (

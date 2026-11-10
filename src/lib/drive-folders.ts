@@ -13,7 +13,7 @@ import {
   sanitizeDriveFolderName,
   setDriveFolderColor,
 } from './gdrive'
-import { ensureStudentNumber } from './student-number'
+import { getExistingStudentNumber } from './student-number'
 
 const joinFolderName = (parts: string[]) =>
   sanitizeDriveFolderName(
@@ -43,7 +43,7 @@ export const ensureApplicationDriveFolder = async (application: {
   const rootId = await getRootFolderId()
 
   if (application.status === 'ACTIVE') {
-    const studentNumber = await ensureStudentNumber(ownerUid)
+    const studentNumber = await getExistingStudentNumber(ownerUid)
     const activeName = studentNumber ? buildActiveFolderName(studentNumber, applicantName) : ''
     if (activeName) {
       return getOrCreateChildFolder(rootId, activeName, {
@@ -68,7 +68,7 @@ export const promoteApplicationFolder = async (params: {
   files: { fileId: string; fileName?: string; label: string }[]
 }): Promise<void> => {
   try {
-    const studentNumber = await ensureStudentNumber(params.ownerUid)
+    const studentNumber = await getExistingStudentNumber(params.ownerUid)
     const name = studentNumber ? buildActiveFolderName(studentNumber, params.applicantName) : ''
     if (!name) return
 

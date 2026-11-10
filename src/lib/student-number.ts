@@ -8,6 +8,43 @@ export const STUDENT_NUMBER_PATTERN = /^VSV-\d{4,}-\d{4}$/
 const getJakartaYear = () =>
   new Intl.DateTimeFormat('en', { timeZone: 'Asia/Jakarta', year: 'numeric' }).format(new Date())
 
+const buildStudentNumber = (sequence: number, year: string) =>
+  `VSV-${String(sequence).padStart(4, '0')}-${year}`
+
+export const studentNumberSequence = (studentNumber: string): string | null => {
+  const match = STUDENT_NUMBER_PATTERN.exec(studentNumber)
+  return match ? match[1] : null
+}
+
+export const getExistingStudentNumber = async (uid: string): Promise<string | null> => {
+  if (typeof uid !== 'string' || !uid || uid.length > 128) return null
+  try {
+    const profile = await getFirebaseFirestore().collection('studentProfiles').doc(uid).get()
+    const value = profile.data()?.studentNumber
+    return typeof value === 'string' && STUDENT_NUMBER_PATTERN.test(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+export const peekNextStudentNumber = async (): Promise<string | null> => {
+  try {
+    const year = getJakartaYear()
+    const counter = await getFirebaseFirestore()
+      .collection('systemCounters')
+      .doc(`student-numbers-${year}`)
+      .get()
+    const previous = counter.data()?.lastIssued
+    const nextSequence =
+      typeof previous === 'number' && Number.isSafeInteger(previous) && previous >= 0
+        ? previous + 1
+        : 1
+    return buildStudentNumber(nextSequence, year)
+  } catch {
+    return null
+  }
+}
+
 export const ensureStudentNumber = async (uid: string): Promise<string | null> => {
   if (typeof uid !== 'string' || !uid || uid.length > 128) return null
   try {
@@ -29,7 +66,7 @@ export const ensureStudentNumber = async (uid: string): Promise<string | null> =
         typeof previous === 'number' && Number.isSafeInteger(previous) && previous >= 0
           ? previous + 1
           : 1
-      const nextNumber = `VSV-${String(nextSequence).padStart(4, '0')}-${year}`
+      const nextNumber = buildStudentNumber(nextSequence, year)
 
       transaction.set(counterRef, {
         year: Number(year),
