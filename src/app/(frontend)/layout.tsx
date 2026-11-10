@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Raleway } from 'next/font/google'
+import { Google_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import Script from 'next/script'
 import { BodyCustomCode, renderHeadCustomCode } from '@/lib/make-custom-code'
 import { makeSiteSettings, sanitizeHtmlAttribute } from '@/lib/make-site-settings'
@@ -13,9 +13,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: 'swap',
 })
 
-const raleway = Raleway({
+// Font khas aplikasi Google; Plus Jakarta Sans menjadi cadangan.
+const googleSans = Google_Sans({
   subsets: ['latin'],
-  variable: '--font-raleway',
+  variable: '--font-google-sans',
   display: 'swap',
 })
 
@@ -61,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const customScripts = makeSiteSettings.customScripts
 
   return (
-    <html className={`${plusJakartaSans.variable} ${raleway.variable}`} lang={language}>
+    <html className={`${plusJakartaSans.variable} ${googleSans.variable}`} lang={language}>
       <head>
         {renderHeadCustomCode(customScripts?.headStart, 'head-start')}
         {renderHeadCustomCode(customScripts?.headEnd, 'head-end')}

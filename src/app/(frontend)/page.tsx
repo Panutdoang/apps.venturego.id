@@ -16,13 +16,25 @@ import { onAuthStateChanged } from 'firebase/auth'
 import {
   ensureApplicantAccount,
   isAppAccount,
+  preloadGoogleSignIn,
   resolveUserDestination,
   signInWithDemoAccount,
   signInWithGoogleAccount,
 } from '@/lib/auth-client'
 import { uploadToDrive } from '@/lib/upload-client'
+import { OrbitMark, RocketLoader } from './_components/orbit-mark'
 
-const isLocalDemoMode = process.env.NODE_ENV !== 'production'
+// Efek riak (ripple) ala Material/Google: lingkaran menyebar dari titik sentuh.
+const triggerRipple = (event: React.PointerEvent<HTMLElement>) => {
+  const element = event.currentTarget
+  const rect = element.getBoundingClientRect()
+  element.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`)
+  element.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`)
+  element.style.setProperty('--ripple-size', `${Math.hypot(rect.width, rect.height) * 2}px`)
+  element.removeAttribute('data-ripple')
+  void element.offsetWidth // mulai ulang animasi bila ditekan berulang
+  element.setAttribute('data-ripple', '')
+}
 
 type Product = ApplicationInput['product']
 
@@ -109,6 +121,7 @@ export default function HomePage() {
   const [isPending, startTransition] = useTransition()
   const [pendingSignIn, setPendingSignIn] = useState<'user' | 'admin' | 'google' | ''>('')
   const [signInError, setSignInError] = useState('')
+  const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
     if (window.location.hostname === '127.0.0.1') {
@@ -117,6 +130,7 @@ export default function HomePage() {
       window.location.replace(nextUrl.toString())
       return
     }
+    preloadGoogleSignIn()?.catch(() => {})
     const params = new URLSearchParams(window.location.search)
     const requestedStep = Number(params.get('step'))
     if (requestedStep >= 1 && requestedStep <= 6) {
@@ -135,9 +149,12 @@ export default function HomePage() {
         const params = new URLSearchParams(window.location.search)
         const hasFormIntent =
           params.has('step') || params.get('apply') === 'true' || params.get('baru') === 'true'
+        if (!hasFormIntent) setRedirecting(true)
         const destination = await resolveUserDestination(user)
         if (hasFormIntent && destination !== '/admin') return
-        if (active) router.replace(destination)
+        if (!active) return
+        setRedirecting(true)
+        router.replace(destination)
       })
     } catch {
       return
@@ -158,11 +175,17 @@ export default function HomePage() {
       router.push(destination)
     } catch (error) {
       const code = (error as { code?: string })?.code
+      if (code === 'gis/popup_closed' || code === 'auth/popup-closed-by-user') {
+        setPendingSignIn('') // pengguna menutup popup sendiri; bukan galat
+        return
+      }
       setSignInError(
         role === 'google'
           ? code === 'auth/unauthorized-domain'
             ? 'Gunakan alamat http://localhost:3000 agar login Google diizinkan sistem.'
-            : 'Tidak dapat masuk dengan Google. Izinkan popup lalu coba lagi.'
+            : code === 'gis/popup_failed_to_open'
+              ? 'Popup login diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.'
+              : 'Tidak dapat masuk dengan Google. Silakan coba lagi.'
           : `Tidak dapat masuk sebagai ${role === 'admin' ? 'admin' : 'user'} demo. Silakan coba lagi.`,
       )
       setPendingSignIn('')
@@ -289,13 +312,7 @@ export default function HomePage() {
       >
         {step === 0 ? (
           <header className="welcome-hero">
-            <img
-              className="welcome-logo"
-              src="/venturego-mark.svg"
-              alt="VentureGo"
-              width={24}
-              height={23}
-            />
+            <OrbitMark label="VentureGo" />
             <div className="welcome-brand">
               <h1>Vworks Student Venture</h1>
               <span>by venturego.id</span>
@@ -319,53 +336,20 @@ export default function HomePage() {
                 mudah dan terarah.
               </p>
               <div className="welcome-actions">
-                {isLocalDemoMode ? (
-                  <>
-                    <button
-                      className="primary-button welcome-primary"
-                      disabled={pendingSignIn !== ''}
-                      onClick={() => signInAs('user')}
-                      type="button"
-                    >
-                      <span>{pendingSignIn === 'user' ? 'Menghubungkan…' : 'Masuk User'}</span>
-                    </button>
-                    <button
-                      className="back-button welcome-secondary"
-                      disabled={pendingSignIn !== ''}
-                      onClick={() => signInAs('admin')}
-                      type="button"
-                    >
-                      <span>{pendingSignIn === 'admin' ? 'Menghubungkan…' : 'Masuk Admin'}</span>
-                    </button>
-                    <button
-                      className="welcome-google-button"
-                      disabled={pendingSignIn !== ''}
-                      onClick={() => signInAs('google')}
-                      type="button"
-                    >
-                      <span className="google-badge" aria-hidden="true">
-                        <GoogleIcon />
-                      </span>
-                      <span>
-                        {pendingSignIn === 'google' ? 'Menghubungkan…' : 'Masuk dengan Google'}
-                      </span>
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="primary-button welcome-primary"
-                    disabled={pendingSignIn !== ''}
-                    onClick={() => signInAs('google')}
-                    type="button"
-                  >
-                    <span className="google-badge" aria-hidden="true">
-                      <GoogleIcon />
-                    </span>
-                    <span>
-                      {pendingSignIn === 'google' ? 'Menghubungkan…' : 'Masuk dengan Google'}
-                    </span>
-                  </button>
-                )}
+                <button
+                  className="primary-button welcome-primary"
+                  disabled={pendingSignIn !== ''}
+                  onClick={() => signInAs('google')}
+                  onPointerDown={triggerRipple}
+                  type="button"
+                >
+                  <span className="google-badge" aria-hidden="true">
+                    <GoogleIcon />
+                  </span>
+                  <span>
+                    {pendingSignIn === 'google' ? 'Menghubungkan…' : 'Masuk dengan Google'}
+                  </span>
+                </button>
               </div>
               {signInError && (
                 <p className="error-message" role="alert">
@@ -373,9 +357,11 @@ export default function HomePage() {
                 </p>
               )}
               <p className="welcome-note">
-                {isLocalDemoMode
-                  ? 'Tombol User dan Admin memakai akun demo. Gunakan Google untuk akun pribadi.'
-                  : 'Akun baru akan dibuat secara otomatis saat pertama kali masuk.'}
+                Akun baru akan dibuat secara otomatis saat pertama kali masuk.
+              </p>
+              <p className="welcome-legal">
+                Dengan masuk, kamu menyetujui <a href="/syarat-layanan">Syarat Layanan</a> dan{' '}
+                <a href="/kebijakan-privasi">Kebijakan Privasi</a> VentureGo.
               </p>
             </div>
           )}
@@ -1136,6 +1122,9 @@ export default function HomePage() {
           </footer>
         )}
       </section>
+      {(pendingSignIn !== '' || redirecting) && (
+        <RocketLoader message={redirecting ? 'Menyiapkan akunmu…' : 'Menghubungkan ke Google…'} />
+      )}
     </main>
   )
 }

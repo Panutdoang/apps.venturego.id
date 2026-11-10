@@ -62,6 +62,16 @@ Public Web app variables:
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 - `NEXT_PUBLIC_SITE_URL` (your canonical production URL)
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (optional, public) — Web OAuth client ID used by the
+  `Masuk dengan Google` button through Google Identity Services, so the Google popup says
+  "continue to VentureGo" instead of showing `*.firebaseapp.com`. The Google token is then
+  passed to Firebase Auth (`signInWithCredential`), so UIDs, `ownerFirebaseUid` data and the
+  staff session are unchanged. Use the **Web client ID** shown in Firebase Console →
+  Authentication → Sign-in method → Google → _Web SDK configuration_ (same project), and add
+  every app origin (`http://localhost:3000`, `https://apps.venturego.id`, Vercel domains) to
+  that client's **Authorized JavaScript origins** in Google Cloud → APIs & Services →
+  Credentials. Set the app name/logo in Google Auth Platform → Branding. When this variable
+  is empty the app falls back to the Firebase popup.
 
 ## Existing Payload data
 

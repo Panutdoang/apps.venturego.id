@@ -44,7 +44,7 @@ export default function HelpPage() {
 
   return (
     <DashboardScaffold active="home" subtitle="Kami siap membantu" title="Pusat bantuan">
-      <DashboardCard className="bg-[var(--primary)] p-5 text-white ring-0">
+      <DashboardCard className="brand-card p-5 text-white ring-0">
         <span className="grid size-12 place-items-center rounded-2xl bg-white/15">
           <DashboardIcon name="help" />
         </span>

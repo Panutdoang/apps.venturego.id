@@ -14,7 +14,7 @@ export default function SimulationPage() {
       subtitle="Estimasi Wakalah bil Ujrah"
       title="Simulasi pembiayaan"
     >
-      <DashboardCard className="bg-[var(--primary)] p-5 text-white ring-0">
+      <DashboardCard className="brand-card p-5 text-white ring-0">
         <span className="grid size-11 place-items-center rounded-2xl bg-white/15">
           <DashboardIcon name="calculator" />
         </span>

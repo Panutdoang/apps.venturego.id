@@ -5,6 +5,51 @@ import { isValidXenditCallbackToken } from '@/lib/xendit'
 
 const readString = (value: unknown): string => (typeof value === 'string' ? value : '')
 
+// Akun Xendit dipakai bersama beberapa app. Callback milik app lain dikenali
+// dari awalan external_id dan diteruskan apa adanya (byte-for-byte, dengan
+// x-callback-token asli), tidak diproses di sini. Jangan dihapus: tanpa ini
+// callback dijawab 200 lalu hilang, dan Xendit tidak mengirim ulang.
+//  - `trm-` : VA toko/distributor Turrima (Agrisys)
+//  - `vsv-` : VA & invoice siswa lama di app VentureGo versi sebelumnya
+//             (blueprint, data 36 kontrak) — sampai datanya dimigrasi ke sini.
+const FORWARD_ROUTES: { prefix: string; label: string; url: string }[] = [
+  {
+    prefix: 'trm-',
+    label: 'turrima',
+    url:
+      process.env.TURRIMA_WEBHOOK_URL ||
+      'https://turrima.integratedfarming.id/api/xendit/callback',
+  },
+  {
+    prefix: 'vsv-',
+    label: 'vsv-legacy',
+    url:
+      process.env.LEGACY_VSV_WEBHOOK_URL || 'https://venture-go.vercel.app/api/webhooks/xendit',
+  },
+]
+
+async function forwardCallback(
+  route: { label: string; url: string },
+  rawBody: string,
+  callbackToken: string,
+) {
+  try {
+    const response = await fetch(route.url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-callback-token': callbackToken },
+      body: rawBody,
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!response.ok) {
+      // Bukan 2xx: balas 502 supaya Xendit mengirim ulang.
+      return NextResponse.json({ received: false }, { status: 502 })
+    }
+    return NextResponse.json({ received: true, forwarded: route.label })
+  } catch {
+    return NextResponse.json({ received: false }, { status: 502 })
+  }
+}
+
 export async function POST(request: Request) {
   if (!process.env.XENDIT_CALLBACK_TOKEN) {
     return NextResponse.json(
@@ -12,13 +57,16 @@ export async function POST(request: Request) {
       { status: 503 },
     )
   }
-  if (!isValidXenditCallbackToken(request.headers.get('x-callback-token'))) {
+  const callbackToken = request.headers.get('x-callback-token')
+  if (!isValidXenditCallbackToken(callbackToken)) {
     return NextResponse.json({ message: 'Token callback tidak valid.' }, { status: 401 })
   }
 
+  let rawBody: string
   let payload: Record<string, unknown>
   try {
-    const parsed: unknown = await request.json()
+    rawBody = await request.text()
+    const parsed: unknown = JSON.parse(rawBody)
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('shape')
     payload = parsed as Record<string, unknown>
   } catch {
@@ -26,6 +74,10 @@ export async function POST(request: Request) {
   }
 
   const externalId = readString(payload.external_id)
+  const forwardRoute = FORWARD_ROUTES.find((route) => externalId.startsWith(route.prefix))
+  if (forwardRoute) {
+    return forwardCallback(forwardRoute, rawBody, callbackToken ?? '')
+  }
   const status = readString(payload.status)
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(externalId)) {
     return NextResponse.json({ received: true })

@@ -259,6 +259,20 @@ When writing multiple files, parallelize independent Write calls in a single
 response. Files are independent when none depends on another's output at write
 time. Batch by dependency layer — don't write files one at a time.
 
+## Project Docs To Read First
+
+Read the matching doc before working in these areas:
+
+- `docs/MIGRASI-BLUEPRINT.md` — moving `apps.venturego.id` from the previous VentureGo app
+  (Prisma/Neon, `venture-go.vercel.app`) and importing its 36 legacy contracts. Never delete the
+  old app, its database, or its Drive folders; never write to its database.
+- `XENDIT_SETUP.md` §6 — the Xendit account is shared. `/api/webhooks/xendit` must keep
+  forwarding `trm-` (Turrima) and `vsv-` (legacy app) callbacks; removing them silently loses
+  payments.
+- `docs/DESAIN.md` — design reference (colors, gradients, fonts, motion).
+- `docs/usulan/` — accepted proposals (e.g. flexible payments and remaining-balance bugs).
+- `docs/rencana-mobile/` — long-term mobile/cooperative plan (not implemented).
+
 ## Workflow Documentation (mandatory)
 
 `DOKUMENTASI_ALUR_KERJA.md` is the single source of truth for applicant and
