@@ -1,7 +1,7 @@
 # Migrasi dari App VentureGo Lama (Blueprint) ke App Ini
 
 > **Untuk:** Panut dan asisten AI (opencode/Claude). Baca seluruh dokumen ini sebelum menulis
-> kode migrasi atau memindahkan domain. **Status: rencana — belum ada data yang dimigrasi.**
+> kode migrasi atau memindahkan domain. **Status (11 Nov 2026): data sudah diimpor ke Firestore produksi — lihat §6a.**
 > Disusun 10 November 2026. Bila ada yang berubah, perbarui dokumen ini di commit yang sama.
 
 ## 0. Ringkasan
@@ -166,6 +166,32 @@ Pembayaran tunai/transfer manual dari spreadsheet (tanpa `xenditEventId` asli) d
 7. **Selisih pasca-impor**: pembayaran yang masuk ke blueprint antara ekspor dan langkah 6 diimpor
    ulang (jalankan ekspor + impor lagi; idempoten).
 8. Perbarui `DOKUMENTASI_ALUR_KERJA.md` (Data Firestore, Pembayaran, Caveats) dan dokumen ini.
+
+## 6a. Yang sudah dijalankan (11 November 2026)
+
+Acuan angka = laporan keuangan Excel (tab Mutasi + Asset) + koreksi owner, **bukan** database app
+lama. Semua data pribadi (Excel, JSON, hasil unduh Drive, `konfigurasi-migrasi.json`) disimpan di
+folder data di luar repo.
+
+| Langkah      | Skrip                                                                         | Hasil                                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Ekspor    | repo blueprint `scripts/export-for-firestore.ts <laporan.xlsx> <folder-data>` | JSON 40 pembiayaan: 36 kontrak app lama + 4 yang hanya ada di Excel (`legacy-xl-*`)                                              |
+| 2. Impor     | `scripts/import-legacy-siswa.mjs <json> [--commit] [--update] [--rollback]`   | `applications/legacy-*` + `payments/legacy-*` (`type: 'LEGACY'`, `paidMethod: 'MANUAL_LEGACY'`)                                  |
+| 3. Berkas    | `scripts/legacy-upload-berkas.mjs <folder-data> [--commit]`                   | Unduhan folder Drive lama disalin ke Drive app (`LGC - <Nama> - <kode>`), `documents` diisi (`VERIFIED`), `driveFolderId` terisi |
+| 4. Data diri | `scripts/legacy-isi-data-diri.mjs <data-diri.json> [--commit]`                | `personalDetails` (NIK, lahir, alamat, ibu kandung, kontak darurat, paspor), `departureDetails.employment`                       |
+
+Aturan penyusunan jadwal (langkah 1):
+
+- Tanggal bayar = tanggal di Mutasi (dibaca dari nomor seri Excel, bukan `cellDates`, agar tidak mundur sehari).
+- Jadwal **dibangun ulang**: total kewajiban Excel, tenor 12 atau 6 bulan bila cicilannya bulat ribuan
+  (dipilih yang cocok dengan nominal bayar terbanyak), jatuh tempo pertama = tanggal bayar pertama di Mutasi,
+  berikutnya tiap bulan. Siswa yang belum pernah bayar: pencairan + 1 bulan.
+- `paidInstallments` = alokasi FIFO uang masuk; status `COMPLETED` bila lunas atau dinyatakan lunas owner.
+- Data diri dibaca manual dari formulir pendaftaran, KTP, paspor, dan jawaban Google Form; catatan
+  ketidakcocokan ada di `legacy.dataNotes`, nama di app lama di `legacy.nameInOldApp`.
+
+Belum: klaim akun siswa (`ownerFirebaseUid` masih `null`), penanganan langsung callback `vsv-`,
+label "Akad lama" di admin, siswa tujuan Turki (berkas belum diunduh).
 
 ## 7. Pensiun blueprint
 
