@@ -91,6 +91,18 @@ export async function POST(request: Request) {
 
       if (status === 'PAID' || status === 'SETTLED') {
         if (data.status === 'PAID') return
+        const installmentNumber = data.installmentNumber
+        const applicationDocId = readString(data.applicationDocId)
+        const shouldUpdateApplication =
+          data.type === 'INSTALLMENT' &&
+          Number.isInteger(installmentNumber) &&
+          (installmentNumber as number) >= 1 &&
+          /^[A-Za-z0-9_-]{1,128}$/.test(applicationDocId)
+        const applicationRef = shouldUpdateApplication
+          ? db.collection('applications').doc(applicationDocId)
+          : null
+        const application = applicationRef ? await transaction.get(applicationRef) : null
+
         transaction.update(paymentRef, {
           status: 'PAID',
           paidAt: readString(payload.paid_at) || new Date().toISOString(),
@@ -98,15 +110,8 @@ export async function POST(request: Request) {
           paidChannel: readString(payload.payment_channel),
           updatedAt: FieldValue.serverTimestamp(),
         })
-        const installmentNumber = data.installmentNumber
-        const applicationDocId = readString(data.applicationDocId)
-        if (
-          data.type === 'INSTALLMENT' &&
-          Number.isInteger(installmentNumber) &&
-          (installmentNumber as number) >= 1 &&
-          /^[A-Za-z0-9_-]{1,128}$/.test(applicationDocId)
-        ) {
-          transaction.update(db.collection('applications').doc(applicationDocId), {
+        if (applicationRef && application?.exists) {
+          transaction.update(applicationRef, {
             paidInstallments: FieldValue.arrayUnion(installmentNumber),
             updatedAt: FieldValue.serverTimestamp(),
           })

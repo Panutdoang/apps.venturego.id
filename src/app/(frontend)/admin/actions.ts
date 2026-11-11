@@ -187,7 +187,6 @@ export async function saveFinancialPlan(
     'settlementNotes',
     'refundEvidenceReference',
     'refundTotal',
-    'nikNumber',
   ] as const
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
@@ -217,10 +216,6 @@ export async function saveFinancialPlan(
   const refundTotal = refundValue === '' ? 0 : Number(refundValue)
   if (!Number.isSafeInteger(refundTotal)) {
     return { ok: false, message: 'Nominal pengembalian tidak valid.' }
-  }
-  const nikValue = financialValues.nikNumber.trim()
-  if (nikValue.length > 20 || !/^\d*$/.test(nikValue)) {
-    return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
   }
   if (firstPaymentDate && !calculateInstallmentSchedule(0, 1, firstPaymentDate)) {
     return { ok: false, message: 'Tanggal angsuran pertama tidak valid.' }
@@ -419,12 +414,6 @@ export async function saveFinancialPlan(
         settlementNotes: String(nextFinancialPlan.settlementNotes ?? ''),
       })
     }
-    const existingPersonal = (applicationData.personalDetails ?? {}) as Record<string, unknown>
-    const existingNik =
-      typeof existingPersonal.idCardNumber === 'string' ? existingPersonal.idCardNumber : ''
-    if (nikValue !== existingNik) {
-      updateValues.personalDetails = { ...existingPersonal, idCardNumber: nikValue }
-    }
     await applicationRef.update({
       financialPlan: { ...nextFinancialPlan, pricingStatus: currentPricingStatus },
       ...updateValues,
@@ -590,6 +579,30 @@ export async function deleteApplicationDocument(
     return { ok: true }
   } catch {
     return { ok: false, message: 'Dokumen belum dapat dihapus. Coba lagi.' }
+  }
+}
+
+export async function rejectAndDeleteApplication(documentId: string): Promise<ActionResult> {
+  const { error } = await assertStaffDocumentId(documentId)
+  if (error) return error
+
+  try {
+    const applicationRef = getFirebaseFirestore().collection('applications').doc(documentId)
+    const application = await applicationRef.get()
+    if (!application.exists) return { ok: false, message: 'Pengajuan tidak ditemukan.' }
+
+    const applicationData = application.data() ?? {}
+    if (applicationData.legacy && typeof applicationData.legacy === 'object') {
+      return {
+        ok: false,
+        message: 'Data kontrak legacy dilindungi dan tidak dapat dihapus dari menu Pengajuan.',
+      }
+    }
+
+    await applicationRef.delete()
+    return { ok: true }
+  } catch {
+    return { ok: false, message: 'Pengajuan belum dapat dihapus. Coba lagi.' }
   }
 }
 

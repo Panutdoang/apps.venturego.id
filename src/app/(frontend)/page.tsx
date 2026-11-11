@@ -58,6 +58,7 @@ const initialForm: ApplicationInput = {
   lpkName: '',
   birthPlace: '',
   birthDate: '',
+  idCardNumber: '',
   gender: 'MALE',
   religion: 'ISLAM',
   idCardAddress: '',
@@ -542,6 +543,20 @@ export default function HomePage() {
                     {ktpFile ? 'Ganti' : 'Unggah'}
                   </label>
                 </div>
+                <label className="field mt-3">
+                  <span>NIK (Nomor Induk Kependudukan)</span>
+                  <input
+                    autoComplete="off"
+                    inputMode="numeric"
+                    maxLength={20}
+                    onChange={(event) =>
+                      set('idCardNumber', event.target.value.replace(/\D/g, '').slice(0, 20))
+                    }
+                    placeholder="Masukkan NIK sesuai KTP (opsional)"
+                    value={form.idCardNumber}
+                  />
+                  <small>Isi sesuai KTP, maksimal 20 digit.</small>
+                </label>
                 {step3Error && (
                   <p className="error-message" role="alert">
                     {step3Error}
