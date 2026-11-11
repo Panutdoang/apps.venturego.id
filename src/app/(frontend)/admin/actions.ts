@@ -582,6 +582,30 @@ export async function deleteApplicationDocument(
   }
 }
 
+export async function rejectAndDeleteApplication(documentId: string): Promise<ActionResult> {
+  const { error } = await assertStaffDocumentId(documentId)
+  if (error) return error
+
+  try {
+    const applicationRef = getFirebaseFirestore().collection('applications').doc(documentId)
+    const application = await applicationRef.get()
+    if (!application.exists) return { ok: false, message: 'Pengajuan tidak ditemukan.' }
+
+    const applicationData = application.data() ?? {}
+    if (applicationData.legacy && typeof applicationData.legacy === 'object') {
+      return {
+        ok: false,
+        message: 'Data kontrak legacy dilindungi dan tidak dapat dihapus dari menu Pengajuan.',
+      }
+    }
+
+    await applicationRef.delete()
+    return { ok: true }
+  } catch {
+    return { ok: false, message: 'Pengajuan belum dapat dihapus. Coba lagi.' }
+  }
+}
+
 const scaleFinancingLines = (lines: FinancingCostLine[], factor: number): FinancingCostLine[] =>
   lines.map((line) =>
     line.amount > 0

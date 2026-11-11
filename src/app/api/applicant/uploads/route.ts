@@ -17,6 +17,7 @@ import {
   abortResumableSession,
   createResumableSession,
   deleteDriveFile,
+  getDriveFileInfo,
   getOrCreateChildFolder,
   getRootFolderId,
   sanitizeDriveFolderName,
@@ -131,13 +132,25 @@ const handleInit = async (request: Request, uid: string) => {
     const mappingRef = firestore.collection('driveFolders').doc(uid)
     const mapping = await mappingRef.get()
     const mappingData = mapping.data()
-    if (
+    let mappedFolderIsUsable = Boolean(
       mapping.exists &&
       mappingData?.ownerUid === uid &&
       typeof mappingData?.folderId === 'string' &&
-      mappingData.folderId
-    ) {
-      folderId = mappingData.folderId
+      mappingData.folderId,
+    )
+    if (mappedFolderIsUsable) {
+      try {
+        const mappedFolder = await getDriveFileInfo(String(mappingData?.folderId))
+        mappedFolderIsUsable =
+          mappedFolder.mimeType === 'application/vnd.google-apps.folder' && !mappedFolder.trashed
+      } catch (error) {
+        if (!(error instanceof GDriveError) || error.code !== 'INVALID') throw error
+        mappedFolderIsUsable = false
+      }
+    }
+
+    if (mappedFolderIsUsable) {
+      folderId = String(mappingData?.folderId)
     } else {
       const draftFolderName = buildDraftFolderName(applicantName, lpkName)
       if (!draftFolderName) return failure('Nama pemohon belum diisi.')

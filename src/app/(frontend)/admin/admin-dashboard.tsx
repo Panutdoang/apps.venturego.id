@@ -17,6 +17,7 @@ import {
   approveApplicationPricing,
   deleteApplicationDocument,
   issueAkadDocument,
+  rejectAndDeleteApplication,
   saveFinancialPlan,
   setApplicationPricingAgreed,
   updateApplicationWorkflow,
@@ -2090,6 +2091,10 @@ export function AdminDashboard({
   const router = useRouter()
   const [error, setError] = useState('')
   const [savedNotice, setSavedNotice] = useState('')
+  const [applicationToDelete, setApplicationToDelete] = useState<FinancingApplicationRecord | null>(
+    null,
+  )
+  const [deleteApplicationError, setDeleteApplicationError] = useState('')
   const [pending, startTransition] = useTransition()
 
   const [activeMenu, setActiveMenu] = useState<MenuId>('dashboard')
@@ -2118,6 +2123,25 @@ export function AdminDashboard({
   const openApplicationDrawer = (appId: string, tab: DetailTabId = 'profile') => {
     setDrawerAppId(appId)
     setDrawerTab(tab)
+  }
+
+  const confirmApplicationDeletion = () => {
+    if (!applicationToDelete) return
+    const target = applicationToDelete
+    setDeleteApplicationError('')
+    startTransition(async () => {
+      const result = await rejectAndDeleteApplication(target.id)
+      if (!result.ok) {
+        setDeleteApplicationError(result.message)
+        return
+      }
+      setApplicationToDelete(null)
+      setSavedNotice(
+        `Pengajuan ${target.applicationId} ditolak dan dihapus. Pemohon dapat mengajukan kembali.`,
+      )
+      if (drawerAppId === target.id) setDrawerAppId(null)
+      router.refresh()
+    })
   }
 
   const filteredApplications = useMemo(() => {
@@ -2813,6 +2837,7 @@ export function AdminDashboard({
                       filteredApplications.map((app) => {
                         const uploaded = app.documents.filter((d) => Boolean(d.fileId)).length
                         const pricing = String(app.financialPlan?.pricingStatus ?? 'ESTIMATED')
+                        const isLegacyApplication = Boolean(app.legacy)
                         return (
                           <tr className="hover:bg-slate-50/80" key={app.id}>
                             <td className="whitespace-nowrap px-4 py-3 font-bold text-[#0b57d0]">
@@ -2859,11 +2884,41 @@ export function AdminDashboard({
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-right">
-                              <DrawerAction
-                                ariaLabel={`Kelola pengajuan ${app.applicationId}`}
-                                label="Kelola"
-                                onClick={() => openApplicationDrawer(app.id, 'profile')}
-                              />
+                              <div className="inline-flex items-center justify-end gap-2">
+                                <button
+                                  aria-label={`Tolak dan hapus pengajuan ${app.applicationId}`}
+                                  className="inline-flex size-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 shadow-xs transition hover:border-red-300 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                  disabled={pending || isLegacyApplication}
+                                  onClick={() => {
+                                    setDeleteApplicationError('')
+                                    setApplicationToDelete(app)
+                                  }}
+                                  title={
+                                    isLegacyApplication
+                                      ? 'Data kontrak legacy dilindungi'
+                                      : `Tolak dan hapus ${app.applicationId}`
+                                  }
+                                  type="button"
+                                >
+                                  <svg
+                                    aria-hidden="true"
+                                    className="size-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.8}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M3 6h18M8 6V4h8v2m3 0-.9 14H5.9L5 6m4 4v6m6-6v6" />
+                                  </svg>
+                                </button>
+                                <DrawerAction
+                                  ariaLabel={`Kelola pengajuan ${app.applicationId}`}
+                                  label="Kelola"
+                                  onClick={() => openApplicationDrawer(app.id, 'profile')}
+                                />
+                              </div>
                             </td>
                           </tr>
                         )
@@ -3928,6 +3983,90 @@ export function AdminDashboard({
           )}
         </main>
       </div>
+
+      {applicationToDelete && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[2px]"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !pending) {
+              setApplicationToDelete(null)
+              setDeleteApplicationError('')
+            }
+          }}
+        >
+          <section
+            aria-labelledby="delete-application-title"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="alertdialog"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-700">
+                <svg
+                  aria-hidden="true"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M3 6h18M8 6V4h8v2m3 0-.9 14H5.9L5 6m4 4v6m6-6v6" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-900" id="delete-application-title">
+                  Tolak dan hapus pengajuan?
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  {applicationToDelete.applicationId} · {applicationToDelete.applicantName}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-red-100 bg-red-50/70 p-3.5 text-xs leading-5 text-red-900">
+              <p className="font-semibold">
+                Data pengajuan di database akan dihapus permanen dan tidak dapat dipulihkan.
+              </p>
+              <p className="mt-1.5">
+                Berkas Google Drive, riwayat pembayaran, serta profil dan NIS siswa tetap tersimpan.
+                Pemohon dapat mengajukan permohonan baru.
+              </p>
+            </div>
+            {deleteApplicationError && (
+              <p
+                className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-800"
+                role="alert"
+              >
+                {deleteApplicationError}
+              </p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                autoFocus
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={pending}
+                onClick={() => {
+                  setApplicationToDelete(null)
+                  setDeleteApplicationError('')
+                }}
+                type="button"
+              >
+                Batal
+              </button>
+              <button
+                className="rounded-lg bg-red-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={pending}
+                onClick={confirmApplicationDeletion}
+                type="button"
+              >
+                {pending ? 'Menghapus…' : 'Tolak & Hapus'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* SLIDE-OVER DRAWER FOR APPLICATION MANAGEMENT */}
       {drawerApplication && (

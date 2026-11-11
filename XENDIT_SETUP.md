@@ -66,7 +66,10 @@ friendly "not configured" message instead of failing.
   redirect.
 - On payment, Xendit POSTs to `/api/webhooks/xendit`; after token verification
   the route idempotently sets the payment to `PAID` (or `EXPIRED`) and appends
-  the installment number to the owning application's `paidInstallments` array.
+  the installment number to the owning application's `paidInstallments` array
+  when that application still exists. If staff has removed the application,
+  the paid payment record is retained without recreating or updating the
+  deleted application.
 - Firestore rules stay deny-all: the `payments` collection is only accessible
   through verified server actions and this webhook route.
 

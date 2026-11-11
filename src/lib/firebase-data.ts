@@ -54,6 +54,7 @@ export type ApplicationDocumentRecord = {
 export type FinancingApplicationRecord = {
   id: string
   applicationId: string
+  legacy?: Record<string, unknown>
   product: ApplicationProduct
   contractScheme?: string
   applicantName: string

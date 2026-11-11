@@ -359,11 +359,12 @@ export const getDriveFileInfo = async (
   parents?: string[]
   size?: string | number
   mimeType?: string
+  trashed?: boolean
 }> => {
   if (!FILE_ID_PATTERN.test(fileId)) {
     throw new GDriveError('Identitas berkas tidak valid.', 'INVALID')
   }
-  return driveJson(`/drive/v3/files/${fileId}?fields=id,name,parents,size,mimeType`)
+  return driveJson(`/drive/v3/files/${fileId}?fields=id,name,parents,size,mimeType,trashed`)
 }
 
 export const readDriveFileHead = async (fileId: string): Promise<Uint8Array> => {
