@@ -1,4 +1,4 @@
-import mammoth from 'mammoth'
+import { renderAkadPreviewHtml } from '@/lib/akad-preview'
 import { NextResponse } from 'next/server'
 import { buildAkadDocument } from '@/lib/akad-document'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
@@ -22,16 +22,6 @@ const safeFileName = (value: string) =>
     .replace(/[\r\n"\\/\u0000-\u001f]/g, '_')
     .replace(/\s+/g, ' ')
     .slice(0, 160)
-
-const wrapHtml = (body: string) =>
-  `<!doctype html><html lang="id"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><style>
-    body { font-family: Georgia, 'Times New Roman', serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #111827; line-height: 1.6; font-size: 15px; }
-    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-    td, th { border: 1px solid #334155; padding: 0.4rem 0.6rem; font-size: 0.875rem; vertical-align: top; }
-    img { max-width: 100%; }
-    h1, h2, h3 { margin: 1.2rem 0 0.5rem; }
-    p { margin: 0.5rem 0; }
-  </style></head><body>${body}</body></html>`
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const staff = await getStaffSession()
@@ -84,8 +74,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       })
     }
 
-    const converted = await mammoth.convertToHtml({ buffer: Buffer.from(bytes) })
-    return new Response(wrapHtml(converted.value), {
+    const previewHtml = await renderAkadPreviewHtml(bytes)
+    return new Response(previewHtml, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'private, no-store',
