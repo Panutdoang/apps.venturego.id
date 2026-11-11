@@ -6,6 +6,8 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { DashboardBottomNav, SkeletonBlock } from './_components/dashboard-ui'
 import { VaNumber } from './_components/va-number'
+import { WalletCarousel } from './_components/wallet-carousel'
+import { getWalletSummary, type VipSummary } from './vip/actions'
 import { getDashboardSummary, type DashboardApplication } from './actions'
 
 type IconName =
@@ -198,6 +200,167 @@ const quickActions = [
   { label: 'VIP', icon: 'vip' as const, href: '/dashboard/vip' },
 ]
 
+function SlideHeader({
+  label,
+  value,
+  showBalance,
+  onToggle,
+  badge,
+  badgeClassName,
+  hiddenValue = 'Rp••••••••',
+}: {
+  label: string
+  value: string
+  hiddenValue?: string
+  showBalance: boolean
+  onToggle: () => void
+  badge: string
+  badgeClassName: string
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <div className="mt-2 flex items-center gap-2">
+          <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
+            {showBalance ? value : hiddenValue}
+          </strong>
+          <button
+            aria-label={showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'}
+            className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            onClick={onToggle}
+            type="button"
+          >
+            <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
+          </button>
+        </div>
+      </div>
+      <span className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold ${badgeClassName}`}>
+        {badge}
+      </span>
+    </div>
+  )
+}
+
+function SlideSkeleton() {
+  return (
+    <div aria-label="Memuat saldo" className="space-y-5" role="status">
+      <span className="sr-only">Memuat saldo…</span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <SkeletonBlock className="h-3 w-28" />
+          <SkeletonBlock className="h-8 w-40" />
+        </div>
+        <SkeletonBlock className="h-7 w-24 rounded-full" />
+      </div>
+      <SkeletonBlock className="h-10 w-full" />
+    </div>
+  )
+}
+
+function VipSlide({
+  vip,
+  loading,
+  showBalance,
+  onToggle,
+}: {
+  vip: VipSummary | null
+  loading: boolean
+  showBalance: boolean
+  onToggle: () => void
+}) {
+  if (loading) return <SlideSkeleton />
+  const hide = (value: number) => (showBalance ? formatRupiah(value) : 'Rp•••••')
+  return (
+    <>
+      <SlideHeader
+        badge={vip ? 'VIP · Aktif' : 'Belum terdaftar'}
+        badgeClassName={vip ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}
+        label="Saldo Vworks Investment Partner"
+        onToggle={onToggle}
+        showBalance={showBalance}
+        value={formatRupiah(vip?.principalBalance ?? 0)}
+      />
+      {vip ? (
+        <div
+          className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
+          style={{ gridTemplateColumns: '1fr 1fr' }}
+        >
+          <div>
+            <span className="text-[11px] text-slate-400">Bagi hasil terakhir</span>
+            <strong className="mt-1 block text-sm text-slate-800">
+              {vip.lastProfitShare ? hide(vip.lastProfitShare.amount) : 'Belum ada'}
+            </strong>
+            {vip.lastProfitShare && (
+              <span className="text-[10px] text-slate-400">
+                {formatDate(vip.lastProfitShare.date)}
+              </span>
+            )}
+          </div>
+          <div className="border-l border-slate-100 pl-4">
+            <span className="text-[11px] text-slate-400">Jadwal berikutnya</span>
+            <strong className="mt-1 block text-sm text-slate-800">
+              {formatDate(vip.nextProfitShareDate)}
+            </strong>
+            <Link className="text-[10px] font-semibold text-[var(--primary)]" href="/dashboard/vip">
+              Lihat riwayat →
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <p className="text-[11px] leading-5 text-slate-500">
+            Mitra VIP ikut mendanai program siswa VentureGo dan menerima bagi hasil sesuai akad
+            setiap tanggal 15.
+          </p>
+          <Link
+            className="mt-2 inline-block text-xs font-semibold text-[var(--primary)]"
+            href="/dashboard/vip"
+          >
+            Pelajari VIP →
+          </Link>
+        </div>
+      )}
+    </>
+  )
+}
+
+function PointsSlide({
+  points,
+  loading,
+  showBalance,
+  onToggle,
+}: {
+  points: number
+  loading: boolean
+  showBalance: boolean
+  onToggle: () => void
+}) {
+  if (loading) return <SlideSkeleton />
+  return (
+    <>
+      <SlideHeader
+        badge="1 poin = Rp1"
+        badgeClassName="bg-blue-50 text-[var(--primary)]"
+        hiddenValue="•••• poin"
+        label="Poin VentureGo"
+        onToggle={onToggle}
+        showBalance={showBalance}
+        value={`${points.toLocaleString('id-ID')} poin`}
+      />
+      <div className="mt-5 border-t border-slate-100 pt-4">
+        <p className="text-[11px] leading-5 text-slate-500">
+          Poin bertambah dari kelebihan bayar angsuran dan program VentureGo, dan dapat dipakai
+          untuk membayar angsuran berikutnya.
+        </p>
+        <span className="mt-2 inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
+          Penukaran hadiah segera hadir
+        </span>
+      </div>
+    </>
+  )
+}
+
 export default function DashboardPage() {
   const [showBalance, setShowBalance] = useState(true)
   const [showSubmissionNotice, setShowSubmissionNotice] = useState(false)
@@ -205,6 +368,8 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [application, setApplication] = useState<DashboardApplication | null>(null)
   const [accountName, setAccountName] = useState('')
+  const [wallet, setWallet] = useState<{ vip: VipSummary | null; points: number } | null>(null)
+  const [walletLoading, setWalletLoading] = useState(true)
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('applicationSubmitted') !== '1') return
@@ -225,13 +390,23 @@ export default function DashboardPage() {
           setApplication(null)
           setAccountName('')
           setError('')
+          setWallet(null)
           setLoading(false)
+          setWalletLoading(false)
           return
         }
         setAccountName(user.displayName?.trim() ?? '')
         try {
           const idToken = await user.getIdToken()
           if (!active) return
+          void getWalletSummary(idToken)
+            .then((walletResult) => {
+              if (active) setWallet(walletResult.ok ? walletResult : null)
+            })
+            .catch(() => undefined)
+            .finally(() => {
+              if (active) setWalletLoading(false)
+            })
           const result = await getDashboardSummary(idToken)
           if (!active) return
           if (!result.ok) {
@@ -318,201 +493,245 @@ export default function DashboardPage() {
         </header>
 
         <div className="-mt-16 flex flex-1 flex-col gap-6 px-5 pb-32">
-          <section
-            className="rounded-3xl bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.10)]"
+          <WalletCarousel
             id="ringkasan"
-          >
-            {loading && (
-              <div aria-label="Memuat ringkasan pengajuan" className="space-y-5" role="status">
-                <span className="sr-only">Memuat ringkasan pengajuan…</span>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <SkeletonBlock className="h-3 w-28" />
-                    <SkeletonBlock className="h-8 w-40" />
-                  </div>
-                  <SkeletonBlock className="h-7 w-24 rounded-full" />
-                </div>
-                <SkeletonBlock className="h-2 w-full rounded-full" />
-                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-                  <SkeletonBlock className="h-10 w-full" />
-                  <SkeletonBlock className="h-10 w-full" />
-                </div>
-              </div>
-            )}
-            {!loading && error && (
-              <p
-                className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
-            {!loading && !error && application && (
-              <>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">{amountLabel}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
-                        {primaryAmount !== null
-                          ? showBalance
-                            ? formatRupiah(primaryAmount)
-                            : 'Rp••••••••'
-                          : 'Belum tercatat'}
-                      </strong>
-                      {primaryAmount !== null && (
-                        <button
-                          aria-label={showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'}
-                          className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                          onClick={() => setShowBalance((current) => !current)}
-                          type="button"
-                        >
-                          <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${
-                      application.status === 'ACTIVE'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : closed
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-blue-50 text-[var(--primary)]'
-                    }`}
-                  >
-                    {statusLabel}
-                  </span>
-                </div>
-                {schedule ? (
+            pages={[
+              {
+                key: 'angsuran',
+                label: 'Ringkasan angsuran',
+                content: (
                   <>
-                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                    {loading && (
                       <div
-                        className="h-full rounded-full bg-[var(--accent)]"
-                        style={{
-                          width: `${Math.round((schedule.paidCount / schedule.total) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 flex justify-between text-[11px] text-slate-500">
-                      <span>
-                        {schedule.paidCount} dari {schedule.total} angsuran lunas
-                      </span>
-                      <span>
-                        {application.totalObligation !== null
-                          ? `Terbayar ${formatRupiah(schedule.paidAmount)}`
-                          : `${PRODUCT_LABELS[application.product]}`}
-                      </span>
-                    </div>
-                    <div
-                      className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
-                      style={{ gridTemplateColumns: '1fr 3fr' }}
-                    >
-                      <div>
-                        <span className="text-[11px] text-slate-400">Sisa angsuran</span>
-                        <strong className="mt-1 block text-sm text-slate-800">
-                          {schedule.total - schedule.paidCount} kali
-                        </strong>
-                      </div>
-                      <div className="border-l border-slate-100 pl-4">
-                        <span className="text-[11px] text-slate-400">Jatuh tempo berikutnya</span>
-                        <div className="mt-1">
-                          <strong className="text-sm text-slate-800">
-                            {schedule.nextDueDate
-                              ? `${formatDate(schedule.nextDueDate)}${
-                                  schedule.nextDueAmount !== null
-                                    ? ` · ${formatRupiah(schedule.nextDueAmount)}`
-                                    : ''
-                                }`
-                              : 'Seluruh angsuran telah lunas'}
-                          </strong>
+                        aria-label="Memuat ringkasan pengajuan"
+                        className="space-y-5"
+                        role="status"
+                      >
+                        <span className="sr-only">Memuat ringkasan pengajuan…</span>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2">
+                            <SkeletonBlock className="h-3 w-28" />
+                            <SkeletonBlock className="h-8 w-40" />
+                          </div>
+                          <SkeletonBlock className="h-7 w-24 rounded-full" />
+                        </div>
+                        <SkeletonBlock className="h-2 w-full rounded-full" />
+                        <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                          <SkeletonBlock className="h-10 w-full" />
+                          <SkeletonBlock className="h-10 w-full" />
                         </div>
                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <div
-                    className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
-                    style={{ gridTemplateColumns: '1fr 3fr' }}
-                  >
-                    <div>
-                      <span className="text-[11px] text-slate-400">Berkas terunggah</span>
-                      <strong className="mt-1 block text-sm text-slate-800">
-                        {application.documentsUploaded}/{application.documentsTotal}
-                        {application.documentsVerified > 0
-                          ? ` (${application.documentsVerified} ✓)`
-                          : ''}
-                      </strong>
-                    </div>
-                    <div className="border-l border-slate-100 pl-4">
-                      <span className="text-[11px] text-slate-400">Nomor pengajuan</span>
-                      <div className="mt-1">
-                        <strong className="text-sm text-slate-800">
-                          {application.applicationId}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {application.documentsRevision > 0 && (
-                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800">
-                    {application.documentsRevision} dokumen memerlukan perbaikan. Silakan periksa
-                    menu Unggah Berkas.
-                  </p>
-                )}
-                {application.pricingStatus === 'ESTIMATED' && !schedule && (
-                  <p className="mt-4 text-[11px] leading-4 text-slate-400">
-                    {PRODUCT_LABELS[application.product]} · Rincian biaya sedang disusun dan
-                    diverifikasi tim VentureGo.
-                  </p>
-                )}
-              </>
-            )}
-            {!loading && !error && !application && (
-              <>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">Total angsuran terbayar</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
-                        {showBalance ? formatRupiah(0) : 'Rp••••••••'}
-                      </strong>
-                      <button
-                        aria-label={showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'}
-                        className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                        onClick={() => setShowBalance((current) => !current)}
-                        type="button"
+                    )}
+                    {!loading && error && (
+                      <p
+                        className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800"
+                        role="alert"
                       >
-                        <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-bold text-slate-500">
-                    Belum ada pengajuan
-                  </span>
-                </div>
-                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full w-0 rounded-full bg-[var(--accent)]" />
-                </div>
-                <div className="mt-2 flex justify-between text-[11px] text-slate-500">
-                  <span>Belum ada pembayaran</span>
-                  <span>Total kewajiban Rp0</span>
-                </div>
-                <div
-                  className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
-                  style={{ gridTemplateColumns: '2fr 3fr' }}
-                >
-                  <div>
-                    <span className="text-[11px] text-slate-400">Tenor</span>
-                    <strong className="mt-1 block text-sm text-slate-800">0 bulan</strong>
-                  </div>
-                  <div className="border-l border-slate-100 pl-4">
-                    <VaNumber />
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
+                        {error}
+                      </p>
+                    )}
+                    {!loading && !error && application && (
+                      <>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-slate-500">{amountLabel}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
+                                {primaryAmount !== null
+                                  ? showBalance
+                                    ? formatRupiah(primaryAmount)
+                                    : 'Rp••••••••'
+                                  : 'Belum tercatat'}
+                              </strong>
+                              {primaryAmount !== null && (
+                                <button
+                                  aria-label={
+                                    showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'
+                                  }
+                                  className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                  onClick={() => setShowBalance((current) => !current)}
+                                  type="button"
+                                >
+                                  <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <span
+                            className={`rounded-full px-3 py-1.5 text-[10px] font-bold ${
+                              application.status === 'ACTIVE'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : closed
+                                  ? 'bg-red-50 text-red-700'
+                                  : 'bg-blue-50 text-[var(--primary)]'
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
+                        </div>
+                        {schedule ? (
+                          <>
+                            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-[var(--accent)]"
+                                style={{
+                                  width: `${Math.round((schedule.paidCount / schedule.total) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+                              <span>
+                                {schedule.paidCount} dari {schedule.total} angsuran lunas
+                              </span>
+                              <span>
+                                {application.totalObligation !== null
+                                  ? `Terbayar ${formatRupiah(schedule.paidAmount)}`
+                                  : `${PRODUCT_LABELS[application.product]}`}
+                              </span>
+                            </div>
+                            <div
+                              className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
+                              style={{ gridTemplateColumns: '1fr 3fr' }}
+                            >
+                              <div>
+                                <span className="text-[11px] text-slate-400">Sisa angsuran</span>
+                                <strong className="mt-1 block text-sm text-slate-800">
+                                  {schedule.total - schedule.paidCount} kali
+                                </strong>
+                              </div>
+                              <div className="border-l border-slate-100 pl-4">
+                                <span className="text-[11px] text-slate-400">
+                                  Jatuh tempo berikutnya
+                                </span>
+                                <div className="mt-1">
+                                  <strong className="text-sm text-slate-800">
+                                    {schedule.nextDueDate
+                                      ? `${formatDate(schedule.nextDueDate)}${
+                                          schedule.nextDueAmount !== null
+                                            ? ` · ${formatRupiah(schedule.nextDueAmount)}`
+                                            : ''
+                                        }`
+                                      : 'Seluruh angsuran telah lunas'}
+                                  </strong>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div
+                            className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
+                            style={{ gridTemplateColumns: '1fr 3fr' }}
+                          >
+                            <div>
+                              <span className="text-[11px] text-slate-400">Berkas terunggah</span>
+                              <strong className="mt-1 block text-sm text-slate-800">
+                                {application.documentsUploaded}/{application.documentsTotal}
+                                {application.documentsVerified > 0
+                                  ? ` (${application.documentsVerified} ✓)`
+                                  : ''}
+                              </strong>
+                            </div>
+                            <div className="border-l border-slate-100 pl-4">
+                              <span className="text-[11px] text-slate-400">Nomor pengajuan</span>
+                              <div className="mt-1">
+                                <strong className="text-sm text-slate-800">
+                                  {application.applicationId}
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {application.documentsRevision > 0 && (
+                          <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800">
+                            {application.documentsRevision} dokumen memerlukan perbaikan. Silakan
+                            periksa menu Unggah Berkas.
+                          </p>
+                        )}
+                        {application.pricingStatus === 'ESTIMATED' && !schedule && (
+                          <p className="mt-4 text-[11px] leading-4 text-slate-400">
+                            {PRODUCT_LABELS[application.product]} · Rincian biaya sedang disusun dan
+                            diverifikasi tim VentureGo.
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {!loading && !error && !application && (
+                      <>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-slate-500">
+                              Total angsuran terbayar
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <strong className="text-2xl font-bold tracking-[-0.03em] text-slate-950">
+                                {showBalance ? formatRupiah(0) : 'Rp••••••••'}
+                              </strong>
+                              <button
+                                aria-label={
+                                  showBalance ? 'Sembunyikan nominal' : 'Tampilkan nominal'
+                                }
+                                className="grid size-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                onClick={() => setShowBalance((current) => !current)}
+                                type="button"
+                              >
+                                <Icon name={showBalance ? 'eye' : 'eyeOff'} className="size-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-bold text-slate-500">
+                            Belum ada pengajuan
+                          </span>
+                        </div>
+                        <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full w-0 rounded-full bg-[var(--accent)]" />
+                        </div>
+                        <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+                          <span>Belum ada pembayaran</span>
+                          <span>Total kewajiban Rp0</span>
+                        </div>
+                        <div
+                          className="mt-5 grid gap-3 border-t border-slate-100 pt-4"
+                          style={{ gridTemplateColumns: '2fr 3fr' }}
+                        >
+                          <div>
+                            <span className="text-[11px] text-slate-400">Tenor</span>
+                            <strong className="mt-1 block text-sm text-slate-800">0 bulan</strong>
+                          </div>
+                          <div className="border-l border-slate-100 pl-4">
+                            <VaNumber />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: 'vip',
+                label: 'Saldo Vworks Investment Partner',
+                content: (
+                  <VipSlide
+                    loading={walletLoading}
+                    onToggle={() => setShowBalance((current) => !current)}
+                    showBalance={showBalance}
+                    vip={wallet?.vip ?? null}
+                  />
+                ),
+              },
+              {
+                key: 'poin',
+                label: 'Poin VentureGo',
+                content: (
+                  <PointsSlide
+                    loading={walletLoading}
+                    onToggle={() => setShowBalance((current) => !current)}
+                    points={wallet?.points ?? 0}
+                    showBalance={showBalance}
+                  />
+                ),
+              },
+            ]}
+          />
 
           <section className="relative overflow-hidden rounded-3xl brand-card p-5 text-white shadow-sm">
             <div className="relative z-10 flex items-center justify-between gap-4">

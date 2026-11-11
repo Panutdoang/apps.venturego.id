@@ -95,6 +95,9 @@ bukan database app lama (app lama berhenti mencatat sejak Juli 2026).
 
 ### Tampilan (dashboard, kartu putih paling atas)
 
+- **Sudah dikerjakan (11 Nov 2026)** dengan **3 halaman** atas permintaan owner: angsuran → Saldo
+  Vworks Investment Partner → Poin. Tampilan poin sudah membaca `pointLedger`; penulisan poin dari
+  webhook belum. Lihat `DOKUMENTASI_ALUR_KERJA.md` (Beranda & VIP).
 - Kartu "Total angsuran terbayar" bisa **digeser kiri/kanan**, 2 halaman:
   1. **Total angsuran terbayar** (seperti sekarang).
   2. **Poin VentureGo** — jumlah poin + keterangan singkat "1 poin = Rp1, bisa dipakai untuk

@@ -193,6 +193,23 @@ Aturan penyusunan jadwal (langkah 1):
 Belum: klaim akun siswa (`ownerFirebaseUid` masih `null`), penanganan langsung callback `vsv-`,
 label "Akad lama" di admin, siswa tujuan Turki (berkas belum diunduh).
 
+## 6b. Mitra VIP (11 November 2026)
+
+Mitra VIP (Vworks Investment Partner) tidak ada di database blueprint — sumbernya tab **Mutasi**
+laporan keuangan Excel. Skrip `scripts/import-vip-lama.mjs`:
+
+```bash
+NODE_PATH=<node_modules berisi xlsx> node --env-file=.env.local scripts/import-vip-lama.mjs "<folder-data>/<laporan>.xlsx" [--commit] [--rollback]
+```
+
+- Nama, pola pencocokan, dan email login mitra ada di `<folder-data>/konfigurasi-migrasi.json` →
+  `vip.investor[]`; baris uji coba dikecualikan lewat `vip.abaikan[]`. **Jangan** masukkan ke repo.
+- Kategori: `Investasi` → `DEPOSIT`, `Penarikan Investasi` → `WITHDRAWAL`,
+  `Bagi Hasil Investasi` → `PROFIT_SHARE` (atau `DIVIDEND` bila "Deviden").
+- Saldo = setoran − penarikan; hasilnya cocok dengan catatan "Sisa …" di Excel per Okt 2026
+  (3 mitra aktif, 90 baris ledger). Jalankan ulang tiap bulan dari laporan terbaru sampai ada UI admin.
+- Tidak diimpor: investasi akad murabahah lama yang sudah selesai, dan setoran modal perusahaan.
+
 ## 7. Pensiun blueprint
 
 Hanya setelah: semua kontrak tercocokkan, callback `vsv-` ditangani langsung minimal 1 siklus
