@@ -104,6 +104,27 @@ const findTableByMarker = (xml: string, marker: string): { start: number; end: n
   return null
 }
 
+const removeDraftTemplateNotice = (xml: string): string => {
+  const notice = findTableByMarker(xml, 'Draft template.')
+  return notice ? `${xml.slice(0, notice.start)}${xml.slice(notice.end)}` : xml
+}
+
+const updateParagraphContaining = (
+  xml: string,
+  marker: string,
+  replacement: string | null,
+): string =>
+  xml.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g, (paragraph) => {
+    const text = Array.from(paragraph.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g), (match) =>
+      unescapeXml(match[1]),
+    ).join('')
+    if (!text.includes(marker)) return paragraph
+    if (replacement === null) return ''
+    const paragraphProperties = paragraph.match(/<w:pPr[\s\S]*?<\/w:pPr>/)?.[0] ?? ''
+    const runProperties = paragraph.match(/<w:rPr[\s\S]*?<\/w:rPr>/)?.[0] ?? ''
+    return `<w:p>${paragraphProperties}<w:r>${runProperties}<w:t xml:space="preserve">${escapeXml(replacement)}</w:t></w:r></w:p>`
+  })
+
 const splitRows = (table: string): string[] =>
   Array.from(table.matchAll(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/g), (match) => match[0])
 
@@ -278,6 +299,93 @@ const applyCostTable = (
   return xml.slice(0, tableStart.start) + newTable + xml.slice(tableStart.end)
 }
 
+const applyFullCoverCostTable = (xml: string, values: ResolvedValues): string => {
+  const location = findTableByMarker(xml, 'Penerima pembayaran')
+  if (!location) throw new Error(TEMPLATE_ERROR)
+  const table = xml.slice(location.start, location.end)
+  const rows = splitRows(table)
+  const findRow = (marker: string) => rows.find((row) => rowText(row).includes(marker)) ?? null
+  const header = findRow('Komponen')
+  const itemTemplate = findRow('Pendaftaran dan MCU')
+  const nafaqahSubtotal = findRow('Subtotal Nafaqah al-Wakalah')
+  const ujrahTemplate = findRow('Jasa perwakilan')
+  const ujrahSubtotal = findRow('Subtotal Ujrah')
+  const jualaTemplate = findRow('Imbalan penempatan')
+  const totalTemplate = findRow('TOTAL KEWAJIBAN PIHAK KEDUA')
+  if (
+    !header ||
+    !itemTemplate ||
+    !nafaqahSubtotal ||
+    !ujrahTemplate ||
+    !ujrahSubtotal ||
+    !jualaTemplate ||
+    !totalTemplate
+  ) {
+    throw new Error(TEMPLATE_ERROR)
+  }
+
+  const rebuiltRows = [
+    header,
+    replaceTableRowCells(itemTemplate, [
+      '1',
+      'Invoice tagihan LPK',
+      values.lpkMitra ? `LPK ${values.lpkMitra}` : 'LPK mitra',
+      `Rp${rp(values.hppInvoiceAmount)}`,
+      'Nafaqah (HPP)',
+    ]),
+    replaceTableRowCells(itemTemplate, [
+      '2',
+      'Uang saku siswa',
+      'PIHAK KEDUA',
+      `Rp${rp(values.hppPocketMoneyAmount)}`,
+      'Nafaqah (HPP)',
+    ]),
+    fillAmountCell(nafaqahSubtotal, values.nafaqahTotal) as string,
+    replaceTableRowCells(ujrahTemplate, [
+      '3',
+      'Jasa perwakilan (Wakalah bil Ujrah)',
+      'PIHAK PERTAMA',
+      `Rp${rp(values.ujrahTotal)}`,
+      'Ujrah, tetap',
+    ]),
+    fillAmountCell(ujrahSubtotal, values.ujrahTotal) as string,
+    replaceTableRowCells(jualaTemplate, [
+      '4',
+      "Imbalan penempatan (Ju'alah)",
+      'PIHAK PERTAMA',
+      `Rp${rp(values.jualaTotal)}`,
+      "Ju'l, dibayar jika COE terbit",
+    ]),
+    fillAmountCell(totalTemplate, values.totalIfCoe) as string,
+  ]
+  const nextTable = reassembleTable(table, rebuiltRows)
+  return xml.slice(0, location.start) + nextTable + xml.slice(location.end)
+}
+
+const applyAppendixDocumentsTable = (
+  xml: string,
+  documents: { label: string; date: string; condition: string; count: number }[],
+): string => {
+  const location = findTableByMarker(xml, 'Akta Kelahiran')
+  if (!location) throw new Error(TEMPLATE_ERROR)
+  const table = xml.slice(location.start, location.end)
+  const rows = splitRows(table)
+  const header = rows[0]
+  const template = rows.find((row) => rowText(row).includes('Akta Kelahiran'))
+  if (!header || !template) throw new Error(TEMPLATE_ERROR)
+  const documentRows = documents.map((document, index) =>
+    replaceTableRowCells(template, [
+      String(index + 1),
+      document.label,
+      document.condition === 'ORIGINAL' ? 'Asli' : 'Fotokopi',
+      String(document.count),
+      `Tanggal ${formatIsoLongDate(document.date) ?? document.date}`,
+    ]),
+  )
+  const nextTable = reassembleTable(table, [header, ...documentRows])
+  return xml.slice(0, location.start) + nextTable + xml.slice(location.end)
+}
+
 const applyScheduleTable = (xml: string, scheduleRows: string[]): string => {
   const location = findTableByMarker(xml, 'Angsuran ke-')
   if (!location) return xml
@@ -323,6 +431,21 @@ type ResolvedValues = {
   languageMonths: string | null
   skillMonths: string | null
   lpkMitra: string | null
+  hppInvoiceAmount: number
+  hppPocketMoneyAmount: number
+  languageAllowanceMonthly: number
+  skillAllowanceMonthly: number
+  departureAllowanceAmount: number
+  commitmentCompensationAmount: number
+  commitmentSettlementDays: number
+  wakalahDocumentReturnBusinessDays: number
+  wakalahWrittenWarningCount: number
+  wakalahGraceDays: number
+  wakalahOtherUjrahService: string | null
+  wakalahMediator: string | null
+  wakalahDisputeInstitution: string | null
+  guardianName: string | null
+  lpkWitnessName: string | null
 }
 
 const buildCommonArrays = (values: ResolvedValues) => {
@@ -339,6 +462,7 @@ const buildCommonArrays = (values: ResolvedValues) => {
     '[agama]': [values.religion],
     '[nomor KTP]': [values.nik ?? '……………………'],
     '[nomor HP]': [values.phone],
+    '[mitra]': [values.lpkMitra, values.lpkMitra],
     '[nama Pihak Kedua]': [values.name],
     '[nama lengkap Pihak Kedua]': [values.name],
     issueLong,
@@ -365,6 +489,7 @@ const resolveWakalah = (
     case '[agama]':
     case '[nomor KTP]':
     case '[nomor HP]':
+    case '[mitra]':
     case '[nama Pihak Kedua]': {
       const list = common[token as keyof typeof common]
       if (!Array.isArray(list)) return null
@@ -377,7 +502,23 @@ const resolveWakalah = (
       return at(list, index)
     }
     case '[jumlah]':
-      return at([null, null, String(values.installmentCount), null, null, null], index)
+      return at(
+        [
+          values.languageMonths,
+          values.skillMonths,
+          String(values.installmentCount),
+          String(values.wakalahDocumentReturnBusinessDays),
+          String(values.wakalahWrittenWarningCount),
+          String(values.wakalahGraceDays),
+        ],
+        index,
+      )
+    case '[hapus bila tidak ada]':
+      return ''
+    case '[pihak mediator, jika ada]':
+      return values.wakalahMediator ?? ''
+    case '[atau lembaga lain yang disepakati dan berwenang]':
+      return values.wakalahDisputeInstitution ?? ''
     case '[nominal]':
       return at(
         [
@@ -406,6 +547,7 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
   const tUjrah = terbilang(values.ujrahTotal)
   const tJuala = terbilang(values.jualaTotal)
   const tTotal = terbilang(values.totalIfCoe)
+  const tCommitment = terbilang(values.commitmentCompensationAmount)
   switch (token) {
     case '[nomor kontrak]':
     case '[bulan romawi]':
@@ -421,8 +563,10 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
       if (!Array.isArray(list)) return null
       return at(list as (string | null)[], index)
     }
+    case '[mitra]':
+      return at([values.lpkMitra, values.lpkMitra], index)
     case '[tanggal]':
-      return at([issueLong, null, issueLong, null], index)
+      return at([issueLong, values.firstPaymentLong, issueLong, issueLong], index)
     case '[ujrah]':
       return at(
         Array.from({ length: 5 }, () => rp(values.ujrahTotal)),
@@ -454,7 +598,7 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
           tJuala,
           tTotal,
           tJuala,
-          null,
+          tCommitment,
           tNafaqah,
           tUjrah,
           tJuala,
@@ -468,7 +612,7 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
           String(values.tenorMonths),
           values.languageMonths,
           values.skillMonths,
-          null,
+          String(values.commitmentSettlementDays),
           String(values.tenorMonths),
           values.languageMonths,
           values.skillMonths,
@@ -477,33 +621,19 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
       )
     case '[angsuran]':
       return at([rp(values.monthlyAfterCoe)], index)
-    case '[mitra]':
-      return at([values.lpkMitra, values.lpkMitra], index)
-    case '[ ]':
+    case '[nominal]':
       return at(
         [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          rp(values.nafaqahTotal),
-          rp(values.ujrahTotal),
-          rp(values.ujrahTotal),
-          rp(values.jualaTotal),
-          rp(values.totalIfCoe),
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
+          rp(values.languageAllowanceMonthly),
+          rp(values.skillAllowanceMonthly),
+          rp(values.departureAllowanceAmount),
+          rp(values.commitmentCompensationAmount),
         ],
+        index,
+      )
+    case '[ ]':
+      return at(
+        Array.from({ length: 8 }, () => null),
         index,
       )
     default:
@@ -564,6 +694,8 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
   const religionRaw = readText(personal.religion)
   const religion = RELIGION_LABELS[religionRaw] ?? (religionRaw || null)
   const nik = readText(personal.idCardNumber) || null
+  const guardianName = readText(personal.guardianName) || null
+  const lpkWitnessName = readText(plan.lpkWitnessName) || null
 
   if (product === 'FULL_COVER') {
     const nafaqahTotal = readNumber(plan.nafaqahTotal)
@@ -599,7 +731,7 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
       total: totalObligation,
       installmentCount: tenorMonths,
       monthlyInstallment: monthlyAfterCoe,
-      firstPaymentLong: null,
+      firstPaymentLong: formatIsoLongDate(deriveFirstPaymentDate(application)),
       jualaTotal,
       totalIfCoe,
       tenorMonths,
@@ -607,6 +739,22 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
       languageMonths,
       skillMonths,
       lpkMitra,
+      hppInvoiceAmount:
+        readNumber(plan.hppLpkInvoiceAmount) || readNumber(fullCover.lpkInvoiceAmount),
+      hppPocketMoneyAmount: readNumber(plan.hppPocketMoneyAmount),
+      languageAllowanceMonthly: readNumber(plan.languageAllowanceMonthly),
+      skillAllowanceMonthly: readNumber(plan.skillAllowanceMonthly),
+      departureAllowanceAmount: readNumber(plan.departureAllowanceAmount),
+      commitmentCompensationAmount: readNumber(plan.commitmentCompensationAmount),
+      commitmentSettlementDays: readNumber(plan.commitmentSettlementDays),
+      wakalahDocumentReturnBusinessDays: readNumber(plan.wakalahDocumentReturnBusinessDays),
+      wakalahWrittenWarningCount: readNumber(plan.wakalahWrittenWarningCount),
+      wakalahGraceDays: readNumber(plan.wakalahGraceDays),
+      wakalahOtherUjrahService: readText(plan.wakalahOtherUjrahService) || null,
+      wakalahMediator: readText(plan.wakalahMediator) || null,
+      wakalahDisputeInstitution: readText(plan.wakalahDisputeInstitution) || null,
+      guardianName,
+      lpkWitnessName,
     }
   }
 
@@ -642,9 +790,28 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
     totalIfCoe: total,
     tenorMonths: installmentCount,
     monthlyAfterCoe: monthlyInstallment,
-    languageMonths: null,
-    skillMonths: null,
+    languageMonths: readNumber(plan.wakalahLanguageMonths)
+      ? String(readNumber(plan.wakalahLanguageMonths))
+      : null,
+    skillMonths: readNumber(plan.wakalahSkillMonths)
+      ? String(readNumber(plan.wakalahSkillMonths))
+      : null,
     lpkMitra,
+    hppInvoiceAmount: readNumber(plan.hppLpkInvoiceAmount),
+    hppPocketMoneyAmount: readNumber(plan.hppPocketMoneyAmount),
+    languageAllowanceMonthly: readNumber(plan.languageAllowanceMonthly),
+    skillAllowanceMonthly: readNumber(plan.skillAllowanceMonthly),
+    departureAllowanceAmount: readNumber(plan.departureAllowanceAmount),
+    commitmentCompensationAmount: readNumber(plan.commitmentCompensationAmount),
+    commitmentSettlementDays: readNumber(plan.commitmentSettlementDays),
+    wakalahDocumentReturnBusinessDays: readNumber(plan.wakalahDocumentReturnBusinessDays),
+    wakalahWrittenWarningCount: readNumber(plan.wakalahWrittenWarningCount),
+    wakalahGraceDays: readNumber(plan.wakalahGraceDays),
+    wakalahOtherUjrahService: readText(plan.wakalahOtherUjrahService) || null,
+    wakalahMediator: readText(plan.wakalahMediator) || null,
+    wakalahDisputeInstitution: readText(plan.wakalahDisputeInstitution) || null,
+    guardianName,
+    lpkWitnessName,
   }
 }
 
@@ -661,20 +828,48 @@ export const buildAkadDocument = async (options: {
   const zip = await JSZip.loadAsync(Buffer.from(base64, 'base64'))
   const documentFile = zip.file('word/document.xml')
   if (!documentFile) throw new Error(TEMPLATE_ERROR)
-  let xml = await documentFile.async('string')
+  let xml = removeDraftTemplateNotice(await documentFile.async('string'))
 
   const values = resolveValues(application, issuedAt)
   values.studentSequence = studentSequence
+  if (values.lpkWitnessName) {
+    xml = updateParagraphContaining(
+      xml,
+      'LPK Cahaya Indonesia Langgeng',
+      `LPK ${values.lpkMitra ?? 'mitra'} — ${values.lpkWitnessName}`,
+    )
+  }
 
   assertTokenCount(xml, '[nomor kontrak]', 1)
 
   if (template === 'WAKALAH') {
+    xml = updateParagraphContaining(
+      xml,
+      'Wali/Orang tua ',
+      values.guardianName ? `Wali/Orang tua PIHAK KEDUA: ${values.guardianName}` : null,
+    )
     assertTokenCount(xml, '[nominal]', 6)
     assertTokenCount(xml, '[jumlah]', 6)
 
     const plan = (application.financialPlan ?? {}) as Record<string, unknown>
     const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
     const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
+    const appendixDocuments = Array.isArray(plan.appendixDocuments)
+      ? plan.appendixDocuments.filter(
+          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
+        )
+      : []
+    const ticketIncluded = nafaqahItems.some((item) => /tiket/i.test(item.label))
+    if (!ticketIncluded) {
+      xml = updateParagraphContaining(xml, 'Biaya tiket dan keperluan keberangkatan', null)
+    }
+    xml = updateParagraphContaining(
+      xml,
+      '[jasa lain yang dikerjakan PIHAK PERTAMA sendiri, jelaskan]',
+      values.wakalahOtherUjrahService
+        ? `Jasa lain yang dikerjakan PIHAK PERTAMA: ${values.wakalahOtherUjrahService}`
+        : null,
+    )
 
     const schedule = calculateInstallmentSchedule(
       values.total,
@@ -718,9 +913,40 @@ export const buildAkadDocument = async (options: {
       }
     }
 
+    xml = applyAppendixDocumentsTable(
+      xml,
+      appendixDocuments.map((item) => ({
+        label: readText(item.label),
+        date: readText(item.date),
+        condition: readText(item.condition),
+        count: readNumber(item.count),
+      })),
+    )
+
     xml = fillTokens(xml, (token, index) => resolveWakalah(token, index, values, scheduleRebuilt))
   } else {
+    xml = updateParagraphContaining(
+      xml,
+      'Wali ',
+      values.guardianName ? `Wali: ${values.guardianName}` : null,
+    )
     assertTokenCount(xml, '[tanggal]', 4)
+    xml = applyFullCoverCostTable(xml, values)
+    const plan = (application.financialPlan ?? {}) as Record<string, unknown>
+    const appendixDocuments = Array.isArray(plan.appendixDocuments)
+      ? plan.appendixDocuments.filter(
+          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
+        )
+      : []
+    xml = applyAppendixDocumentsTable(
+      xml,
+      appendixDocuments.map((item) => ({
+        label: readText(item.label),
+        date: readText(item.date),
+        condition: readText(item.condition),
+        count: readNumber(item.count),
+      })),
+    )
     xml = fillTokens(xml, (token, index) => resolveJualah(token, index, values))
   }
 

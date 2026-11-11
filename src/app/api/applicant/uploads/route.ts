@@ -282,16 +282,39 @@ const handleChunk = async (request: Request, uid: string) => {
 }
 
 export async function POST(request: Request) {
+  const requestIdHeader = request.headers.get('x-upload-request-id') ?? ''
+  const requestId = /^[A-Za-z0-9-]{8,64}$/.test(requestIdHeader)
+    ? requestIdHeader
+    : crypto.randomUUID().slice(0, 8)
+  const action = request.headers.get('x-upload-action') ?? 'unknown'
+  let stage = 'verify-token'
+
   const identity = await verifyGoogleToken(request)
   if (!identity) return failure('Sesi unggah telah berakhir. Silakan muat ulang halaman.', 401)
 
-  const action = request.headers.get('x-upload-action')
   try {
-    if (action === 'init') return await handleInit(request, identity.uid)
-    if (action === 'chunk') return await handleChunk(request, identity.uid)
+    if (action === 'init') {
+      stage = 'initialize-upload'
+      return await handleInit(request, identity.uid)
+    }
+    if (action === 'chunk') {
+      stage = 'upload-chunk'
+      return await handleChunk(request, identity.uid)
+    }
     return failure('Permintaan unggahan tidak valid.', 404)
   } catch (error) {
     if (error instanceof GDriveError) return failure(error.message, statusForError(error))
-    return failure('Berkas belum dapat diunggah. Silakan coba lagi.', 502)
+    const errorCode =
+      error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : 'unknown'
+    console.error('[applicant-uploads] Request failed', {
+      requestId,
+      action,
+      stage,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorCode,
+    })
+    return failure(`Berkas belum dapat diunggah. Silakan coba lagi. Referensi: ${requestId}.`, 502)
   }
 }

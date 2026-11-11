@@ -31,6 +31,7 @@ const readJson = async (response: Response): Promise<UploadResponse> =>
 
 export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveUploadResult> => {
   const { file, token, documentIndex } = options
+  const requestId = globalThis.crypto.randomUUID().slice(0, 8)
   if (!token) throw new Error('Sesi unggah telah berakhir. Silakan muat ulang halaman.')
   if (!Number.isSafeInteger(file.size) || file.size <= 0) {
     throw new Error('Ukuran berkas tidak valid.')
@@ -42,6 +43,7 @@ export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveU
       'Content-Type': 'application/json',
       'x-upload-action': 'init',
       'x-upload-token': token,
+      'x-upload-request-id': requestId,
     },
     body: JSON.stringify({
       fileName: file.name,
@@ -56,7 +58,10 @@ export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveU
   })
   const initData = await readJson(initResponse)
   if (!initResponse.ok || !initData.ok || !initData.ticket || !initData.chunkSize) {
-    throw new Error(initData.message || 'Berkas belum dapat diunggah. Silakan coba lagi.')
+    throw new Error(
+      initData.message ||
+        `Berkas belum dapat diunggah saat menyiapkan sesi (HTTP ${initResponse.status}, kode ${requestId}).`,
+    )
   }
 
   const ticket = initData.ticket
@@ -71,12 +76,16 @@ export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveU
         'x-upload-action': 'chunk',
         'x-upload-ticket': ticket,
         'x-upload-token': token,
+        'x-upload-request-id': requestId,
       },
       body: file.slice(start, end + 1),
     })
     const chunkData = await readJson(chunkResponse)
     if (!chunkResponse.ok || !chunkData.ok) {
-      throw new Error(chunkData.message || 'Berkas belum dapat diunggah. Silakan coba lagi.')
+      throw new Error(
+        chunkData.message ||
+          `Berkas belum dapat diunggah saat mengirim potongan (HTTP ${chunkResponse.status}, kode ${requestId}).`,
+      )
     }
     if (end + 1 >= file.size) {
       if (!chunkData.fileId || !chunkData.fileName || !chunkData.mimeType) {
@@ -90,5 +99,5 @@ export const uploadToDrive = async (options: DriveUploadOptions): Promise<DriveU
       }
     }
   }
-  throw new Error('Berkas belum dapat diunggah. Silakan coba lagi.')
+  throw new Error(`Berkas belum dapat diunggah (kode ${requestId}).`)
 }

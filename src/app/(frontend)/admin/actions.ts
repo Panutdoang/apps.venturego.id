@@ -17,6 +17,7 @@ import { buildAkadDocument } from '@/lib/akad-document'
 import { getFirebaseFirestore } from '@/lib/firebase-admin'
 import { getStaffSession } from '@/lib/firebase-session'
 import { ensureStudentNumber, studentNumberSequence } from '@/lib/student-number'
+import { FINANCING_OPTIONS } from '@/lib/financing-plan'
 
 type ActionResult = { ok: true } | { ok: false; message: string }
 
@@ -42,6 +43,54 @@ const appendFinancialHistory = (applicationData: DocumentData, entry: Record<str
   return [...previousHistory.slice(-19), entry]
 }
 
+const parseAkadAppendixDocuments = (value: string): Record<string, unknown>[] | null => {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 20) return null
+    const normalized: Record<string, unknown>[] = []
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+      const document = item as Record<string, unknown>
+      const label = typeof document.label === 'string' ? document.label.trim() : ''
+      const date = typeof document.date === 'string' ? document.date : ''
+      const condition = document.condition
+      const count = document.count
+      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : null
+      if (
+        label.length > 120 ||
+        (date !== '' && (!parsedDate || parsedDate.toISOString().slice(0, 10) !== date)) ||
+        !['ORIGINAL', 'COPY', ''].includes(String(condition)) ||
+        typeof count !== 'number' ||
+        !Number.isInteger(count) ||
+        count < 0 ||
+        count > 100
+      )
+        return null
+      normalized.push({ label, date, condition, count })
+    }
+    return normalized
+  } catch {
+    return null
+  }
+}
+
+const hasCompleteAkadAppendixDocuments = (value: unknown): boolean => {
+  const documents = parseAkadAppendixDocuments(JSON.stringify(value ?? null))
+  return Boolean(
+    documents?.length &&
+    documents.every(
+      (item) =>
+        typeof item.label === 'string' &&
+        item.label.trim().length > 0 &&
+        typeof item.date === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
+        ['ORIGINAL', 'COPY'].includes(String(item.condition)) &&
+        typeof item.count === 'number' &&
+        item.count >= 1,
+    ),
+  )
+}
+
 const validateDepartureApproval = (
   applicationData: DocumentData,
   plan: Record<string, unknown>,
@@ -50,6 +99,42 @@ const validateDepartureApproval = (
   refundTotal: number,
   refundEvidenceReference: string,
 ): string | null => {
+  const hppInvoice = Number(plan.hppLpkInvoiceAmount)
+  const hppPocketMoney = Number(plan.hppPocketMoneyAmount)
+  const requestedAmount = Number(applicationData.departureDetails?.requestedFinancingAmount)
+  const languageMonths = Number(plan.wakalahLanguageMonths)
+  const skillMonths = Number(plan.wakalahSkillMonths)
+  const documentReturnDays = Number(plan.wakalahDocumentReturnBusinessDays)
+  const writtenWarningCount = Number(plan.wakalahWrittenWarningCount)
+  const graceDays = Number(plan.wakalahGraceDays)
+  if (
+    !Number.isSafeInteger(hppInvoice) ||
+    hppInvoice < 0 ||
+    !Number.isSafeInteger(hppPocketMoney) ||
+    hppPocketMoney < 0 ||
+    requestedAmount <= 0 ||
+    hppInvoice + hppPocketMoney !== requestedAmount ||
+    getFinancingLineTotal(nafaqahItems) !== hppInvoice ||
+    Number(plan.qardhAmount) !== hppPocketMoney ||
+    (hppPocketMoney > 0 && plan.qardhDisbursed !== true) ||
+    !Number.isInteger(languageMonths) ||
+    languageMonths < 1 ||
+    languageMonths > 60 ||
+    !Number.isInteger(skillMonths) ||
+    skillMonths < 1 ||
+    skillMonths > 60 ||
+    !Number.isInteger(documentReturnDays) ||
+    documentReturnDays < 1 ||
+    documentReturnDays > 90 ||
+    !Number.isInteger(writtenWarningCount) ||
+    writtenWarningCount < 1 ||
+    writtenWarningCount > 10 ||
+    !Number.isInteger(graceDays) ||
+    graceDays < 1 ||
+    graceDays > 90
+  ) {
+    return 'Lengkapi jangka waktu dan ketentuan Draft 1, lalu cocokkan HPP: invoice LPK + uang saku harus sama dengan nominal pengajuan, Nafaqah sama dengan invoice, dan uang saku sama dengan qardh yang diserahkan.'
+  }
   const positiveNafaqah = nafaqahItems.filter((line) => line.amount > 0)
   const positiveUjrah = ujrahItems.filter((line) => line.amount > 0)
   const installmentCount = Number(plan.installmentCount)
@@ -86,6 +171,41 @@ const validateFullCoverApproval = (
     return 'Akad contoh hanya menetapkan Ju’alah untuk Jepang; konfirmasi ketentuan negara tujuan terlebih dahulu.'
   }
   const { nafaqahTotal, ujrahTotal, jualaTotal, tenorMonths } = plan as Record<string, number>
+  const hppInvoice = Number(plan.hppLpkInvoiceAmount)
+  const hppPocketMoney = Number(plan.hppPocketMoneyAmount)
+  const fullCoverDetails = (applicationData.fullCoverDetails ?? {}) as Record<string, unknown>
+  const languageMonths = Number(fullCoverDetails.languageTrainingMonths)
+  const skillMonths = Number(fullCoverDetails.skillTrainingMonths)
+  const commitmentAmount = Number(plan.commitmentCompensationAmount)
+  const commitmentDays = Number(plan.commitmentSettlementDays)
+  const firstPaymentDate = String(plan.firstPaymentDate ?? '')
+  if (
+    !Number.isSafeInteger(hppInvoice) ||
+    hppInvoice < 0 ||
+    !Number.isSafeInteger(hppPocketMoney) ||
+    hppPocketMoney < 0 ||
+    hppInvoice + hppPocketMoney !== nafaqahTotal ||
+    !Number.isInteger(languageMonths) ||
+    languageMonths < 1 ||
+    languageMonths > 60 ||
+    !Number.isInteger(skillMonths) ||
+    skillMonths < 1 ||
+    skillMonths > 60 ||
+    !Number.isSafeInteger(Number(plan.languageAllowanceMonthly)) ||
+    Number(plan.languageAllowanceMonthly) < 0 ||
+    !Number.isSafeInteger(Number(plan.skillAllowanceMonthly)) ||
+    Number(plan.skillAllowanceMonthly) < 0 ||
+    !Number.isSafeInteger(Number(plan.departureAllowanceAmount)) ||
+    Number(plan.departureAllowanceAmount) < 0 ||
+    !Number.isSafeInteger(commitmentAmount) ||
+    commitmentAmount <= 0 ||
+    !Number.isInteger(commitmentDays) ||
+    commitmentDays < 1 ||
+    commitmentDays > 90 ||
+    !calculateInstallmentSchedule(0, 1, firstPaymentDate)
+  ) {
+    return 'Lengkapi durasi, uang saku, biaya komitmen, dan hari pelunasan Draft 2; total invoice LPK + uang saku juga harus sama dengan Nafaqah.'
+  }
   if (
     ![nafaqahTotal, ujrahTotal, jualaTotal, tenorMonths].every(Number.isFinite) ||
     tenorMonths < 1 ||
@@ -154,6 +274,18 @@ export async function saveFinancialPlan(
     'monthlyInstallment',
     'qardhAmount',
     'installmentCount',
+    'hppLpkInvoiceAmount',
+    'hppPocketMoneyAmount',
+    'wakalahLanguageMonths',
+    'wakalahSkillMonths',
+    'wakalahDocumentReturnBusinessDays',
+    'wakalahWrittenWarningCount',
+    'wakalahGraceDays',
+    'languageAllowanceMonthly',
+    'skillAllowanceMonthly',
+    'departureAllowanceAmount',
+    'commitmentCompensationAmount',
+    'commitmentSettlementDays',
   ] as const
   const financialNumbers: Partial<Record<(typeof financialFields)[number], number>> = {}
   for (const field of financialFields) {
@@ -187,6 +319,11 @@ export async function saveFinancialPlan(
     'settlementNotes',
     'refundEvidenceReference',
     'refundTotal',
+    'wakalahOtherUjrahService',
+    'wakalahMediator',
+    'wakalahDisputeInstitution',
+    'appendixDocuments',
+    'lpkWitnessName',
   ] as const
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
@@ -209,6 +346,10 @@ export async function saveFinancialPlan(
     settlementNotes.length > 1_000 ||
     refundEvidenceReference.length > 300 ||
     refundValue.length > 20 ||
+    (financialValues.wakalahOtherUjrahService?.length ?? 0) > 200 ||
+    (financialValues.wakalahMediator?.length ?? 0) > 200 ||
+    (financialValues.wakalahDisputeInstitution?.length ?? 0) > 200 ||
+    financialValues.lpkWitnessName.length > 120 ||
     (refundValue !== '' && !/^\d+$/.test(refundValue))
   ) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
@@ -216,6 +357,13 @@ export async function saveFinancialPlan(
   const refundTotal = refundValue === '' ? 0 : Number(refundValue)
   if (!Number.isSafeInteger(refundTotal)) {
     return { ok: false, message: 'Nominal pengembalian tidak valid.' }
+  }
+  const appendixDocuments = parseAkadAppendixDocuments(financialValues.appendixDocuments)
+  if (!appendixDocuments) {
+    return {
+      ok: false,
+      message: 'Lengkapi tanggal, status asli/fotokopi, dan jumlah dokumen lampiran.',
+    }
   }
   if (firstPaymentDate && !calculateInstallmentSchedule(0, 1, firstPaymentDate)) {
     return { ok: false, message: 'Tanggal angsuran pertama tidak valid.' }
@@ -240,6 +388,12 @@ export async function saveFinancialPlan(
     const nextFinancialPlan = {
       ...existingFinancialPlan,
       ...(applicationProduct === 'DEPARTURE_BRIDGING' ? financialNumbers : sharedNumbers),
+      wakalahOtherUjrahService: financialValues.wakalahOtherUjrahService.trim(),
+      wakalahMediator: financialValues.wakalahMediator.trim(),
+      wakalahDisputeInstitution: financialValues.wakalahDisputeInstitution.trim(),
+      appendixDocuments,
+      firstPaymentDate,
+      lpkWitnessName: financialValues.lpkWitnessName.trim(),
     }
     let updateValues: Record<string, unknown> = {}
     if (applicationProduct === 'DEPARTURE_BRIDGING') {
@@ -694,6 +848,21 @@ export async function approveApplicationPricing(
       return { ok: false, message: 'Dokumen akad telah terbit. Rincian biaya terkunci.' }
     }
     const product = applicationData.product
+    if (newNominal !== null && product === 'DEPARTURE_BRIDGING') {
+      const requested = applicationData.departureDetails?.requestedFinancingAmount
+      const requestedNumber =
+        typeof requested === 'number' && Number.isSafeInteger(requested) && requested > 0
+          ? requested
+          : 0
+      const isProgramOption = FINANCING_OPTIONS.some((option) => option.amount === newNominal)
+      if (!isProgramOption && (!requestedNumber || requestedNumber !== newNominal)) {
+        return {
+          ok: false,
+          message:
+            'Pilih nominal Dana Keberangkatan dari opsi yang tersedia atau nominal pengajuan siswa.',
+        }
+      }
+    }
     const plan = { ...(applicationData.financialPlan ?? {}) } as Record<string, unknown>
     const previousOffer = plan.offerSnapshot
     let nextPlan: Record<string, unknown> = { ...plan }
@@ -1089,6 +1258,16 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
         message: 'Terbitkan dokumen akad setelah rincian biaya berstatus Terverifikasi.',
       }
     }
+    if (!String(plan.lpkWitnessName ?? '').trim()) {
+      return { ok: false, message: 'Isi nama perwakilan LPK sebagai saksi pada tab Draft Akad.' }
+    }
+    if (!hasCompleteAkadAppendixDocuments(plan.appendixDocuments)) {
+      return {
+        ok: false,
+        message:
+          'Lengkapi nama, tanggal, status asli/fotokopi, dan jumlah dokumen lampiran sebelum menerbitkan akad.',
+      }
+    }
     const product = String(applicationData.product ?? '')
     if (product === 'DEPARTURE_BRIDGING') {
       const nafaqahItems = coerceFinancingLines(plan.nafaqahItems)
@@ -1105,6 +1284,15 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
             'Lengkapi rincian Nafaqah dan Ujrah pada tab Draft Akad sebelum menerbitkan dokumen.',
         }
       }
+      const hppError = validateDepartureApproval(
+        applicationData,
+        plan,
+        nafaqahItems,
+        ujrahItems,
+        Number(plan.refundTotal) || 0,
+        String(plan.refundEvidenceReference ?? '').trim(),
+      )
+      if (hppError) return { ok: false, message: hppError }
     } else if (product === 'FULL_COVER') {
       if (
         !(Number(plan.nafaqahTotal) > 0) ||
@@ -1117,6 +1305,8 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
             'Lengkapi Nafaqah, Ujrah, dan tenor pada tab Draft Akad sebelum menerbitkan dokumen.',
         }
       }
+      const hppError = validateFullCoverApproval(applicationData, plan)
+      if (hppError) return { ok: false, message: hppError }
     } else {
       return { ok: false, message: 'Jenis pengajuan tidak dikenal.' }
     }

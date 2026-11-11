@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { discardDriveUploads, submitFinancingApplication, type ApplicationInput } from './actions'
-import { formatRupiah } from '@/lib/financing-plan'
+import { FINANCING_OPTIONS, formatRupiah } from '@/lib/financing-plan'
 import {
   ACCEPTED_DOCUMENT_TYPES,
   DOCUMENT_DEFINITIONS,
@@ -54,6 +54,7 @@ const FULL_COVER_NEEDS = [
 const initialForm: ApplicationInput = {
   product: 'FULL_COVER',
   applicantName: '',
+  guardianName: '',
   phone: '',
   lpkName: '',
   birthPlace: '',
@@ -78,6 +79,7 @@ const initialForm: ApplicationInput = {
   trainingStartDate: '',
   languageTrainingMonths: '',
   skillTrainingMonths: '',
+  fullCoverInvoiceAmount: '',
   requiresTrainingAllowance: false,
   requiresAccommodation: false,
   estimatedDeparture: '',
@@ -572,6 +574,15 @@ export default function HomePage() {
                 />
               </label>
               <label className="field">
+                <span>Nama orang tua/wali</span>
+                <input
+                  value={form.guardianName}
+                  onChange={(e) => set('guardianName', e.target.value)}
+                  placeholder="Nama yang tercantum di bagian wali akad"
+                  required
+                />
+              </label>
+              <label className="field">
                 <span>Nomor WhatsApp</span>
                 <input
                   inputMode="tel"
@@ -747,9 +758,9 @@ export default function HomePage() {
                         onChange={(event) => set('financingAmount', event.target.value)}
                       >
                         <option value="">Pilih nilai pembiayaan</option>
-                        {[31_000_000, 33_000_000, 36_000_000, 40_000_000].map((amount) => (
-                          <option key={amount} value={String(amount)}>
-                            Rp{amount.toLocaleString('id-ID')}
+                        {FINANCING_OPTIONS.map((option) => (
+                          <option key={option.amount} value={String(option.amount)}>
+                            {option.label}
                           </option>
                         ))}
                       </select>
@@ -845,6 +856,9 @@ export default function HomePage() {
                       <span>Bahasa</span>
                       <input
                         inputMode="numeric"
+                        min="1"
+                        max="60"
+                        required
                         value={form.languageTrainingMonths}
                         onChange={(e) =>
                           set('languageTrainingMonths', e.target.value.replace(/\D/g, ''))
@@ -856,6 +870,9 @@ export default function HomePage() {
                       <span>Keterampilan</span>
                       <input
                         inputMode="numeric"
+                        min="1"
+                        max="60"
+                        required
                         value={form.skillTrainingMonths}
                         onChange={(e) =>
                           set('skillTrainingMonths', e.target.value.replace(/\D/g, ''))
@@ -864,6 +881,22 @@ export default function HomePage() {
                       />
                     </label>
                   </div>
+                  <label className="field">
+                    <span>Estimasi invoice/tagihan LPK untuk program ini</span>
+                    <div className="currency-input">
+                      <span>Rp</span>
+                      <input
+                        inputMode="numeric"
+                        value={formatAmountInput(form.fullCoverInvoiceAmount)}
+                        onChange={(event) =>
+                          set('fullCoverInvoiceAmount', event.target.value.replace(/\D/g, ''))
+                        }
+                        placeholder="Masukkan sesuai invoice LPK"
+                        required
+                      />
+                    </div>
+                    <small>Nilai ini menjadi acuan awal verifikasi biaya oleh admin.</small>
+                  </label>
                   <div className="need-section">
                     <strong>Kebutuhan yang diajukan</strong>
                     <div className="choice-list need-checkbox-list">

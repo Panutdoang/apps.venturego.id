@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { DOCUMENT_DEFINITIONS, getKtpDocumentIndex } from '@/lib/documents'
+import { FINANCING_OPTIONS } from '@/lib/financing-plan'
 import {
   APPLICATION_STATUSES,
   PRICING_STATUSES,
@@ -770,12 +771,27 @@ function ApplicationDrawerForm({
     estimatedTotalUjrah === null ? null : requestedAmount + estimatedTotalUjrah
 
   const nominalCap =
-    application.product === 'DEPARTURE_BRIDGING' && requestedAmount > 0 ? requestedAmount : null
+    application.product === 'DEPARTURE_BRIDGING' &&
+    Number.isSafeInteger(requestedAmount) &&
+    requestedAmount > 0
+      ? requestedAmount
+      : null
+  const standardNominalOptions = FINANCING_OPTIONS.filter(
+    (option) => nominalCap !== null && option.amount <= nominalCap,
+  )
+  const customApplicantNominalOption =
+    nominalCap !== null && !FINANCING_OPTIONS.some((option) => option.amount === nominalCap)
+      ? [{ amount: nominalCap, label: `Nominal diajukan (${formatRupiah(nominalCap)})` }]
+      : []
+  const nominalOptions = [...standardNominalOptions, ...customApplicantNominalOption]
   const parsedNewNominal = Number(newNominal.replace(/[^\d]/g, ''))
   const newNominalValid =
     Number.isSafeInteger(parsedNewNominal) &&
     parsedNewNominal > 0 &&
-    (nominalCap === null || parsedNewNominal <= nominalCap)
+    parsedNewNominal <= 10_000_000_000 &&
+    (nominalCap === null || parsedNewNominal <= nominalCap) &&
+    (application.product !== 'DEPARTURE_BRIDGING' ||
+      nominalOptions.some((option) => option.amount === parsedNewNominal))
 
   const pricingStatusLabel =
     pricingStatus === 'ESTIMATED'
@@ -848,6 +864,30 @@ function ApplicationDrawerForm({
   const planTotal = Number(application.financialPlan?.totalObligation) || 0
   const planApproved =
     (pricingStatus === 'VERIFIED' || pricingStatus === 'AGREED') && planNafaqah > 0 && planUjrah > 0
+  const approvedWakalahRows = [
+    ['Principal (nominal disetujui)', formatRupiah(planNafaqah)],
+    ['Rata-rata Ujrah per bulan (12 bulan)', formatRupiah(Math.round(planUjrah / 12))],
+    ['Total Ujrah (12 bulan)', formatRupiah(planUjrah)],
+    ['Biaya admin (5%)', formatRupiah(Math.round(planNafaqah * 0.05))],
+    ['Pencairan bersih ke pemohon', formatRupiah(planNafaqah - Math.round(planNafaqah * 0.05))],
+    ['Total nominal kewajiban', formatRupiah(planTotal)],
+  ] as const
+  const approvedFullCoverRows = [
+    ['Total Nafaqah', formatRupiah(application.financialPlan?.nafaqahTotal)],
+    ['Total Ujrah', formatRupiah(application.financialPlan?.ujrahTotal)],
+    ['Ju’alah (saat COE terbit)', formatRupiah(application.financialPlan?.jualaTotal)],
+    [
+      'Tenor setelah keberangkatan',
+      application.financialPlan?.tenorMonths
+        ? `${String(application.financialPlan.tenorMonths)} bulan`
+        : '—',
+    ],
+    ['Total kewajiban (di luar Ju’alah)', formatRupiah(application.financialPlan?.totalObligation)],
+    [
+      'Angsuran per bulan (setelah COE)',
+      formatRupiah(application.financialPlan?.monthlyInstallmentAfterCoe),
+    ],
+  ] as const
 
   const workflowDirty =
     workflowStatus !== application.status || workflowNotes !== (application.internalNotes ?? '')
@@ -881,38 +921,41 @@ function ApplicationDrawerForm({
       className="flex h-full flex-col bg-white"
     >
       {/* Drawer Header: identity + close */}
-      <div className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-[#0b57d0] px-2.5 py-1 text-xs font-bold text-white">
-              {application.applicationId}
-            </span>
-            <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#0b57d0] ring-1 ring-inset ring-blue-200">
-              {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
-            </span>
+      <div className="relative overflow-hidden border-b border-blue-800/20 bg-gradient-to-br from-[#0b57d0] to-[#0842a0] px-6 py-4 text-white">
+        <div className="absolute -right-10 -top-16 size-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-xs font-bold text-white">
+                {application.applicationId}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
+                {application.product === 'FULL_COVER' ? 'VSV Full Cover' : 'VSV Dana Keberangkatan'}
+              </span>
+            </div>
+            <button
+              aria-label="Tutup panel pengajuan"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-white/85 transition hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              onClick={onClose}
+              type="button"
+            >
+              ✕
+            </button>
           </div>
-          <button
-            aria-label="Tutup panel pengajuan"
-            className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0]"
-            onClick={onClose}
-            type="button"
-          >
-            ✕
-          </button>
+          <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-white">
+            {application.applicantName}
+          </h2>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-blue-100">
+            <span className="font-medium text-white">{application.lpkName}</span>
+            <span aria-hidden="true" className="text-white/50">
+              |
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium text-white/90">
+              <DestinationFlag destination={application.destination} />
+              {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'}
+            </span>
+          </p>
         </div>
-        <h2 className="mt-2.5 text-2xl font-extrabold tracking-tight text-slate-900">
-          {application.applicantName}
-        </h2>
-        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span className="font-medium text-slate-700">{application.lpkName}</span>
-          <span aria-hidden="true" className="text-slate-300">
-            |
-          </span>
-          <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
-            <DestinationFlag destination={application.destination} />
-            {application.destination === 'JAPAN' ? 'Jepang' : 'Turki'}
-          </span>
-        </p>
         {error && (
           <div
             className="mt-3 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800"
@@ -963,11 +1006,11 @@ function ApplicationDrawerForm({
                 type="button"
               >
                 <TabIcon id={tab.id} />
-                <span>{tab.label}</span>
+                <span className="text-xs leading-none">{tab.label}</span>
                 {badge && (
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      isActive ? 'bg-white/15 text-white' : 'bg-slate-200 text-slate-600'
+                    className={`text-xs font-normal ${
+                      isActive ? 'text-white/80' : 'text-slate-500'
                     }`}
                   >
                     {badge}
@@ -1170,20 +1213,24 @@ function ApplicationDrawerForm({
         <div className={activeTab === 'nominal' ? 'block space-y-4' : 'hidden'}>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <span className="text-[11px] font-medium text-slate-500">Nominal Diajukan</span>
+              <span className="text-[11px] font-medium text-slate-500">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? 'Nominal Diajukan'
+                  : 'Total Nafaqah + Ujrah'}
+              </span>
               <strong className="mt-1 block text-xl font-extrabold text-[#0b57d0]">
                 {application.product === 'DEPARTURE_BRIDGING'
                   ? formatRupiah(departure.requestedFinancingAmount)
-                  : formatRupiah(
-                      typeof fullCover.financingAmount === 'number'
-                        ? fullCover.financingAmount
-                        : null,
-                    )}
+                  : planNafaqah > 0 && planUjrah > 0
+                    ? formatRupiah(planNafaqah + planUjrah)
+                    : 'Menunggu rincian'}
               </strong>
               <span className="mt-1 block text-[11px] text-slate-400">
                 {application.product === 'DEPARTURE_BRIDGING'
                   ? 'Plafon maksimum persetujuan staf'
-                  : 'Perhitungan berbasis Nafaqah + Ujrah'}
+                  : planNafaqah > 0 && planUjrah > 0
+                    ? 'Nilai berdasarkan rincian biaya saat ini'
+                    : 'Nilai tampil setelah Nafaqah dan Ujrah diisi di Draft Akad'}
               </span>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -1234,23 +1281,13 @@ function ApplicationDrawerForm({
                 <h3 className="text-sm font-bold text-slate-900">Nominal Wakalah (Sistem)</h3>
                 <p className="mt-1 text-xs text-slate-500">
                   {planApproved
-                    ? 'Rincian tersimpan sesuai nominal yang disetujui: ujrah 2,4% per bulan dikalikan 12 bulan dan biaya admin 5%.'
+                    ? 'Rincian tersimpan mengikuti nilai yang disetujui. Ujrah per bulan di bawah adalah rata-rata untuk periode 12 bulan; biaya admin 5%.'
                     : 'Perhitungan otomatis berbasis nominal yang diajukan: ujrah 2,4% per bulan dikalikan 12 bulan dan biaya admin 5%.'}
                 </p>
               </div>
               <dl className="divide-y divide-slate-100 px-5 text-xs">
                 {(planApproved
-                  ? ([
-                      ['Principal (nominal disetujui)', formatRupiah(planNafaqah)],
-                      ['Ujrah per bulan (2,4%)', formatRupiah(Math.round(planUjrah / 12))],
-                      ['Ujrah × 12 bulan', formatRupiah(planUjrah)],
-                      ['Biaya admin (5%)', formatRupiah(Math.round(planNafaqah * 0.05))],
-                      [
-                        'Pencairan bersih ke pemohon',
-                        formatRupiah(planNafaqah - Math.round(planNafaqah * 0.05)),
-                      ],
-                      ['Total nominal kewajiban', formatRupiah(planTotal)],
-                    ] as const)
+                  ? approvedWakalahRows
                   : ([
                       ['Principal (nominal diajukan)', formatRupiah(requestedAmount)],
                       ['Ujrah per bulan (2,4%)', formatRupiah(estimatedMonthlyUjrah)],
@@ -1280,98 +1317,20 @@ function ApplicationDrawerForm({
             </section>
           )}
 
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Rincian Biaya Saat Ini</h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Nilai tersimpan yang menjadi dasar penawaran kepada pemohon.
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
-                  PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
-                } ring-slate-200`}
-              >
-                {pricingStatusLabel}
-              </span>
+          <section aria-labelledby="pricing-approval-title" className="space-y-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900" id="pricing-approval-title">
+                Persetujuan Biaya
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {pricingStatus === 'ESTIMATED'
+                  ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru, lalu jadwal angsuran dihitung ulang.'
+                  : pricingStatus === 'VERIFIED'
+                    ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Akad.'
+                    : 'Rincian biaya sudah disepakati dan siap diproses ke tahap akad.'}
+              </p>
             </div>
-            <dl className="grid gap-x-6 gap-y-3 px-5 py-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
-              {application.product === 'DEPARTURE_BRIDGING'
-                ? (
-                    [
-                      [
-                        'Total Nafaqah',
-                        formatRupiah(application.financialPlan?.nafaqahTotal ?? null),
-                      ],
-                      ['Total Ujrah', formatRupiah(application.financialPlan?.ujrahTotal ?? null)],
-                      ['Qardh', formatRupiah(application.financialPlan?.qardhAmount ?? null)],
-                      [
-                        'Refund / potongan',
-                        formatRupiah(application.financialPlan?.refundTotal ?? null),
-                      ],
-                      [
-                        'Total kewajiban',
-                        formatRupiah(application.financialPlan?.totalObligation ?? null),
-                      ],
-                      [
-                        'Jadwal angsuran',
-                        application.financialPlan?.firstPaymentDate
-                          ? `${String(application.financialPlan.installmentCount ?? '—')}× mulai ${formatDateShort(application.financialPlan.firstPaymentDate)}`
-                          : 'Belum diatur',
-                      ],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <div key={label}>
-                      <dt className="text-slate-400">{label}</dt>
-                      <dd className="mt-0.5 font-semibold text-slate-900">{value}</dd>
-                    </div>
-                  ))
-                : (
-                    [
-                      [
-                        'Total Nafaqah',
-                        formatRupiah(application.financialPlan?.nafaqahTotal ?? null),
-                      ],
-                      ['Total Ujrah', formatRupiah(application.financialPlan?.ujrahTotal ?? null)],
-                      [
-                        'Ju’alah (saat COE terbit)',
-                        formatRupiah(application.financialPlan?.jualaTotal ?? null),
-                      ],
-                      [
-                        'Tenor setelah keberangkatan',
-                        application.financialPlan?.tenorMonths
-                          ? `${String(application.financialPlan.tenorMonths)} bulan`
-                          : '—',
-                      ],
-                      [
-                        'Total kewajiban (di luar Ju’alah)',
-                        formatRupiah(application.financialPlan?.totalObligation ?? null),
-                      ],
-                      [
-                        'Angsuran per bulan (setelah COE)',
-                        formatRupiah(application.financialPlan?.monthlyInstallmentAfterCoe ?? null),
-                      ],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <div key={label}>
-                      <dt className="text-slate-400">{label}</dt>
-                      <dd className="mt-0.5 font-semibold text-slate-900">{value}</dd>
-                    </div>
-                  ))}
-            </dl>
-          </section>
-
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
-            <h3 className="text-sm font-bold text-slate-900">Persetujuan Biaya</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              {pricingStatus === 'ESTIMATED'
-                ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru, lalu jadwal angsuran dihitung ulang.'
-                : pricingStatus === 'VERIFIED'
-                  ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Akad.'
-                  : 'Rincian biaya sudah disepakati dan siap diproses ke tahap akad.'}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               {pricingStatus === 'ESTIMATED' && (
                 <>
                   <DrawerAction
@@ -1410,6 +1369,54 @@ function ApplicationDrawerForm({
                 </span>
               )}
             </div>
+          </section>
+
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Rincian Biaya yang Disetujui</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {planApproved
+                    ? 'Rincian final yang menjadi dasar penawaran kepada pemohon.'
+                    : 'Rincian akan tampil setelah biaya disetujui.'}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                  PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
+                } ring-slate-200`}
+              >
+                {pricingStatusLabel}
+              </span>
+            </div>
+            {planApproved ? (
+              <dl className="divide-y divide-slate-100 px-5 text-xs">
+                {(application.product === 'DEPARTURE_BRIDGING'
+                  ? approvedWakalahRows
+                  : approvedFullCoverRows
+                ).map(([label, value], index, rows) => (
+                  <div
+                    className={`flex items-center justify-between gap-4 py-2.5 ${
+                      index === rows.length - 1 ? 'font-bold text-[#0b57d0]' : 'text-slate-600'
+                    }`}
+                    key={label}
+                  >
+                    <dt>{label}</dt>
+                    <dd
+                      className={`shrink-0 text-right ${
+                        index === rows.length - 1 ? 'text-sm' : 'font-semibold text-slate-900'
+                      }`}
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="px-5 py-4 text-xs text-slate-500">
+                Belum ada rincian biaya yang disetujui.
+              </p>
+            )}
           </section>
         </div>
 
@@ -1560,7 +1567,9 @@ function ApplicationDrawerForm({
             disabled={akadIssued}
           >
             <FinanceTermsFields
+              departureDetails={application.departureDetails}
               financialPlan={application.financialPlan}
+              fullCoverDetails={application.fullCoverDetails}
               key={JSON.stringify(application.financialPlan ?? {})}
               product={application.product}
             />
@@ -1957,97 +1966,189 @@ function ApplicationDrawerForm({
 
       {/* Slide-over khusus: Setujui dengan Nominal Baru */}
       {showNominalInput && (pricingStatus === 'ESTIMATED' || pricingStatus === 'VERIFIED') && (
-        <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
-          <div className="flex h-dvh w-full max-w-md flex-col bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-slate-900">Setujui dengan Nominal Baru</h3>
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                  {application.applicantName} · {application.applicationId}
+        <div
+          className="fixed inset-0 z-[60] flex justify-end bg-slate-950/55 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !pending) {
+              setShowNominalInput(false)
+              setNewNominal('')
+            }
+          }}
+        >
+          <section
+            aria-labelledby="new-nominal-title"
+            aria-modal="true"
+            className="flex h-dvh w-full max-w-lg flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="relative overflow-hidden bg-gradient-to-br from-[#0b57d0] to-[#0842a0] px-6 pb-5 pt-6 text-white">
+              <div className="absolute -right-10 -top-14 size-44 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold tracking-tight" id="new-nominal-title">
+                    Setujui dengan Nominal Baru
+                  </h3>
+                  <p className="mt-1 truncate text-xs text-blue-100">{application.applicantName}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-inset ring-white/20">
+                      {application.applicationId}
+                    </span>
+                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-inset ring-white/20">
+                      {application.product === 'DEPARTURE_BRIDGING'
+                        ? 'Dana Keberangkatan'
+                        : 'Full Cover'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  aria-label="Tutup pengaturan nominal baru"
+                  className="grid size-9 shrink-0 place-items-center rounded-xl text-white/80 transition hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  disabled={pending}
+                  onClick={() => {
+                    setShowNominalInput(false)
+                    setNewNominal('')
+                  }}
+                  type="button"
+                >
+                  <span aria-hidden="true">✕</span>
+                </button>
+              </div>
+              <p className="relative mt-4 max-w-md text-xs leading-5 text-blue-100">
+                Sesuaikan penawaran sebelum siswa menyatakan setuju dan sebelum dokumen akad
+                diterbitkan.
+              </p>
+            </header>
+
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-xs">
+                  <span className="text-[11px] font-medium text-slate-500">
+                    {nominalCap !== null ? 'Batas dari pengajuan siswa' : 'Nominal pengajuan'}
+                  </span>
+                  <strong className="mt-1 block text-lg font-bold text-[#0b57d0]">
+                    {nominalCap !== null ? formatRupiah(nominalCap) : 'Tidak ditentukan'}
+                  </strong>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <span className="text-[11px] font-medium text-slate-500">
+                    Total kewajiban saat ini
+                  </span>
+                  <strong className="mt-1 block text-lg font-bold text-slate-900">
+                    {formatRupiah(application.financialPlan?.totalObligation ?? null)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <span className="text-xs font-medium text-slate-600">Status biaya</span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                    PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
+                  } ring-slate-200`}
+                >
+                  {pricingStatusLabel}
+                </span>
+              </div>
+
+              <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-950">
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[#0b57d0] shadow-xs">
+                  <svg
+                    aria-hidden="true"
+                    className="size-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.8}
+                    viewBox="0 0 24 24"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 11v5m0-8h.01" />
+                  </svg>
+                </span>
+                <p>
+                  Rincian Nafaqah &amp; Ujrah disesuaikan secara proporsional agar totalnya sama
+                  dengan nominal baru. Jadwal angsuran dihitung ulang dan status biaya menjadi
+                  Terverifikasi.
                 </p>
               </div>
+
+              <label className="block text-xs font-semibold text-slate-800">
+                {application.product === 'DEPARTURE_BRIDGING'
+                  ? 'Pilih nominal Dana Keberangkatan'
+                  : 'Nominal baru Full Cover (Rp)'}
+                {application.product === 'DEPARTURE_BRIDGING' ? (
+                  <select
+                    autoFocus
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 shadow-xs outline-none transition focus:border-[#0b57d0] focus:ring-4 focus:ring-blue-100"
+                    onChange={(event) => setNewNominal(event.target.value)}
+                    value={newNominal}
+                  >
+                    <option value="">Pilih nominal penawaran</option>
+                    {nominalOptions.map((option) => (
+                      <option key={option.amount} value={String(option.amount)}>
+                        {option.label}
+                        {option.amount === nominalCap &&
+                          FINANCING_OPTIONS.some((item) => item.amount === nominalCap) &&
+                          ' · nominal diajukan'}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    autoFocus
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 shadow-xs outline-none transition focus:border-[#0b57d0] focus:ring-4 focus:ring-blue-100"
+                    inputMode="numeric"
+                    min={1}
+                    max={10_000_000_000}
+                    onChange={(event) => setNewNominal(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.preventDefault()
+                    }}
+                    placeholder="Contoh: 120000000"
+                    step={1}
+                    type="number"
+                    value={newNominal}
+                  />
+                )}
+              </label>
+              {application.product === 'DEPARTURE_BRIDGING' ? (
+                <p className="text-[11px] leading-5 text-slate-500">
+                  Pilihan mengikuti nominal program dan tidak melebihi plafon yang diajukan siswa.
+                </p>
+              ) : (
+                <p className="text-[11px] leading-5 text-slate-500">
+                  Full Cover tidak memiliki opsi nominal baku. Masukkan total baru; maksimal
+                  Rp10.000.000.000.
+                </p>
+              )}
+              {newNominal !== '' && !newNominalValid && (
+                <p
+                  className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700"
+                  role="alert"
+                >
+                  {application.product === 'DEPARTURE_BRIDGING'
+                    ? 'Pilih nominal yang tersedia dan tidak melebihi nominal pengajuan siswa.'
+                    : 'Nominal harus lebih dari Rp0 dan tidak melebihi Rp10.000.000.000.'}
+                </p>
+              )}
+            </div>
+
+            <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
-                aria-label="Tutup pengaturan nominal baru"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={pending}
                 onClick={() => {
                   setShowNominalInput(false)
                   setNewNominal('')
                 }}
                 type="button"
               >
-                ✕
+                Batal
               </button>
-            </div>
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500">Nominal diajukan (maksimal)</span>
-                  <strong className="text-slate-900">
-                    {nominalCap !== null ? formatRupiah(nominalCap) : '—'}
-                  </strong>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500">Total kewajiban saat ini</span>
-                  <strong className="text-slate-900">
-                    {formatRupiah(application.financialPlan?.totalObligation ?? null)}
-                  </strong>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-500">Status biaya</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset ${
-                      PRICING_BADGE_STYLES[pricingStatus] ?? 'bg-slate-100 text-slate-700'
-                    } ring-slate-200`}
-                  >
-                    {pricingStatusLabel}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs leading-5 text-slate-500">
-                Rincian Nafaqah &amp; Ujrah disesuaikan secara proporsional agar totalnya sama
-                dengan nominal baru, lalu jadwal angsuran dihitung ulang. Status biaya menjadi
-                Terverifikasi.
-              </p>
-              <label className="block text-xs font-semibold text-slate-700">
-                Nominal baru (Rp)
-                <input
-                  autoFocus
-                  className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-                  min={1}
-                  onChange={(event) => setNewNominal(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') event.preventDefault()
-                  }}
-                  placeholder="Contoh: 120000000"
-                  step={1}
-                  type="number"
-                  value={newNominal}
-                />
-              </label>
-              {newNominal !== '' && !newNominalValid && (
-                <p className="text-[11px] font-semibold text-red-600" role="alert">
-                  Nominal harus lebih dari 0
-                  {nominalCap !== null ? ` dan maksimal ${formatRupiah(nominalCap)}.` : '.'}
-                </p>
-              )}
-              <p className="text-[11px] text-slate-500">
-                {nominalCap !== null
-                  ? `Maksimal ${formatRupiah(nominalCap)} (nominal yang diajukan siswa).`
-                  : 'Masukkan nominal baru minimal Rp1.'}
-              </p>
-              {nominalCap !== null && (
-                <button
-                  className="text-[11px] font-semibold text-[#0b57d0] underline"
-                  onClick={() => setNewNominal(String(nominalCap))}
-                  type="button"
-                >
-                  Gunakan nominal diajukan ({formatRupiah(nominalCap)})
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2 border-t border-slate-200 px-5 py-4">
               <button
-                className="inline-flex flex-1 items-center justify-center rounded-lg bg-[#0b57d0] px-3.5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-[#0842a0] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b57d0] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0842a0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b57d0] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={pending || !newNominalValid}
                 onClick={() => {
                   if (!newNominalValid) return
@@ -2059,18 +2160,8 @@ function ApplicationDrawerForm({
               >
                 {pending ? 'Menyimpan…' : 'Setujui Nominal Baru'}
               </button>
-              <button
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-                onClick={() => {
-                  setShowNominalInput(false)
-                  setNewNominal('')
-                }}
-                type="button"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
+            </footer>
+          </section>
         </div>
       )}
     </form>
@@ -2340,6 +2431,25 @@ export function AdminDashboard({
         refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
         finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
         settlementNotes: String(formData.get('settlementNotes') ?? ''),
+        hppLpkInvoiceAmount: String(formData.get('hppLpkInvoiceAmount') ?? ''),
+        hppPocketMoneyAmount: String(formData.get('hppPocketMoneyAmount') ?? ''),
+        wakalahLanguageMonths: String(formData.get('wakalahLanguageMonths') ?? ''),
+        wakalahSkillMonths: String(formData.get('wakalahSkillMonths') ?? ''),
+        wakalahDocumentReturnBusinessDays: String(
+          formData.get('wakalahDocumentReturnBusinessDays') ?? '',
+        ),
+        wakalahWrittenWarningCount: String(formData.get('wakalahWrittenWarningCount') ?? ''),
+        wakalahGraceDays: String(formData.get('wakalahGraceDays') ?? ''),
+        languageAllowanceMonthly: String(formData.get('languageAllowanceMonthly') ?? ''),
+        skillAllowanceMonthly: String(formData.get('skillAllowanceMonthly') ?? ''),
+        departureAllowanceAmount: String(formData.get('departureAllowanceAmount') ?? ''),
+        commitmentCompensationAmount: String(formData.get('commitmentCompensationAmount') ?? ''),
+        commitmentSettlementDays: String(formData.get('commitmentSettlementDays') ?? ''),
+        wakalahOtherUjrahService: String(formData.get('wakalahOtherUjrahService') ?? ''),
+        wakalahMediator: String(formData.get('wakalahMediator') ?? ''),
+        wakalahDisputeInstitution: String(formData.get('wakalahDisputeInstitution') ?? ''),
+        appendixDocuments: String(formData.get('appendixDocuments') ?? '[]'),
+        lpkWitnessName: String(formData.get('lpkWitnessName') ?? ''),
       })
       if (!result.ok) {
         setError(result.message)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import { getFinancingLineTotal, type FinancingCostLine } from '@/lib/departure-financing'
 import type { ApplicationProduct } from '@/lib/firebase-data'
 
@@ -24,6 +24,153 @@ const readLines = (value: unknown) =>
     : []
 
 const amountLabel = (amount: number) => `Rp${amount.toLocaleString('id-ID')}`
+
+type AppendixDocument = {
+  label: string
+  date: string
+  condition: 'ORIGINAL' | 'COPY' | ''
+  count: number
+}
+
+const defaultAppendixDocuments: AppendixDocument[] = [
+  { label: 'Akta Kelahiran', date: '', condition: '', count: 1 },
+  { label: 'Kartu Keluarga', date: '', condition: '', count: 1 },
+  { label: 'Ijazah SD/SMP/SMA', date: '', condition: '', count: 1 },
+]
+
+const readAppendixDocuments = (value: unknown): AppendixDocument[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (item): item is AppendixDocument =>
+          Boolean(item) &&
+          typeof item.label === 'string' &&
+          typeof item.date === 'string' &&
+          ['ORIGINAL', 'COPY', ''].includes(item.condition) &&
+          typeof item.count === 'number',
+      )
+    : []
+
+function AppendixDocumentsFields({
+  documents,
+  setDocuments,
+}: {
+  documents: AppendixDocument[]
+  setDocuments: Dispatch<SetStateAction<AppendixDocument[]>>
+}) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Daftar dokumen lampiran</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Isi tanggal, status asli/fotokopi, dan jumlah tiap jenis dokumen. Daftar ini akan
+            dimasukkan ke lampiran akad.
+          </p>
+        </div>
+        <button
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          disabled={documents.length >= 20}
+          onClick={() =>
+            setDocuments((current) => [
+              ...current,
+              { label: '', date: '', condition: '', count: 1 },
+            ])
+          }
+          type="button"
+        >
+          + Tambah dokumen
+        </button>
+      </div>
+      <input name="appendixDocuments" type="hidden" value={JSON.stringify(documents)} />
+      <div className="mt-3 divide-y divide-slate-100">
+        {documents.map((document, index) => (
+          <div className="grid gap-3 py-3 first:pt-0 last:pb-0 sm:grid-cols-12" key={index}>
+            <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-4">
+              <span>Nama dokumen</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                maxLength={120}
+                onChange={(event) =>
+                  setDocuments((current) =>
+                    current.map((item, row) =>
+                      row === index ? { ...item, label: event.target.value } : item,
+                    ),
+                  )
+                }
+                value={document.label}
+              />
+            </label>
+            <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-3">
+              <span>Tanggal</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                onChange={(event) =>
+                  setDocuments((current) =>
+                    current.map((item, row) =>
+                      row === index ? { ...item, date: event.target.value } : item,
+                    ),
+                  )
+                }
+                type="date"
+                value={document.date}
+              />
+            </label>
+            <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2">
+              <span>Status</span>
+              <select
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                onChange={(event) =>
+                  setDocuments((current) =>
+                    current.map((item, row) =>
+                      row === index
+                        ? {
+                            ...item,
+                            condition: event.target.value as AppendixDocument['condition'],
+                          }
+                        : item,
+                    ),
+                  )
+                }
+                value={document.condition}
+              >
+                <option value="">Pilih</option>
+                <option value="ORIGINAL">Asli</option>
+                <option value="COPY">Fotokopi</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2">
+              <span>Jumlah</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                min={1}
+                onChange={(event) =>
+                  setDocuments((current) =>
+                    current.map((item, row) =>
+                      row === index ? { ...item, count: Number(event.target.value) || 0 } : item,
+                    ),
+                  )
+                }
+                step={1}
+                type="number"
+                value={document.count}
+              />
+            </label>
+            <div className="flex items-end justify-end sm:col-span-1">
+              <button
+                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                onClick={() => setDocuments((current) => current.filter((_, row) => row !== index))}
+                title="Hapus baris dokumen"
+                type="button"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 function CostLines({
   title,
@@ -143,10 +290,28 @@ function CostLines({
 export function FinanceTermsFields({
   product,
   financialPlan,
+  departureDetails,
+  fullCoverDetails,
 }: {
   product: ApplicationProduct
   financialPlan: Record<string, unknown>
+  departureDetails?: Record<string, unknown> | null
+  fullCoverDetails?: Record<string, unknown> | null
 }) {
+  const requestedAmount = Number(departureDetails?.requestedFinancingAmount) || 0
+  const savedInvoice = Number(financialPlan.hppLpkInvoiceAmount) || 0
+  const defaultInvoice =
+    savedInvoice ||
+    Number(departureDetails?.outstandingLPKAmount ?? fullCoverDetails?.lpkInvoiceAmount) ||
+    0
+  const [hppInvoice, setHppInvoice] = useState(defaultInvoice)
+  const [hppPocketMoney, setHppPocketMoney] = useState(() => {
+    if (financialPlan.hppPocketMoneyAmount !== undefined) {
+      return Number(financialPlan.hppPocketMoneyAmount) || 0
+    }
+    return product === 'DEPARTURE_BRIDGING' ? Math.max(0, requestedAmount - defaultInvoice) : 0
+  })
+  const [fullCoverNafaqah, setFullCoverNafaqah] = useState(Number(financialPlan.nafaqahTotal) || 0)
   const [nafaqahItems, setNafaqahItems] = useState(() => {
     const saved = readLines(financialPlan.nafaqahItems)
     return saved.length ? saved : [emptyLine()]
@@ -161,10 +326,148 @@ export function FinanceTermsFields({
   const [installmentCount, setInstallmentCount] = useState(
     String(financialPlan.installmentCount ?? ''),
   )
+  const [appendixDocuments, setAppendixDocuments] = useState(() => {
+    const saved = readAppendixDocuments(financialPlan.appendixDocuments)
+    return saved.length ? saved : defaultAppendixDocuments
+  })
+  const hppTotal = hppInvoice + hppPocketMoney
+  const hppAligned =
+    product === 'DEPARTURE_BRIDGING'
+      ? requestedAmount > 0 && hppTotal === requestedAmount
+      : fullCoverNafaqah > 0 && hppTotal === fullCoverNafaqah
+
+  const hppEditor = (
+    <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Rincian HPP VSV</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
+            HPP terdiri dari invoice/tagihan LPK dan uang saku siswa. Nilai awal invoice Full Cover
+            diambil dari estimasi yang diisi siswa dan perlu diverifikasi admin.
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${hppAligned ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}
+        >
+          {hppAligned ? 'Nominal sesuai' : 'Perlu dicocokkan'}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Invoice LPK terverifikasi (Rp)</span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+            min={0}
+            onChange={(event) => setHppInvoice(Number(event.target.value) || 0)}
+            step={1}
+            type="number"
+            value={hppInvoice}
+          />
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Uang saku siswa (Rp)</span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+            min={0}
+            onChange={(event) => setHppPocketMoney(Number(event.target.value) || 0)}
+            step={1}
+            type="number"
+            value={hppPocketMoney}
+          />
+        </label>
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span className="block text-[11px] font-medium text-slate-500">Total HPP</span>
+          <strong className="mt-0.5 block text-sm text-slate-900">{amountLabel(hppTotal)}</strong>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span className="block text-[11px] font-medium text-slate-500">
+            {product === 'DEPARTURE_BRIDGING' ? 'Nominal pengajuan siswa' : 'Nafaqah dalam Draft 2'}
+          </span>
+          <strong className="mt-0.5 block text-sm text-slate-900">
+            {amountLabel(product === 'DEPARTURE_BRIDGING' ? requestedAmount : fullCoverNafaqah)}
+          </strong>
+        </div>
+      </div>
+      <input name="hppLpkInvoiceAmount" type="hidden" value={hppInvoice} />
+      <input name="hppPocketMoneyAmount" type="hidden" value={hppPocketMoney} />
+      {product === 'DEPARTURE_BRIDGING' && requestedAmount > 0 && !hppAligned && (
+        <p className="mt-3 text-xs font-medium text-amber-800">
+          Total invoice LPK + uang saku harus sama dengan nominal pengajuan (
+          {amountLabel(requestedAmount)}).
+        </p>
+      )}
+      {product === 'FULL_COVER' && fullCoverNafaqah > 0 && !hppAligned && (
+        <p className="mt-3 text-xs font-medium text-amber-800">
+          Total HPP harus sama dengan Nafaqah dalam akad ({amountLabel(fullCoverNafaqah)}).
+        </p>
+      )}
+    </section>
+  )
 
   if (product === 'FULL_COVER') {
     return (
       <div className="space-y-4">
+        {hppEditor}
+        <AppendixDocumentsFields
+          documents={appendixDocuments}
+          setDocuments={setAppendixDocuments}
+        />
+        <label className="block space-y-1 text-xs font-semibold text-slate-600">
+          <span>Nama perwakilan LPK sebagai saksi</span>
+          <input
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+            maxLength={120}
+            name="lpkWitnessName"
+            defaultValue={String(financialPlan.lpkWitnessName ?? '')}
+          />
+        </label>
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-bold text-slate-900">Nominal dan jangka waktu Draft 2</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Masa pelatihan diambil dari isian siswa. Lengkapi nominal uang saku dan biaya komitmen
+            yang akan dicantumkan dalam akad.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                ['languageAllowanceMonthly', 'Uang saku bahasa per bulan (Rp)'],
+                ['skillAllowanceMonthly', 'Uang saku skill per bulan (Rp)'],
+                ['departureAllowanceAmount', 'Uang saku keberangkatan (Rp)'],
+                ['commitmentCompensationAmount', 'Biaya komitmen / ta’widh (Rp)'],
+                ['commitmentSettlementDays', 'Hari pelunasan biaya komitmen'],
+              ] as const
+            ).map(([name, label]) => (
+              <label className="space-y-1 text-xs font-semibold text-slate-600" key={name}>
+                <span>{label}</span>
+                <input
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                  min={0}
+                  name={name}
+                  defaultValue={String(
+                    financialPlan[name] ??
+                      (name === 'languageAllowanceMonthly' ||
+                      name === 'skillAllowanceMonthly' ||
+                      name === 'departureAllowanceAmount'
+                        ? 0
+                        : ''),
+                  )}
+                  step={1}
+                  type="number"
+                />
+              </label>
+            ))}
+            <label className="space-y-1 text-xs font-semibold text-slate-600">
+              <span>Tanggal mulai angsuran</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                defaultValue={String(financialPlan.firstPaymentDate ?? '')}
+                name="firstPaymentDate"
+                required
+                type="date"
+              />
+            </label>
+          </div>
+        </section>
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
           {(
             [
@@ -182,6 +485,11 @@ export function FinanceTermsFields({
                 min={name === 'tenorMonths' ? 1 : 0}
                 max={name === 'tenorMonths' ? 36 : undefined}
                 name={name}
+                onChange={
+                  name === 'nafaqahTotal'
+                    ? (event) => setFullCoverNafaqah(Number(event.target.value) || 0)
+                    : undefined
+                }
                 step={1}
                 type="number"
               />
@@ -216,9 +524,77 @@ export function FinanceTermsFields({
   const parsedCount = Number(installmentCount)
   const monthlyEstimate =
     Number.isInteger(parsedCount) && parsedCount > 0 ? Math.floor(total / parsedCount) : null
+  const hppComponentsMatch =
+    nafaqahTotal === hppInvoice &&
+    qardhAmount === hppPocketMoney &&
+    (hppPocketMoney === 0 || qardhDisbursed)
 
   return (
     <div className="space-y-5">
+      {hppEditor}
+      <AppendixDocumentsFields documents={appendixDocuments} setDocuments={setAppendixDocuments} />
+      <label className="block space-y-1 text-xs font-semibold text-slate-600">
+        <span>Nama perwakilan LPK sebagai saksi</span>
+        <input
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+          maxLength={120}
+          name="lpkWitnessName"
+          defaultValue={String(financialPlan.lpkWitnessName ?? '')}
+        />
+      </label>
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 className="text-sm font-bold text-slate-900">Ketentuan pelengkap Draft 1</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          Isian ini melengkapi jangka waktu program, pengembalian dokumen, dan prosedur peringatan
+          pada template Wakalah bil Ujrah.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {(
+            [
+              ['wakalahLanguageMonths', 'Pendidikan bahasa (bulan)'],
+              ['wakalahSkillMonths', 'Pelatihan skill (bulan)'],
+              ['wakalahDocumentReturnBusinessDays', 'Pengembalian dokumen (hari kerja)'],
+              ['wakalahWrittenWarningCount', 'Jumlah peringatan tertulis'],
+              ['wakalahGraceDays', 'Tenggang waktu (hari)'],
+            ] as const
+          ).map(([name, label]) => (
+            <label className="space-y-1 text-xs font-semibold text-slate-600" key={name}>
+              <span>{label}</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                min={0}
+                name={name}
+                defaultValue={String(financialPlan[name] ?? '')}
+                step={1}
+                type="number"
+              />
+            </label>
+          ))}
+          {(
+            [
+              ['wakalahOtherUjrahService', 'Jasa lain PIHAK PERTAMA'],
+              ['wakalahMediator', 'Pihak mediator (opsional)'],
+              ['wakalahDisputeInstitution', 'Lembaga penyelesaian lain (opsional)'],
+            ] as const
+          ).map(([name, label]) => (
+            <label className="space-y-1 text-xs font-semibold text-slate-600" key={name}>
+              <span>{label}</span>
+              <input
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+                maxLength={200}
+                name={name}
+                defaultValue={String(financialPlan[name] ?? '')}
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+      {!hppComponentsMatch && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+          Rekonsiliasi komponen belum cocok: total Nafaqah harus sama dengan invoice LPK, sedangkan
+          uang saku harus sama dengan qardh yang sudah diserahkan.
+        </p>
+      )}
       <input name="nafaqahItems" type="hidden" value={JSON.stringify(nafaqahItems)} />
       <input name="ujrahItems" type="hidden" value={JSON.stringify(ujrahItems)} />
       <input name="qardhDisbursed" type="hidden" value={String(qardhDisbursed)} />

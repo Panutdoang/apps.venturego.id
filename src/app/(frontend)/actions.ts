@@ -16,6 +16,7 @@ import { deleteDriveFile, getDriveFileInfo, readDriveFileHead } from '@/lib/gdri
 export type ApplicationInput = {
   product: 'FULL_COVER' | 'DEPARTURE_BRIDGING'
   applicantName: string
+  guardianName: string
   phone: string
   lpkName: string
   birthPlace: string
@@ -40,6 +41,7 @@ export type ApplicationInput = {
   trainingStartDate: string
   languageTrainingMonths: string
   skillTrainingMonths: string
+  fullCoverInvoiceAmount: string
   requiresTrainingAllowance: boolean
   requiresAccommodation: boolean
   estimatedDeparture: string
@@ -151,6 +153,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     return { ok: false, message: 'Daftar kebutuhan tidak valid.' }
   }
   const applicantName = cleanText(input.applicantName, 100)
+  const guardianName = cleanText(input.guardianName, 100)
   const phone = cleanText(input.phone, 24)
   const lpkName = cleanText(input.lpkName, 120)
   if (input.idCardNumber !== undefined && typeof input.idCardNumber !== 'string') {
@@ -161,8 +164,11 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
   }
 
-  if (!applicantName || !phone || !lpkName) {
-    return { ok: false, message: 'Lengkapi nama, nomor WhatsApp, dan nama LPK.' }
+  if (!applicantName || !guardianName || !phone || !lpkName) {
+    return {
+      ok: false,
+      message: 'Lengkapi nama pemohon, nama orang tua/wali, nomor WhatsApp, dan nama LPK.',
+    }
   }
   if (!/^(\+62|62|0)[0-9]{8,14}$/.test(phone.replace(/[\s-]/g, ''))) {
     return { ok: false, message: 'Masukkan nomor WhatsApp Indonesia yang valid.' }
@@ -201,6 +207,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     return { ok: false, message: 'Lengkapi alamat sesuai KTP dan alamat korespondensi.' }
   }
   const financingAmount = Number(input.financingAmount)
+  const fullCoverInvoiceAmount = Number(input.fullCoverInvoiceAmount)
   if (
     departure &&
     (typeof input.financingAmount !== 'string' ||
@@ -209,6 +216,30 @@ export async function submitFinancingApplication(request: FormData): Promise<App
       financingAmount <= 0)
   ) {
     return { ok: false, message: 'Masukkan estimasi total kebutuhan pembiayaan yang valid.' }
+  }
+  if (
+    !departure &&
+    (typeof input.fullCoverInvoiceAmount !== 'string' ||
+      input.fullCoverInvoiceAmount.length > 16 ||
+      !Number.isSafeInteger(fullCoverInvoiceAmount) ||
+      fullCoverInvoiceAmount <= 0)
+  ) {
+    return { ok: false, message: 'Masukkan estimasi invoice/tagihan LPK yang valid.' }
+  }
+  if (
+    !departure &&
+    ![input.languageTrainingMonths, input.skillTrainingMonths].every(
+      (value) =>
+        typeof value === 'string' &&
+        /^\d{1,2}$/.test(value) &&
+        Number(value) >= 1 &&
+        Number(value) <= 60,
+    )
+  ) {
+    return {
+      ok: false,
+      message: 'Isi durasi pelatihan bahasa dan keterampilan antara 1 sampai 60 bulan.',
+    }
   }
   const definitions = DOCUMENT_DEFINITIONS[input.product]
   if (!definitions) return { ok: false, message: 'Jenis pengajuan tidak valid.' }
@@ -227,6 +258,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     birthPlace: cleanText(input.birthPlace, 80),
     birthDate,
     idCardNumber,
+    guardianName,
     gender: input.gender,
     idCardAddress,
     domicileSameAsIdCard,
@@ -388,6 +420,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
             trainingStartDate: input.trainingStartDate || null,
             languageTrainingMonths: Number(input.languageTrainingMonths) || null,
             skillTrainingMonths: Number(input.skillTrainingMonths) || null,
+            lpkInvoiceAmount: fullCoverInvoiceAmount,
             requiresTrainingAllowance: Boolean(input.requiresTrainingAllowance),
             requiresAccommodation: Boolean(input.requiresAccommodation),
           },
