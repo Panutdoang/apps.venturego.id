@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { getFirebaseClientAuth } from '@/lib/firebase-client'
 import { DashboardBottomNav, SkeletonBlock } from './_components/dashboard-ui'
+import { VaNumber } from './_components/va-number'
 import { getDashboardSummary, type DashboardApplication } from './actions'
 
 type IconName =
@@ -506,10 +507,7 @@ export default function DashboardPage() {
                     <strong className="mt-1 block text-sm text-slate-800">0 bulan</strong>
                   </div>
                   <div className="border-l border-slate-100 pl-4">
-                    <span className="text-[11px] text-slate-400">Virtual Account</span>
-                    <div className="mt-1">
-                      <strong className="text-sm text-slate-800">0000000000000000</strong>
-                    </div>
+                    <VaNumber />
                   </div>
                 </div>
               </>
