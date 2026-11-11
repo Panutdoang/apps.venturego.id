@@ -20,6 +20,7 @@ export type ApplicationInput = {
   lpkName: string
   birthPlace: string
   birthDate: string
+  idCardNumber: string
   gender: 'MALE' | 'FEMALE'
   religion: 'ISLAM' | 'PROTESTANT' | 'CATHOLIC' | 'HINDU' | 'BUDDHIST' | 'CONFUCIAN'
   idCardAddress: string
@@ -152,6 +153,13 @@ export async function submitFinancingApplication(request: FormData): Promise<App
   const applicantName = cleanText(input.applicantName, 100)
   const phone = cleanText(input.phone, 24)
   const lpkName = cleanText(input.lpkName, 120)
+  if (input.idCardNumber !== undefined && typeof input.idCardNumber !== 'string') {
+    return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
+  }
+  const idCardNumber = input.idCardNumber?.trim() ?? ''
+  if (idCardNumber.length > 20 || !/^\d*$/.test(idCardNumber)) {
+    return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
+  }
 
   if (!applicantName || !phone || !lpkName) {
     return { ok: false, message: 'Lengkapi nama, nomor WhatsApp, dan nama LPK.' }
@@ -218,6 +226,7 @@ export async function submitFinancingApplication(request: FormData): Promise<App
     religion: input.religion,
     birthPlace: cleanText(input.birthPlace, 80),
     birthDate,
+    idCardNumber,
     gender: input.gender,
     idCardAddress,
     domicileSameAsIdCard,

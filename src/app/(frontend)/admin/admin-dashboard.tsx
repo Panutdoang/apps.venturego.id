@@ -1561,7 +1561,6 @@ function ApplicationDrawerForm({
             <FinanceTermsFields
               financialPlan={application.financialPlan}
               key={JSON.stringify(application.financialPlan ?? {})}
-              nikNumber={String(application.personalDetails?.idCardNumber ?? '')}
               product={application.product}
             />
           </fieldset>
@@ -2317,7 +2316,6 @@ export function AdminDashboard({
         refundEvidenceReference: String(formData.get('refundEvidenceReference') ?? ''),
         finalAgreementReference: String(formData.get('finalAgreementReference') ?? ''),
         settlementNotes: String(formData.get('settlementNotes') ?? ''),
-        nikNumber: String(formData.get('nikNumber') ?? ''),
       })
       if (!result.ok) {
         setError(result.message)

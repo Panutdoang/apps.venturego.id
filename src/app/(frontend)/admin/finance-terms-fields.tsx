@@ -143,11 +143,9 @@ function CostLines({
 export function FinanceTermsFields({
   product,
   financialPlan,
-  nikNumber,
 }: {
   product: ApplicationProduct
   financialPlan: Record<string, unknown>
-  nikNumber: string
 }) {
   const [nafaqahItems, setNafaqahItems] = useState(() => {
     const saved = readLines(financialPlan.nafaqahItems)
@@ -164,31 +162,9 @@ export function FinanceTermsFields({
     String(financialPlan.installmentCount ?? ''),
   )
 
-  const nikSection = (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-      <h3 className="text-sm font-bold text-slate-900">Identitas untuk Dokumen Akad</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        NIK diisi ke placeholder nomor KTP pada dokumen akad yang diterbitkan.
-      </p>
-      <label className="mt-3 block space-y-1.5 text-xs font-semibold text-slate-700">
-        <span>NIK (Nomor Induk Kependudukan)</span>
-        <input
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none sm:max-w-xs"
-          defaultValue={nikNumber}
-          inputMode="numeric"
-          maxLength={20}
-          name="nikNumber"
-          placeholder="Digit NIK, maksimal 20 karakter"
-          type="text"
-        />
-      </label>
-    </section>
-  )
-
   if (product === 'FULL_COVER') {
     return (
       <div className="space-y-4">
-        {nikSection}
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
           {(
             [
@@ -243,7 +219,6 @@ export function FinanceTermsFields({
 
   return (
     <div className="space-y-5">
-      {nikSection}
       <input name="nafaqahItems" type="hidden" value={JSON.stringify(nafaqahItems)} />
       <input name="ujrahItems" type="hidden" value={JSON.stringify(ujrahItems)} />
       <input name="qardhDisbursed" type="hidden" value={String(qardhDisbursed)} />

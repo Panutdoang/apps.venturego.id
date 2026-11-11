@@ -187,7 +187,6 @@ export async function saveFinancialPlan(
     'settlementNotes',
     'refundEvidenceReference',
     'refundTotal',
-    'nikNumber',
   ] as const
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
@@ -217,10 +216,6 @@ export async function saveFinancialPlan(
   const refundTotal = refundValue === '' ? 0 : Number(refundValue)
   if (!Number.isSafeInteger(refundTotal)) {
     return { ok: false, message: 'Nominal pengembalian tidak valid.' }
-  }
-  const nikValue = financialValues.nikNumber.trim()
-  if (nikValue.length > 20 || !/^\d*$/.test(nikValue)) {
-    return { ok: false, message: 'NIK tidak valid. Masukkan digit saja (maksimal 20 karakter).' }
   }
   if (firstPaymentDate && !calculateInstallmentSchedule(0, 1, firstPaymentDate)) {
     return { ok: false, message: 'Tanggal angsuran pertama tidak valid.' }
@@ -418,12 +413,6 @@ export async function saveFinancialPlan(
         finalAgreementReference: String(nextFinancialPlan.finalAgreementReference ?? ''),
         settlementNotes: String(nextFinancialPlan.settlementNotes ?? ''),
       })
-    }
-    const existingPersonal = (applicationData.personalDetails ?? {}) as Record<string, unknown>
-    const existingNik =
-      typeof existingPersonal.idCardNumber === 'string' ? existingPersonal.idCardNumber : ''
-    if (nikValue !== existingNik) {
-      updateValues.personalDetails = { ...existingPersonal, idCardNumber: nikValue }
     }
     await applicationRef.update({
       financialPlan: { ...nextFinancialPlan, pricingStatus: currentPricingStatus },
