@@ -2,7 +2,7 @@
  * Impor riwayat mitra VIP (Vworks Investment Partner) dari tab "Mutasi" laporan keuangan Excel
  * ke Firestore: vipInvestors/{id} + vipLedger/{id}. Lihat docs/MIGRASI-BLUEPRINT.md §6b.
  *
- *   node --env-file=.env.local scripts/import-vip-lama.mjs <laporan.xlsx> [--commit] [--rollback]
+ *   node --env-file=.env.local scripts/import-vip-lama.mjs <laporan.xlsx> [--commit] [--profil] [--rollback]
  *
  * Di folder yang sama dengan <laporan.xlsx> (di LUAR repo, berisi data pribadi) harus ada
  * konfigurasi-migrasi.json → vip: {
@@ -11,8 +11,8 @@
  * }
  * Kategori Mutasi: "Investasi" → DEPOSIT, "Penarikan Investasi" → WITHDRAWAL,
  * "Bagi Hasil Investasi" → PROFIT_SHARE (atau DIVIDEND bila keterangannya "Deviden/Dividen").
- * Default dry-run. Idempoten (ID dokumen deterministik); ownerFirebaseUid yang sudah terhubung
- * tidak diubah. --rollback hanya menghapus dokumen bertanda source LEGACY_MUTASI.
+ * Default dry-run. Idempoten (ID dokumen deterministik): baris ledger yang sudah ada dilewati,
+ * ownerFirebaseUid & data diri yang diubah staf tidak ditimpa (kecuali --profil untuk nama/email). --rollback hanya menghapus dokumen bertanda source LEGACY_MUTASI.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -32,6 +32,7 @@ try {
 const args = process.argv.slice(2)
 const COMMIT = args.includes('--commit')
 const ROLLBACK = args.includes('--rollback')
+const PROFIL = args.includes('--profil')
 const FILE = args.find((a) => !a.startsWith('--'))
 if (!FILE && !ROLLBACK) {
   console.error(
@@ -134,37 +135,44 @@ for (const investor of INVESTORS) {
 
   const ref = db.collection('vipInvestors').doc(investor.id)
   const existing = await ref.get()
+  // Data diri dikelola di /admin → Mitra VIP; skrip hanya mengisinya saat dokumen baru dibuat
+  // (atau bila --profil diberikan).
+  const profile = {
+    displayName: investor.nama,
+    emails: (investor.emails ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
+    profitShareDay: investor.profitShareDay ?? 15,
+  }
   await ref.set(
     {
       investorId: investor.id,
-      displayName: investor.nama,
-      emails: (investor.emails ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
       ...(existing.exists
         ? {}
-        : { ownerFirebaseUid: null, createdAt: FieldValue.serverTimestamp() }),
-      status: principalBalance > 0 ? 'ACTIVE' : 'INACTIVE',
+        : {
+            ownerFirebaseUid: null,
+            status: principalBalance > 0 ? 'ACTIVE' : 'INACTIVE',
+            createdAt: FieldValue.serverTimestamp(),
+          }),
+      ...(!existing.exists || PROFIL ? profile : {}),
       akadLabel: 'Akad Wadiah (pencatatan lama)',
-      profitShareDay: investor.profitShareDay ?? 15,
-      principalBalance,
-      totalDeposit: sum('DEPOSIT'),
-      totalWithdrawal: sum('WITHDRAWAL'),
-      totalProfitShared: sum('PROFIT_SHARE'),
-      totalDividend: sum('DIVIDEND'),
-      lastProfitShare: last ? { date: last.date, amount: last.amount } : null,
-      joinedAt: list[0]?.date ?? null,
       source: SOURCE,
       updatedBy: BY,
       updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },
   )
+  // Baris lama yang sudah ada tidak ditimpa (bisa sudah dibatalkan staf).
   const seen = new Map()
-  const batch = db.batch()
-  for (const e of list) {
+  const refs = list.map((e) => {
     const base = `${investor.id}-${e.date}-${e.type}-${e.amount}`
     const n = (seen.get(base) ?? 0) + 1
     seen.set(base, n)
-    batch.set(db.collection('vipLedger').doc(n > 1 ? `${base}-${n}` : base), {
+    return db.collection('vipLedger').doc(n > 1 ? `${base}-${n}` : base)
+  })
+  const present = refs.length ? await db.getAll(...refs) : []
+  const batch = db.batch()
+  list.forEach((e, index) => {
+    if (present[index]?.exists) return
+    batch.create(refs[index], {
       investorId: investor.id,
       ...e,
       source: SOURCE,
@@ -172,7 +180,24 @@ for (const investor of INVESTORS) {
       createdAt: FieldValue.serverTimestamp(),
     })
     writes++
-  }
+  })
   await batch.commit()
+
+  // Cache saldo dihitung dari SELURUH ledger (termasuk catatan staf), sama dengan src/lib/vip.ts.
+  const all = (await db.collection('vipLedger').where('investorId', '==', investor.id).get()).docs
+    .map((d) => d.data())
+    .filter((r) => !r.voidedAt && r.amount > 0)
+    .sort((x, y) => x.date.localeCompare(y.date))
+  const total = (t) => all.filter((r) => r.type === t).reduce((acc, r) => acc + r.amount, 0)
+  const lastAll = all.filter((r) => r.type === 'PROFIT_SHARE').at(-1)
+  await ref.update({
+    principalBalance: total('DEPOSIT') - total('WITHDRAWAL'),
+    totalDeposit: total('DEPOSIT'),
+    totalWithdrawal: total('WITHDRAWAL'),
+    totalProfitShared: total('PROFIT_SHARE'),
+    totalDividend: total('DIVIDEND'),
+    lastProfitShare: lastAll ? { date: lastAll.date, amount: lastAll.amount } : null,
+    joinedAt: all[0]?.date ?? null,
+  })
 }
-console.log(`${COMMIT ? 'DITULIS' : 'DRY-RUN'}${COMMIT ? `: ${writes} baris ledger` : ''}`)
+console.log(`${COMMIT ? 'DITULIS' : 'DRY-RUN'}${COMMIT ? `: ${writes} baris ledger baru` : ''}`)
