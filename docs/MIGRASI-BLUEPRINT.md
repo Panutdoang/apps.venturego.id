@@ -207,7 +207,7 @@ NODE_PATH=<node_modules berisi xlsx> node --env-file=.env.local scripts/import-v
 - Kategori: `Investasi` → `DEPOSIT`, `Penarikan Investasi` → `WITHDRAWAL`,
   `Bagi Hasil Investasi` → `PROFIT_SHARE` (atau `DIVIDEND` bila "Deviden").
 - Saldo = setoran − penarikan; hasilnya cocok dengan catatan "Sisa …" di Excel per Okt 2026
-  (3 mitra aktif, 90 baris ledger). Jalankan ulang tiap bulan dari laporan terbaru sampai ada UI admin.
+  (3 mitra aktif, 90 baris ledger). Pencatatan berikutnya lewat `/admin` → Mitra VIP. Bila skrip dijalankan ulang, baris ledger yang sudah ada dilewati dan data diri yang diubah staf tidak ditimpa (`--profil` untuk memaksa nama/email dari konfigurasi).
 - Tidak diimpor: investasi akad murabahah lama yang sudah selesai, dan setoran modal perusahaan.
 
 ## 7. Pensiun blueprint

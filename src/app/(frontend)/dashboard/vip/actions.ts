@@ -141,6 +141,7 @@ export async function getVipDetail(token: string): Promise<VipDetailResult> {
     const ledger = snapshot.docs
       .flatMap((entry): VipLedgerItem[] => {
         const data = entry.data()
+        if (data.voidedAt) return []
         if (typeof data.date !== 'string' || !YMD.test(data.date)) return []
         if (!LEDGER_TYPES.includes(data.type)) return []
         return [

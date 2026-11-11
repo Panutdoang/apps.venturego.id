@@ -24,6 +24,7 @@ import {
   updateApplicationWorkflow,
   updateSupportRequest,
 } from './actions'
+import { AdminVipPanel } from './vip-panel'
 import { FinanceTermsFields } from './finance-terms-fields'
 
 const STATUS_LABELS: Record<(typeof APPLICATION_STATUSES)[number], string> = {
@@ -150,6 +151,7 @@ type MenuId =
   | 'activeInstallments'
   | 'schedule'
   | 'relief'
+  | 'vip'
   | 'statistics'
   | 'audit'
 
@@ -213,6 +215,17 @@ const SIDEBAR_GROUPS: {
         id: 'relief',
         label: 'Keringanan',
         subtitle: 'Permohonan keringanan pemohon: status tinjauan dan tanggapan staf',
+        defaultTab: 'profile',
+      },
+    ],
+  },
+  {
+    group: 'Mitra',
+    items: [
+      {
+        id: 'vip',
+        label: 'Mitra VIP',
+        subtitle: 'Vworks Investment Partner: data diri, setoran, penarikan, dan bagi hasil',
         defaultTab: 'profile',
       },
     ],
@@ -479,6 +492,21 @@ function MenuIcon({ id }: { id: MenuId }) {
           viewBox="0 0 24 24"
         >
           <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
+        </svg>
+      )
+    case 'vip':
+      return (
+        <svg
+          className="size-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="m12 3 2.5 5.1 5.6.8-4.1 4 .97 5.6L12 15.9l-5 2.6.97-5.6-4.1-4 5.6-.8L12 3Z"
+            strokeLinejoin="round"
+          />
         </svg>
       )
     case 'audit':
@@ -4013,6 +4041,8 @@ export function AdminDashboard({
               </section>
             </div>
           )}
+
+          {activeMenu === 'vip' && <AdminVipPanel searchQuery={searchQuery} todayIso={todayIso} />}
 
           {/* 10. MENU: LOG AUDIT (Financial Plan History Table) */}
           {activeMenu === 'audit' && (

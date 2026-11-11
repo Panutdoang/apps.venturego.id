@@ -340,7 +340,7 @@ function PointsSlide({
   return (
     <>
       <SlideHeader
-        badge="1 poin = Rp1"
+        badge="Terkumpul"
         badgeClassName="bg-blue-50 text-[var(--primary)]"
         hiddenValue="•••• poin"
         label="Poin VentureGo"
@@ -350,8 +350,7 @@ function PointsSlide({
       />
       <div className="mt-5 border-t border-slate-100 pt-4">
         <p className="text-[11px] leading-5 text-slate-500">
-          Poin bertambah dari kelebihan bayar angsuran dan program VentureGo, dan dapat dipakai
-          untuk membayar angsuran berikutnya.
+          Poin terkumpul di akun Anda: {showBalance ? points.toLocaleString('id-ID') : '••••'} poin.
         </p>
         <span className="mt-2 inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
           Penukaran hadiah segera hadir
