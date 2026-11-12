@@ -1595,9 +1595,13 @@ function ApplicationDrawerForm({
             disabled={akadIssued}
           >
             <FinanceTermsFields
+              applicantName={application.applicantName}
               departureDetails={application.departureDetails}
               financialPlan={application.financialPlan}
               fullCoverDetails={application.fullCoverDetails}
+              personalDetails={application.personalDetails}
+              phone={application.phone}
+              issuedAkad={akadMeta}
               key={JSON.stringify(application.financialPlan ?? {})}
               product={application.product}
             />
@@ -1933,62 +1937,124 @@ function ApplicationDrawerForm({
 
       {/* Slide-over pratinjau dokumen akad */}
       {akadPreviewOpen && (
-        <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/50">
-          <div className="flex h-dvh w-full max-w-4xl flex-col bg-white shadow-2xl">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-slate-900">Pratinjau Dokumen Akad</h3>
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                  {akadIssued
-                    ? `No. ${akadMeta?.documentNumber ?? '-'} · ${akadMeta?.fileName ?? 'dokumen akad'}`
-                    : 'Draft dari data pengajuan terkini'}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <a
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                  href={`/api/admin/applications/${application.id}/akad?mode=docx`}
-                >
-                  Unduh .docx
-                </a>
-                {!akadIssued && (
+        <div
+          className="fixed inset-0 z-[60] flex justify-end bg-slate-950/55 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAkadPreviewOpen(false)
+          }}
+        >
+          <aside
+            aria-labelledby="akad-preview-title"
+            aria-modal="true"
+            className="flex h-dvh w-full max-w-5xl flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-2xl"
+            onMouseDown={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <header className="relative overflow-hidden bg-gradient-to-br from-[#0b57d0] via-[#0b57d0] to-[#0842a0] px-5 pb-4 pt-5 text-white sm:px-7 sm:pb-5 sm:pt-6">
+              <div className="absolute -right-16 -top-24 size-64 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3
+                      className="text-base font-bold tracking-tight sm:text-lg"
+                      id="akad-preview-title"
+                    >
+                      Pratinjau Dokumen Akad
+                    </h3>
+                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold text-white ring-1 ring-inset ring-white/20">
+                      {akadIssued ? 'Terbit' : 'Draft dari data terbaru'}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-blue-100">
+                    {application.applicantName} · {application.lpkName}
+                  </p>
+                </div>
+                <div className="relative flex shrink-0 flex-wrap items-center gap-2">
+                  <a
+                    className="rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
+                    href={`/api/admin/applications/${application.id}/akad?mode=docx`}
+                  >
+                    Unduh .docx
+                  </a>
+                  {!akadIssued && (
+                    <button
+                      className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-[#0b57d0] shadow-sm transition hover:bg-blue-50 disabled:opacity-60"
+                      disabled={!akadGateOpen || pending || akadIssuing}
+                      onClick={issueAkad}
+                      type="button"
+                    >
+                      {akadIssuing ? 'Menerbitkan…' : 'Terbitkan Dokumen Akad'}
+                    </button>
+                  )}
                   <button
-                    className="rounded-lg bg-[#0b57d0] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0842a0] disabled:opacity-60"
-                    disabled={!akadGateOpen || pending || akadIssuing}
-                    onClick={issueAkad}
+                    aria-label="Tutup pratinjau dokumen akad"
+                    className="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                    onClick={() => setAkadPreviewOpen(false)}
                     type="button"
                   >
-                    {akadIssuing ? 'Menerbitkan…' : 'Terbitkan Dokumen Akad'}
+                    ✕
                   </button>
-                )}
-                <button
-                  aria-label="Tutup pratinjau dokumen akad"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-                  onClick={() => setAkadPreviewOpen(false)}
-                  type="button"
-                >
-                  ✕
-                </button>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 overflow-auto bg-slate-100 p-4">
+            </header>
+            <div className="flex-1 overflow-auto bg-slate-100 p-4 sm:p-6">
               {akadPreviewLoading && (
-                <p className="text-sm text-slate-500">Memuat pratinjau dokumen akad…</p>
+                <div
+                  aria-live="polite"
+                  className="mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center gap-5 py-5"
+                  role="status"
+                >
+                  <div className="flex items-center gap-3 rounded-full border border-blue-100 bg-white px-4 py-2.5 shadow-sm">
+                    <span className="size-4 animate-spin rounded-full border-2 border-blue-100 border-t-[#0b57d0]" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">
+                        Menyiapkan pratinjau akad
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        Menata halaman dan lampiran dokumen…
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full max-w-[620px] animate-pulse rounded-sm border border-slate-200 bg-white px-8 py-10 shadow-lg sm:px-14 sm:py-14">
+                    <div className="mx-auto h-3 w-28 rounded bg-blue-100" />
+                    <div className="mx-auto mt-3 h-2 w-44 rounded bg-slate-200" />
+                    <div className="mx-auto mt-8 h-2 w-64 max-w-full rounded bg-slate-200" />
+                    <div className="mt-2 h-2 w-full rounded bg-slate-100" />
+                    <div className="mt-2 h-2 w-[92%] rounded bg-slate-100" />
+                    <div className="mt-2 h-2 w-[86%] rounded bg-slate-100" />
+                    <div className="mt-7 h-2 w-40 rounded bg-blue-100" />
+                    <div className="mt-3 h-2 w-full rounded bg-slate-100" />
+                    <div className="mt-2 h-2 w-[95%] rounded bg-slate-100" />
+                    <div className="mt-2 h-2 w-[82%] rounded bg-slate-100" />
+                    <div className="mt-2 h-2 w-[88%] rounded bg-slate-100" />
+                  </div>
+                </div>
               )}
               {akadPreviewError && (
-                <p className="text-sm text-red-700" role="alert">
-                  {akadPreviewError}
-                </p>
+                <div
+                  className="mx-auto mt-10 max-w-lg rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm"
+                  role="alert"
+                >
+                  <h4 className="text-sm font-bold text-slate-900">Pratinjau belum dapat dimuat</h4>
+                  <p className="mt-2 text-xs leading-5 text-slate-600">{akadPreviewError}</p>
+                  <button
+                    className="mt-4 rounded-lg bg-[#0b57d0] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#0842a0]"
+                    onClick={openAkadPreview}
+                    type="button"
+                  >
+                    Coba lagi
+                  </button>
+                </div>
               )}
               {akadPreviewHtml && !akadPreviewLoading && (
                 <iframe
-                  className="h-full min-h-[60vh] w-full rounded-lg border border-slate-200 bg-white"
+                  className="mx-auto h-full min-h-[75vh] w-full max-w-4xl rounded-xl border border-slate-200 bg-white shadow-md"
                   srcDoc={akadPreviewHtml}
                   title="Pratinjau dokumen akad"
                 />
               )}
             </div>
-          </div>
+          </aside>
         </div>
       )}
 
@@ -2453,6 +2519,7 @@ export function AdminDashboard({
         ujrahItems: String(formData.get('ujrahItems') ?? '[]'),
         qardhAmount: String(formData.get('qardhAmount') ?? '0'),
         qardhDisbursed: String(formData.get('qardhDisbursed') ?? 'false'),
+        akadDate: String(formData.get('akadDate') ?? ''),
         installmentCount: String(formData.get('installmentCount') ?? ''),
         firstPaymentDate: String(formData.get('firstPaymentDate') ?? ''),
         refundTotal: String(formData.get('refundTotal') ?? '0'),

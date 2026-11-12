@@ -2519,6 +2519,11 @@ body {
   box-shadow: none;
 }
 
+.mobile-shell:not(.welcome-step) .currency-input input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 .mobile-shell:not(.welcome-step) .currency-input:focus-within {
   border-color: #0b57d0;
   background: #fff;

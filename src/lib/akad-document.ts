@@ -125,6 +125,26 @@ const updateParagraphContaining = (
     return `<w:p>${paragraphProperties}<w:r>${runProperties}<w:t xml:space="preserve">${escapeXml(replacement)}</w:t></w:r></w:p>`
   })
 
+const removeParagraphSection = (xml: string, startLabel: string, endLabel: string): string => {
+  const paragraphs = Array.from(xml.matchAll(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g))
+  const paragraphText = (paragraph: string) =>
+    Array.from(paragraph.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g), (match) =>
+      unescapeXml(match[1]),
+    )
+      .join('')
+      .trim()
+  const start = paragraphs.find((match) => paragraphText(match[0]).startsWith(startLabel))
+  if (!start || start.index === undefined) return xml
+  const end = paragraphs.find(
+    (match) =>
+      match.index !== undefined &&
+      match.index > start.index! &&
+      paragraphText(match[0]).startsWith(endLabel),
+  )
+  if (!end || end.index === undefined) return xml
+  return xml.slice(0, start.index) + xml.slice(end.index)
+}
+
 const splitRows = (table: string): string[] =>
   Array.from(table.matchAll(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/g), (match) => match[0])
 
@@ -823,6 +843,18 @@ export const buildAkadDocument = async (options: {
   const { application, studentSequence, issuedAt } = options
   const product = readText(application.product)
   const template: AkadTemplateKind = product === 'FULL_COVER' ? 'JUALAH' : 'WAKALAH'
+  const financialPlan = (application.financialPlan ?? {}) as Record<string, unknown>
+  const parsedAkadDate = parseIsoDate(readText(financialPlan.akadDate))
+  const documentDate = parsedAkadDate
+    ? new Date(
+        Date.UTC(
+          parsedAkadDate.getUTCFullYear(),
+          parsedAkadDate.getUTCMonth(),
+          parsedAkadDate.getUTCDate(),
+          5,
+        ),
+      )
+    : issuedAt
   const base64 = template === 'JUALAH' ? JUALAH_TEMPLATE_BASE64 : WAKALAH_TEMPLATE_BASE64
 
   const zip = await JSZip.loadAsync(Buffer.from(base64, 'base64'))
@@ -830,7 +862,7 @@ export const buildAkadDocument = async (options: {
   if (!documentFile) throw new Error(TEMPLATE_ERROR)
   let xml = removeDraftTemplateNotice(await documentFile.async('string'))
 
-  const values = resolveValues(application, issuedAt)
+  const values = resolveValues(application, documentDate)
   values.studentSequence = studentSequence
   if (values.lpkWitnessName) {
     xml = updateParagraphContaining(
@@ -862,6 +894,9 @@ export const buildAkadDocument = async (options: {
     const ticketIncluded = nafaqahItems.some((item) => /tiket/i.test(item.label))
     if (!ticketIncluded) {
       xml = updateParagraphContaining(xml, 'Biaya tiket dan keperluan keberangkatan', null)
+    }
+    if (values.qardhAmount <= 0) {
+      xml = removeParagraphSection(xml, 'Pasal 4', 'Pasal 5')
     }
     xml = updateParagraphContaining(
       xml,
@@ -958,8 +993,8 @@ export const buildAkadDocument = async (options: {
   })
 
   const sequence = studentSequence || '0000'
-  const romawi = ROMAN_MONTHS[issuedAt.getUTCMonth()] ?? 'I'
-  const year = String(issuedAt.getUTCFullYear())
+  const romawi = ROMAN_MONTHS[documentDate.getUTCMonth()] ?? 'I'
+  const year = String(documentDate.getUTCFullYear())
   const documentNumber =
     template === 'JUALAH'
       ? `${sequence}/WKL-JAL-JPN/VSV-WSB/${romawi}/${year}`

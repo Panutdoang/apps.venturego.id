@@ -102,6 +102,7 @@ const validateDepartureApproval = (
   const hppInvoice = Number(plan.hppLpkInvoiceAmount)
   const hppPocketMoney = Number(plan.hppPocketMoneyAmount)
   const requestedAmount = Number(applicationData.departureDetails?.requestedFinancingAmount)
+  const amountAfterAdminFee = requestedAmount - Math.round(requestedAmount * 0.05)
   const languageMonths = Number(plan.wakalahLanguageMonths)
   const skillMonths = Number(plan.wakalahSkillMonths)
   const documentReturnDays = Number(plan.wakalahDocumentReturnBusinessDays)
@@ -113,7 +114,7 @@ const validateDepartureApproval = (
     !Number.isSafeInteger(hppPocketMoney) ||
     hppPocketMoney < 0 ||
     requestedAmount <= 0 ||
-    hppInvoice + hppPocketMoney !== requestedAmount ||
+    hppInvoice + hppPocketMoney !== amountAfterAdminFee ||
     getFinancingLineTotal(nafaqahItems) !== hppInvoice ||
     Number(plan.qardhAmount) !== hppPocketMoney ||
     (hppPocketMoney > 0 && plan.qardhDisbursed !== true) ||
@@ -133,7 +134,7 @@ const validateDepartureApproval = (
     graceDays < 1 ||
     graceDays > 90
   ) {
-    return 'Lengkapi jangka waktu dan ketentuan Draft 1, lalu cocokkan HPP: invoice LPK + uang saku harus sama dengan nominal pengajuan, Nafaqah sama dengan invoice, dan uang saku sama dengan qardh yang diserahkan.'
+    return 'Lengkapi jangka waktu dan ketentuan Draft 1, lalu cocokkan penggunaan dana setelah potongan admin 5%: invoice LPK + uang saku harus sama dengan dana bersih, Nafaqah sama dengan invoice, dan uang saku sama dengan qardh yang diserahkan.'
   }
   const positiveNafaqah = nafaqahItems.filter((line) => line.amount > 0)
   const positiveUjrah = ujrahItems.filter((line) => line.amount > 0)
@@ -314,6 +315,7 @@ export async function saveFinancialPlan(
     'nafaqahItems',
     'ujrahItems',
     'qardhDisbursed',
+    'akadDate',
     'firstPaymentDate',
     'finalAgreementReference',
     'settlementNotes',
@@ -334,6 +336,7 @@ export async function saveFinancialPlan(
     return { ok: false, message: 'Rincian Nafaqah atau Ujrah tidak valid.' }
   }
   const qardhDisbursed = financialValues?.qardhDisbursed === 'true'
+  const akadDate = financialValues?.akadDate ?? ''
   const firstPaymentDate = financialValues?.firstPaymentDate ?? ''
   const finalAgreementReference = financialValues?.finalAgreementReference?.trim() ?? ''
   const settlementNotes = financialValues?.settlementNotes?.trim() ?? ''
@@ -341,6 +344,7 @@ export async function saveFinancialPlan(
   const refundValue = financialValues?.refundTotal ?? ''
   if (
     !['true', 'false'].includes(financialValues?.qardhDisbursed ?? '') ||
+    akadDate.length > 10 ||
     firstPaymentDate.length > 10 ||
     finalAgreementReference.length > 300 ||
     settlementNotes.length > 1_000 ||
@@ -353,6 +357,9 @@ export async function saveFinancialPlan(
     (refundValue !== '' && !/^\d+$/.test(refundValue))
   ) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
+  }
+  if (!calculateInstallmentSchedule(0, 1, akadDate)) {
+    return { ok: false, message: 'Tanggal akad tidak valid.' }
   }
   const refundTotal = refundValue === '' ? 0 : Number(refundValue)
   if (!Number.isSafeInteger(refundTotal)) {
@@ -392,6 +399,7 @@ export async function saveFinancialPlan(
       wakalahMediator: financialValues.wakalahMediator.trim(),
       wakalahDisputeInstitution: financialValues.wakalahDisputeInstitution.trim(),
       appendixDocuments,
+      akadDate,
       firstPaymentDate,
       lpkWitnessName: financialValues.lpkWitnessName.trim(),
     }
@@ -1258,7 +1266,10 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
         message: 'Terbitkan dokumen akad setelah rincian biaya berstatus Terverifikasi.',
       }
     }
-    if (!String(plan.lpkWitnessName ?? '').trim()) {
+    if (
+      applicationData.product === 'DEPARTURE_BRIDGING' &&
+      !String(plan.lpkWitnessName ?? '').trim()
+    ) {
       return { ok: false, message: 'Isi nama perwakilan LPK sebagai saksi pada tab Draft Akad.' }
     }
     if (!hasCompleteAkadAppendixDocuments(plan.appendixDocuments)) {

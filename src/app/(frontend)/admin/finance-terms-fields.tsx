@@ -1,7 +1,12 @@
 'use client'
 
 import { useState, type Dispatch, type SetStateAction } from 'react'
-import { getFinancingLineTotal, type FinancingCostLine } from '@/lib/departure-financing'
+import {
+  calculateInstallmentSchedule,
+  getFinancingLineTotal,
+  type FinancingCostLine,
+} from '@/lib/departure-financing'
+import { terbilang } from '@/lib/terbilang'
 import type { ApplicationProduct } from '@/lib/firebase-data'
 
 const emptyLine = (): FinancingCostLine => ({
@@ -24,6 +29,16 @@ const readLines = (value: unknown) =>
     : []
 
 const amountLabel = (amount: number) => `Rp${amount.toLocaleString('id-ID')}`
+const formatThousandsInput = (value: string) =>
+  value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+const parseThousandsInput = (value: string) => Number(value.replace(/\D/g, '')) || 0
+const getTodayJakartaIso = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 
 type AppendixDocument = {
   label: string
@@ -292,11 +307,19 @@ export function FinanceTermsFields({
   financialPlan,
   departureDetails,
   fullCoverDetails,
+  applicantName,
+  phone,
+  personalDetails,
+  issuedAkad,
 }: {
   product: ApplicationProduct
   financialPlan: Record<string, unknown>
   departureDetails?: Record<string, unknown> | null
   fullCoverDetails?: Record<string, unknown> | null
+  applicantName: string
+  phone: string
+  personalDetails: Record<string, unknown>
+  issuedAkad?: { documentNumber?: string; issuedAt?: string } | null
 }) {
   const requestedAmount = Number(departureDetails?.requestedFinancingAmount) || 0
   const savedInvoice = Number(financialPlan.hppLpkInvoiceAmount) || 0
@@ -304,13 +327,24 @@ export function FinanceTermsFields({
     savedInvoice ||
     Number(departureDetails?.outstandingLPKAmount ?? fullCoverDetails?.lpkInvoiceAmount) ||
     0
-  const [hppInvoice, setHppInvoice] = useState(defaultInvoice)
-  const [hppPocketMoney, setHppPocketMoney] = useState(() => {
-    if (financialPlan.hppPocketMoneyAmount !== undefined) {
-      return Number(financialPlan.hppPocketMoneyAmount) || 0
+  const departureAdminFee = Math.round(requestedAmount * 0.05)
+  const departureNetAmount = Math.max(0, requestedAmount - departureAdminFee)
+  const [hppInvoiceInput, setHppInvoiceInput] = useState(
+    defaultInvoice ? defaultInvoice.toLocaleString('id-ID') : '',
+  )
+  const [hppPocketMoneyInput, setHppPocketMoneyInput] = useState(() => {
+    if (product === 'DEPARTURE_BRIDGING') {
+      const calculated = Math.max(0, departureNetAmount - defaultInvoice)
+      return calculated ? calculated.toLocaleString('id-ID') : ''
     }
-    return product === 'DEPARTURE_BRIDGING' ? Math.max(0, requestedAmount - defaultInvoice) : 0
+    if (financialPlan.hppPocketMoneyAmount !== undefined) {
+      const saved = Number(financialPlan.hppPocketMoneyAmount) || 0
+      return saved ? saved.toLocaleString('id-ID') : ''
+    }
+    return ''
   })
+  const hppInvoice = parseThousandsInput(hppInvoiceInput)
+  const hppPocketMoney = parseThousandsInput(hppPocketMoneyInput)
   const [fullCoverNafaqah, setFullCoverNafaqah] = useState(Number(financialPlan.nafaqahTotal) || 0)
   const [nafaqahItems, setNafaqahItems] = useState(() => {
     const saved = readLines(financialPlan.nafaqahItems)
@@ -321,79 +355,156 @@ export function FinanceTermsFields({
     return saved.length ? saved : [emptyLine()]
   })
   const [qardhDisbursed, setQardhDisbursed] = useState(financialPlan.qardhDisbursed === true)
-  const [qardhAmount, setQardhAmount] = useState(Number(financialPlan.qardhAmount) || 0)
+  const [qardhAmount, setQardhAmount] = useState(() => {
+    if (product === 'DEPARTURE_BRIDGING') {
+      return Math.max(0, departureNetAmount - defaultInvoice)
+    }
+    if (financialPlan.qardhAmount !== undefined) return Number(financialPlan.qardhAmount) || 0
+    return 0
+  })
   const [refundTotal, setRefundTotal] = useState(Number(financialPlan.refundTotal) || 0)
   const [installmentCount, setInstallmentCount] = useState(
     String(financialPlan.installmentCount ?? ''),
   )
+  const [firstPaymentDate, setFirstPaymentDate] = useState(
+    String(financialPlan.firstPaymentDate ?? ''),
+  )
+  const [akadDate, setAkadDate] = useState(() => {
+    const saved = String(financialPlan.akadDate ?? '')
+    if (saved) return saved
+    if (issuedAkad?.issuedAt) {
+      const issuedDate = new Date(issuedAkad.issuedAt)
+      if (!Number.isNaN(issuedDate.getTime())) {
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(issuedDate)
+      }
+    }
+    return getTodayJakartaIso()
+  })
   const [appendixDocuments, setAppendixDocuments] = useState(() => {
     const saved = readAppendixDocuments(financialPlan.appendixDocuments)
     return saved.length ? saved : defaultAppendixDocuments
   })
   const hppTotal = hppInvoice + hppPocketMoney
+  const updateHppInvoice = (value: string) => {
+    const formatted = formatThousandsInput(value)
+    setHppInvoiceInput(formatted)
+    if (product === 'DEPARTURE_BRIDGING') {
+      const nextPocketMoney = Math.max(0, departureNetAmount - parseThousandsInput(formatted))
+      setHppPocketMoneyInput(nextPocketMoney ? nextPocketMoney.toLocaleString('id-ID') : '')
+      setQardhAmount(nextPocketMoney)
+    }
+  }
   const hppAligned =
     product === 'DEPARTURE_BRIDGING'
-      ? requestedAmount > 0 && hppTotal === requestedAmount
+      ? requestedAmount > 0 && hppTotal === departureNetAmount
       : fullCoverNafaqah > 0 && hppTotal === fullCoverNafaqah
 
   const hppEditor = (
-    <section className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+    <section className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-blue-50/70 p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Rincian HPP VSV</h3>
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0b57d0]">
+            Alokasi pembiayaan
+          </span>
+          <h3 className="mt-1 text-base font-bold text-slate-900">Rincian penggunaan dana</h3>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
-            HPP terdiri dari invoice/tagihan LPK dan uang saku siswa. Nilai awal invoice Full Cover
-            diambil dari estimasi yang diisi siswa dan perlu diverifikasi admin.
+            {product === 'DEPARTURE_BRIDGING'
+              ? 'Dari total pengajuan dikurangi biaya admin 5%, tanggungan invoice LPK dibayarkan terlebih dahulu dan sisanya menjadi uang saku siswa.'
+              : 'Penggunaan dana Full Cover terdiri dari invoice/tagihan LPK dan uang saku siswa. Nilai awal invoice diambil dari estimasi siswa dan perlu diverifikasi admin.'}
           </p>
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${hppAligned ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}
         >
-          {hppAligned ? 'Nominal sesuai' : 'Perlu dicocokkan'}
+          {hppAligned ? 'Sesuai perhitungan' : 'Perlu dicocokkan'}
         </span>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-xs font-semibold text-slate-600">
-          <span>Invoice LPK terverifikasi (Rp)</span>
-          <input
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-            min={0}
-            onChange={(event) => setHppInvoice(Number(event.target.value) || 0)}
-            step={1}
-            type="number"
-            value={hppInvoice}
-          />
-        </label>
-        <label className="space-y-1 text-xs font-semibold text-slate-600">
-          <span>Uang saku siswa (Rp)</span>
-          <input
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-            min={0}
-            onChange={(event) => setHppPocketMoney(Number(event.target.value) || 0)}
-            step={1}
-            type="number"
-            value={hppPocketMoney}
-          />
-        </label>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <span className="block text-[11px] font-medium text-slate-500">Total HPP</span>
-          <strong className="mt-0.5 block text-sm text-slate-900">{amountLabel(hppTotal)}</strong>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <span className="block text-[11px] font-medium text-slate-500">
-            {product === 'DEPARTURE_BRIDGING' ? 'Nominal pengajuan siswa' : 'Nafaqah dalam Draft 2'}
+          <span>Invoice LPK terverifikasi</span>
+          <span className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-[#0b57d0] focus-within:ring-2 focus-within:ring-[#0b57d0]/15">
+            <span className="pl-3 text-sm font-medium text-slate-500">Rp</span>
+            <input
+              className="w-full min-w-0 rounded-r-lg border-0 bg-transparent px-2 py-2 text-sm font-normal text-slate-900 shadow-none outline-none focus:border-0 focus:shadow-none focus:outline-none focus-visible:!outline-none focus-visible:!outline-offset-0 focus-visible:!ring-0"
+              inputMode="numeric"
+              onChange={(event) => updateHppInvoice(event.target.value)}
+              placeholder="0"
+              type="text"
+              value={hppInvoiceInput}
+            />
           </span>
-          <strong className="mt-0.5 block text-sm text-slate-900">
-            {amountLabel(product === 'DEPARTURE_BRIDGING' ? requestedAmount : fullCoverNafaqah)}
-          </strong>
-        </div>
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Uang saku siswa</span>
+          <span className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-[#0b57d0] focus-within:ring-2 focus-within:ring-[#0b57d0]/15">
+            <span className="pl-3 text-sm font-medium text-slate-500">Rp</span>
+            <input
+              className={`w-full min-w-0 rounded-r-lg border-0 bg-transparent px-2 py-2 text-sm font-normal text-slate-900 shadow-none outline-none focus:border-0 focus:shadow-none focus:outline-none focus-visible:!outline-none focus-visible:!outline-offset-0 focus-visible:!ring-0 ${product === 'DEPARTURE_BRIDGING' ? 'bg-slate-50' : ''}`}
+              inputMode="numeric"
+              onChange={(event) => setHppPocketMoneyInput(formatThousandsInput(event.target.value))}
+              placeholder="0"
+              readOnly={product === 'DEPARTURE_BRIDGING'}
+              type="text"
+              value={hppPocketMoneyInput}
+            />
+          </span>
+        </label>
       </div>
+      {product === 'DEPARTURE_BRIDGING' && (
+        <div className="mt-4 rounded-xl border border-blue-100 bg-white/90 p-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="min-w-[110px]">
+              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Total pengajuan
+              </span>
+              <strong className="mt-0.5 block text-sm text-slate-800">
+                {amountLabel(requestedAmount)}
+              </strong>
+            </div>
+            <span className="text-sm font-medium text-slate-400">−</span>
+            <div className="min-w-[110px]">
+              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Admin 5%
+              </span>
+              <strong className="mt-0.5 block text-sm text-slate-700">
+                {amountLabel(departureAdminFee)}
+              </strong>
+            </div>
+            <span className="text-sm font-medium text-slate-400">=</span>
+            <div className="min-w-[130px] rounded-lg bg-blue-50 px-3 py-2">
+              <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#0b57d0]">
+                Dana setelah admin
+              </span>
+              <strong className="mt-0.5 block text-sm font-bold text-[#0b57d0]">
+                {amountLabel(departureNetAmount)}
+              </strong>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <span>Dialokasikan untuk invoice LPK sebesar</span>
+            <strong className="text-slate-800">{amountLabel(hppInvoice)}</strong>
+            <span>dan sisa</span>
+            <strong className="text-emerald-700">{amountLabel(hppPocketMoney)}</strong>
+            <span>menjadi uang saku siswa.</span>
+          </div>
+        </div>
+      )}
+      {product === 'FULL_COVER' && (
+        <p className="mt-4 rounded-xl border border-blue-100 bg-white/90 px-4 py-3 text-xs leading-5 text-slate-600">
+          Invoice LPK dan uang saku siswa menjadi komponen Nafaqah dalam Draft 2.
+        </p>
+      )}
       <input name="hppLpkInvoiceAmount" type="hidden" value={hppInvoice} />
       <input name="hppPocketMoneyAmount" type="hidden" value={hppPocketMoney} />
       {product === 'DEPARTURE_BRIDGING' && requestedAmount > 0 && !hppAligned && (
         <p className="mt-3 text-xs font-medium text-amber-800">
-          Total invoice LPK + uang saku harus sama dengan nominal pengajuan (
-          {amountLabel(requestedAmount)}).
+          Invoice LPK + uang saku harus sama dengan dana setelah biaya admin 5% (
+          {amountLabel(departureNetAmount)}).
         </p>
       )}
       {product === 'FULL_COVER' && fullCoverNafaqah > 0 && !hppAligned && (
@@ -404,23 +515,144 @@ export function FinanceTermsFields({
     </section>
   )
 
+  const birthDate = String(personalDetails.birthDate ?? '')
+  const birthDateLabel = birthDate
+    ? new Date(`${birthDate}T00:00:00Z`).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    : ''
+  const birthPlaceAndDate = [personalDetails.birthPlace, birthDateLabel]
+    .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+    .join(', ')
+  const religionLabels: Record<string, string> = {
+    ISLAM: 'Islam',
+    PROTESTANT: 'Kristen Protestan',
+    CATHOLIC: 'Katolik',
+    HINDU: 'Hindu',
+    BUDDHIST: 'Buddha',
+    CONFUCIAN: 'Konghucu',
+  }
+  const selectedAkadDate = akadDate ? new Date(`${akadDate}T05:00:00Z`) : null
+  const akadDateLabel =
+    selectedAkadDate && !Number.isNaN(selectedAkadDate.getTime())
+      ? selectedAkadDate.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Asia/Jakarta',
+        })
+      : ''
+  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+  const romanMonth = selectedAkadDate ? romanMonths[selectedAkadDate.getUTCMonth()] : ''
+  const contractScheme = product === 'FULL_COVER' ? 'WKL-JAL-JPN' : 'WKL-JPN'
+  const contractNumberPreview =
+    issuedAkad?.documentNumber ||
+    `Urutan NIS/${contractScheme}/VSV-WSB/${romanMonth}/${selectedAkadDate?.getUTCFullYear() ?? ''}`
+  const identityFields = [
+    ['Nama PIHAK KEDUA', applicantName],
+    ['Tempat, tanggal lahir', birthPlaceAndDate],
+    ['Alamat sesuai KTP', personalDetails.idCardAddress],
+    ['Agama', religionLabels[String(personalDetails.religion ?? '')] ?? personalDetails.religion],
+    ['Nomor KTP', personalDetails.idCardNumber],
+    ['Nomor HP', phone],
+    ['Nama PIHAK KEDUA di tanda tangan', applicantName],
+  ] as const
+  const identityEditor = (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-blue-50/70 shadow-sm">
+      <div className="border-b border-blue-100 bg-white/70 px-5 py-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0b57d0]">
+          Data dokumen
+        </span>
+        <h3 className="mt-1 text-base font-bold text-slate-900">Identitas dan tanggal akad</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          Identitas mengikuti data pengajuan. Pilih tanggal akad; tanggal tanda tangan akan sama.
+        </p>
+      </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Nomor kontrak</span>
+          <input
+            className="w-full rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs font-semibold text-[#0b57d0]"
+            readOnly
+            value={contractNumberPreview}
+          />
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Hari dan tanggal akad</span>
+          <input
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+            name="akadDate"
+            onChange={(event) => setAkadDate(event.target.value)}
+            required
+            type="date"
+            value={akadDate}
+          />
+          <span className="block text-[11px] font-normal text-slate-500">
+            {akadDateLabel || 'Pilih tanggal akad'}
+          </span>
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Tanggal tanda tangan</span>
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-700"
+            readOnly
+            value={akadDateLabel || 'Pilih tanggal akad'}
+          />
+        </label>
+        {identityFields.map(([label, value]) => (
+          <label className="space-y-1 text-xs font-semibold text-slate-600" key={label}>
+            <span>{label}</span>
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-700"
+              readOnly
+              value={
+                typeof value === 'string' && value.trim() ? value : 'Belum diisi pada pengajuan'
+              }
+            />
+          </label>
+        ))}
+        <label className="space-y-1 text-xs font-semibold text-slate-600">
+          <span>Nama wali/orang tua</span>
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-normal text-slate-700"
+            readOnly
+            value={
+              typeof personalDetails.guardianName === 'string' &&
+              personalDetails.guardianName.trim()
+                ? personalDetails.guardianName
+                : 'Belum diisi pada pengajuan'
+            }
+          />
+        </label>
+        {product === 'DEPARTURE_BRIDGING' && (
+          <label className="space-y-1 text-xs font-semibold text-slate-600">
+            <span>Nama perwakilan LPK sebagai saksi</span>
+            <input
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
+              maxLength={120}
+              name="lpkWitnessName"
+              defaultValue={String(financialPlan.lpkWitnessName ?? '')}
+              placeholder="Nama saksi dari LPK"
+            />
+          </label>
+        )}
+      </div>
+    </section>
+  )
+
   if (product === 'FULL_COVER') {
     return (
       <div className="space-y-4">
+        {identityEditor}
         {hppEditor}
         <AppendixDocumentsFields
           documents={appendixDocuments}
           setDocuments={setAppendixDocuments}
         />
-        <label className="block space-y-1 text-xs font-semibold text-slate-600">
-          <span>Nama perwakilan LPK sebagai saksi</span>
-          <input
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-            maxLength={120}
-            name="lpkWitnessName"
-            defaultValue={String(financialPlan.lpkWitnessName ?? '')}
-          />
-        </label>
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <h3 className="text-sm font-bold text-slate-900">Nominal dan jangka waktu Draft 2</h3>
           <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -524,6 +756,10 @@ export function FinanceTermsFields({
   const parsedCount = Number(installmentCount)
   const monthlyEstimate =
     Number.isInteger(parsedCount) && parsedCount > 0 ? Math.floor(total / parsedCount) : null
+  const schedule =
+    Number.isInteger(parsedCount) && parsedCount > 0
+      ? calculateInstallmentSchedule(total, parsedCount, firstPaymentDate)
+      : null
   const hppComponentsMatch =
     nafaqahTotal === hppInvoice &&
     qardhAmount === hppPocketMoney &&
@@ -531,17 +767,37 @@ export function FinanceTermsFields({
 
   return (
     <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          <span className="text-[11px] font-medium text-slate-500">Total Nafaqah (Riil)</span>
+          <strong className="mt-1 block text-sm font-bold text-slate-900">
+            {amountLabel(nafaqahTotal)}
+          </strong>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          <span className="text-[11px] font-medium text-slate-500">Total Ujrah (Jasa)</span>
+          <strong className="mt-1 block text-sm font-bold text-slate-900">
+            {amountLabel(ujrahTotal)}
+          </strong>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5">
+          <span className="text-[11px] font-semibold text-[#0b57d0]">Total Kewajiban Akad</span>
+          <strong className="mt-1 block text-base font-extrabold text-[#0b57d0]">
+            {amountLabel(total)}
+          </strong>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5">
+          <span className="text-[11px] font-semibold text-emerald-700">
+            Estimasi Angsuran / Bulan
+          </span>
+          <strong className="mt-1 block text-base font-extrabold text-emerald-900">
+            {monthlyEstimate !== null ? `${amountLabel(monthlyEstimate)} × ${parsedCount}` : '—'}
+          </strong>
+        </div>
+      </div>
       {hppEditor}
+      {identityEditor}
       <AppendixDocumentsFields documents={appendixDocuments} setDocuments={setAppendixDocuments} />
-      <label className="block space-y-1 text-xs font-semibold text-slate-600">
-        <span>Nama perwakilan LPK sebagai saksi</span>
-        <input
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-          maxLength={120}
-          name="lpkWitnessName"
-          defaultValue={String(financialPlan.lpkWitnessName ?? '')}
-        />
-      </label>
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <h3 className="text-sm font-bold text-slate-900">Ketentuan pelengkap Draft 1</h3>
         <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -599,41 +855,65 @@ export function FinanceTermsFields({
       <input name="ujrahItems" type="hidden" value={JSON.stringify(ujrahItems)} />
       <input name="qardhDisbursed" type="hidden" value={String(qardhDisbursed)} />
 
-      {/* Live Calculation Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-          <span className="text-[11px] font-medium text-slate-500">Total Nafaqah (Riil)</span>
-          <strong className="mt-1 block text-sm font-bold text-slate-900">
-            {amountLabel(nafaqahTotal)}
-          </strong>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-bold text-slate-900">Terbilang dan Lampiran B</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Nilai berikut mengikuti rincian biaya dan jumlah angsuran yang diisi di bawah.
+          </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-          <span className="text-[11px] font-medium text-slate-500">Total Ujrah (Jasa)</span>
-          <strong className="mt-1 block text-sm font-bold text-slate-900">
-            {amountLabel(ujrahTotal)}
-          </strong>
+        <div className="grid gap-3 p-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <span className="block text-[11px] font-semibold text-slate-500">Ujrah terbilang</span>
+            <strong className="mt-1 block text-xs font-medium capitalize leading-5 text-slate-800">
+              {ujrahTotal > 0 ? `${terbilang(ujrahTotal)} rupiah` : 'Isi rincian Ujrah'}
+            </strong>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <span className="block text-[11px] font-semibold text-slate-500">
+              Nominal per bulan
+            </span>
+            <strong className="mt-1 block text-sm text-slate-900">
+              {monthlyEstimate !== null ? amountLabel(monthlyEstimate) : 'Isi jumlah angsuran'}
+            </strong>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-          <span className="text-[11px] font-medium text-slate-500">Qardh − Refund</span>
-          <strong className="mt-1 block text-sm font-bold text-slate-900">
-            {amountLabel(effectiveQardh)} − {amountLabel(refundTotal)}
-          </strong>
-        </div>
-        <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5">
-          <span className="text-[11px] font-semibold text-[#0b57d0]">Total Kewajiban Akad</span>
-          <strong className="mt-1 block text-base font-extrabold text-[#0b57d0]">
-            {amountLabel(total)}
-          </strong>
-        </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5">
-          <span className="text-[11px] font-semibold text-emerald-700">
-            Estimasi Angsuran / Bulan
-          </span>
-          <strong className="mt-1 block text-base font-extrabold text-emerald-900">
-            {monthlyEstimate !== null ? `${amountLabel(monthlyEstimate)} × ${parsedCount}` : '—'}
-          </strong>
-        </div>
-      </div>
+        {schedule ? (
+          <div className="max-h-72 overflow-auto border-t border-slate-100">
+            <table className="w-full min-w-[520px] text-left text-xs">
+              <thead className="sticky top-0 bg-slate-50 text-[11px] font-semibold text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">Angsuran</th>
+                  <th className="px-4 py-2">Tanggal jatuh tempo</th>
+                  <th className="px-4 py-2">Jumlah</th>
+                  <th className="px-4 py-2">Sisa</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {schedule.map((entry) => (
+                  <tr key={entry.installment}>
+                    <td className="px-4 py-2">{entry.installment}</td>
+                    <td className="px-4 py-2">
+                      {new Date(`${entry.dueDate}T00:00:00Z`).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        timeZone: 'UTC',
+                      })}
+                    </td>
+                    <td className="px-4 py-2">{amountLabel(entry.amount)}</td>
+                    <td className="px-4 py-2">{amountLabel(entry.remainingBalance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="border-t border-slate-100 px-4 py-3 text-xs text-amber-800">
+            Lampiran B akan terbentuk setelah jumlah angsuran dan tanggal angsuran pertama terisi.
+          </p>
+        )}
+      </section>
 
       <CostLines
         add={() => setNafaqahItems((current) => [...current, emptyLine()])}
@@ -667,15 +947,11 @@ export function FinanceTermsFields({
         }
       />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-        <h3 className="text-sm font-bold text-slate-900">
-          Parameter Jadwal Angsuran, Qardh, & Referensi Akad Final
-        </h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Pastikan tanggal angsuran pertama berada pada bulan setelah perkiraan keberangkatan.
+      <div className="space-y-3">
+        <p className="text-xs text-slate-500">
+          Jadwal angsuran dimulai pada bulan setelah perkiraan keberangkatan.
         </p>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="space-y-1 text-xs font-semibold text-slate-600">
             <span>Uang saku qardh (Rp)</span>
             <input
@@ -714,9 +990,10 @@ export function FinanceTermsFields({
             <span>Tanggal angsuran pertama</span>
             <input
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-normal text-slate-900 focus:border-[#0b57d0] focus:outline-none"
-              defaultValue={String(financialPlan.firstPaymentDate ?? '')}
+              onChange={(event) => setFirstPaymentDate(event.target.value)}
               name="firstPaymentDate"
               type="date"
+              value={firstPaymentDate}
             />
           </label>
           <label className="space-y-1 text-xs font-semibold text-slate-600">
@@ -762,7 +1039,7 @@ export function FinanceTermsFields({
             />
           </label>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
