@@ -2543,7 +2543,6 @@ export function AdminDashboard({
         wakalahOtherUjrahService: String(formData.get('wakalahOtherUjrahService') ?? ''),
         wakalahMediator: String(formData.get('wakalahMediator') ?? ''),
         wakalahDisputeInstitution: String(formData.get('wakalahDisputeInstitution') ?? ''),
-        appendixDocuments: String(formData.get('appendixDocuments') ?? '[]'),
         lpkWitnessName: String(formData.get('lpkWitnessName') ?? ''),
       })
       if (!result.ok) {

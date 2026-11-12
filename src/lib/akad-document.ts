@@ -382,10 +382,15 @@ const applyFullCoverCostTable = (xml: string, values: ResolvedValues): string =>
   return xml.slice(0, location.start) + nextTable + xml.slice(location.end)
 }
 
-const applyAppendixDocumentsTable = (
-  xml: string,
-  documents: { label: string; date: string; condition: string; count: number }[],
-): string => {
+const APPENDIX_DOCUMENT_REQUIREMENTS = [
+  'Akta Kelahiran',
+  'Kartu Keluarga',
+  'Ijazah SD/MI',
+  'Ijazah SMP/MTs/SLTP',
+  'Ijazah SMA/MA/SLTA',
+]
+
+const applyAppendixDocumentsTable = (xml: string): string => {
   const location = findTableByMarker(xml, 'Akta Kelahiran')
   if (!location) throw new Error(TEMPLATE_ERROR)
   const table = xml.slice(location.start, location.end)
@@ -393,14 +398,8 @@ const applyAppendixDocumentsTable = (
   const header = rows[0]
   const template = rows.find((row) => rowText(row).includes('Akta Kelahiran'))
   if (!header || !template) throw new Error(TEMPLATE_ERROR)
-  const documentRows = documents.map((document, index) =>
-    replaceTableRowCells(template, [
-      String(index + 1),
-      document.label,
-      document.condition === 'ORIGINAL' ? 'Asli' : 'Fotokopi',
-      String(document.count),
-      `Tanggal ${formatIsoLongDate(document.date) ?? document.date}`,
-    ]),
+  const documentRows = APPENDIX_DOCUMENT_REQUIREMENTS.map((label, index) =>
+    replaceTableRowCells(template, [String(index + 1), label, null, null, null]),
   )
   const nextTable = reassembleTable(table, [header, ...documentRows])
   return xml.slice(0, location.start) + nextTable + xml.slice(location.end)
@@ -442,7 +441,6 @@ type ResolvedValues = {
   total: number
   installmentCount: number
   monthlyInstallment: number
-  firstPaymentLong: string | null
   // jualah
   jualaTotal: number
   totalIfCoe: number
@@ -517,8 +515,8 @@ const resolveWakalah = (
     }
     case '[tanggal]': {
       const list = scheduleRebuilt
-        ? [issueLong, values.firstPaymentLong, issueLong, null]
-        : [issueLong, values.firstPaymentLong, issueLong, null, null, null]
+        ? [issueLong, null, issueLong, null]
+        : [issueLong, null, issueLong, null, null, null]
       return at(list, index)
     }
     case '[jumlah]':
@@ -586,7 +584,7 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
     case '[mitra]':
       return at([values.lpkMitra, values.lpkMitra], index)
     case '[tanggal]':
-      return at([issueLong, values.firstPaymentLong, issueLong, issueLong], index)
+      return at([issueLong, null, issueLong, issueLong], index)
     case '[ujrah]':
       return at(
         Array.from({ length: 5 }, () => rp(values.ujrahTotal)),
@@ -649,11 +647,6 @@ const resolveJualah = (token: string, index: number, values: ResolvedValues): st
           rp(values.departureAllowanceAmount),
           rp(values.commitmentCompensationAmount),
         ],
-        index,
-      )
-    case '[ ]':
-      return at(
-        Array.from({ length: 8 }, () => null),
         index,
       )
     default:
@@ -751,7 +744,6 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
       total: totalObligation,
       installmentCount: tenorMonths,
       monthlyInstallment: monthlyAfterCoe,
-      firstPaymentLong: formatIsoLongDate(deriveFirstPaymentDate(application)),
       jualaTotal,
       totalIfCoe,
       tenorMonths,
@@ -789,7 +781,6 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
   const installmentCount =
     Number.isInteger(countRaw) && countRaw >= 1 && countRaw <= 36 ? countRaw : 12
   const monthlyInstallment = Math.floor(total / installmentCount)
-  const firstPaymentLong = formatIsoLongDate(deriveFirstPaymentDate(application))
   return {
     studentSequence: '',
     issuedAt,
@@ -805,7 +796,6 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
     total,
     installmentCount,
     monthlyInstallment,
-    firstPaymentLong,
     jualaTotal: 0,
     totalIfCoe: total,
     tenorMonths: installmentCount,
@@ -886,11 +876,6 @@ export const buildAkadDocument = async (options: {
     const plan = (application.financialPlan ?? {}) as Record<string, unknown>
     const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
     const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
-    const appendixDocuments = Array.isArray(plan.appendixDocuments)
-      ? plan.appendixDocuments.filter(
-          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
-        )
-      : []
     const ticketIncluded = nafaqahItems.some((item) => /tiket/i.test(item.label))
     if (!ticketIncluded) {
       xml = updateParagraphContaining(xml, 'Biaya tiket dan keperluan keberangkatan', null)
@@ -917,7 +902,7 @@ export const buildAkadDocument = async (options: {
       const scheduleRows = schedule.map((entry) =>
         replaceTableRowCells(scheduleRowModel as string, [
           String(entry.installment),
-          formatIsoLongDate(entry.dueDate) ?? '',
+          '',
           `Rp${rp(entry.amount)}`,
           `Rp${rp(entry.remainingBalance)}`,
         ]),
@@ -948,15 +933,7 @@ export const buildAkadDocument = async (options: {
       }
     }
 
-    xml = applyAppendixDocumentsTable(
-      xml,
-      appendixDocuments.map((item) => ({
-        label: readText(item.label),
-        date: readText(item.date),
-        condition: readText(item.condition),
-        count: readNumber(item.count),
-      })),
-    )
+    xml = applyAppendixDocumentsTable(xml)
 
     xml = fillTokens(xml, (token, index) => resolveWakalah(token, index, values, scheduleRebuilt))
   } else {
@@ -967,21 +944,7 @@ export const buildAkadDocument = async (options: {
     )
     assertTokenCount(xml, '[tanggal]', 4)
     xml = applyFullCoverCostTable(xml, values)
-    const plan = (application.financialPlan ?? {}) as Record<string, unknown>
-    const appendixDocuments = Array.isArray(plan.appendixDocuments)
-      ? plan.appendixDocuments.filter(
-          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object',
-        )
-      : []
-    xml = applyAppendixDocumentsTable(
-      xml,
-      appendixDocuments.map((item) => ({
-        label: readText(item.label),
-        date: readText(item.date),
-        condition: readText(item.condition),
-        count: readNumber(item.count),
-      })),
-    )
+    xml = applyAppendixDocumentsTable(xml)
     xml = fillTokens(xml, (token, index) => resolveJualah(token, index, values))
   }
 

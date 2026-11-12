@@ -43,54 +43,6 @@ const appendFinancialHistory = (applicationData: DocumentData, entry: Record<str
   return [...previousHistory.slice(-19), entry]
 }
 
-const parseAkadAppendixDocuments = (value: string): Record<string, unknown>[] | null => {
-  try {
-    const parsed: unknown = JSON.parse(value)
-    if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 20) return null
-    const normalized: Record<string, unknown>[] = []
-    for (const item of parsed) {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return null
-      const document = item as Record<string, unknown>
-      const label = typeof document.label === 'string' ? document.label.trim() : ''
-      const date = typeof document.date === 'string' ? document.date : ''
-      const condition = document.condition
-      const count = document.count
-      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : null
-      if (
-        label.length > 120 ||
-        (date !== '' && (!parsedDate || parsedDate.toISOString().slice(0, 10) !== date)) ||
-        !['ORIGINAL', 'COPY', ''].includes(String(condition)) ||
-        typeof count !== 'number' ||
-        !Number.isInteger(count) ||
-        count < 0 ||
-        count > 100
-      )
-        return null
-      normalized.push({ label, date, condition, count })
-    }
-    return normalized
-  } catch {
-    return null
-  }
-}
-
-const hasCompleteAkadAppendixDocuments = (value: unknown): boolean => {
-  const documents = parseAkadAppendixDocuments(JSON.stringify(value ?? null))
-  return Boolean(
-    documents?.length &&
-    documents.every(
-      (item) =>
-        typeof item.label === 'string' &&
-        item.label.trim().length > 0 &&
-        typeof item.date === 'string' &&
-        /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
-        ['ORIGINAL', 'COPY'].includes(String(item.condition)) &&
-        typeof item.count === 'number' &&
-        item.count >= 1,
-    ),
-  )
-}
-
 const validateDepartureApproval = (
   applicationData: DocumentData,
   plan: Record<string, unknown>,
@@ -324,7 +276,6 @@ export async function saveFinancialPlan(
     'wakalahOtherUjrahService',
     'wakalahMediator',
     'wakalahDisputeInstitution',
-    'appendixDocuments',
     'lpkWitnessName',
   ] as const
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
@@ -365,13 +316,6 @@ export async function saveFinancialPlan(
   if (!Number.isSafeInteger(refundTotal)) {
     return { ok: false, message: 'Nominal pengembalian tidak valid.' }
   }
-  const appendixDocuments = parseAkadAppendixDocuments(financialValues.appendixDocuments)
-  if (!appendixDocuments) {
-    return {
-      ok: false,
-      message: 'Lengkapi tanggal, status asli/fotokopi, dan jumlah dokumen lampiran.',
-    }
-  }
   if (firstPaymentDate && !calculateInstallmentSchedule(0, 1, firstPaymentDate)) {
     return { ok: false, message: 'Tanggal angsuran pertama tidak valid.' }
   }
@@ -398,7 +342,6 @@ export async function saveFinancialPlan(
       wakalahOtherUjrahService: financialValues.wakalahOtherUjrahService.trim(),
       wakalahMediator: financialValues.wakalahMediator.trim(),
       wakalahDisputeInstitution: financialValues.wakalahDisputeInstitution.trim(),
-      appendixDocuments,
       akadDate,
       firstPaymentDate,
       lpkWitnessName: financialValues.lpkWitnessName.trim(),
@@ -1271,13 +1214,6 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
       !String(plan.lpkWitnessName ?? '').trim()
     ) {
       return { ok: false, message: 'Isi nama perwakilan LPK sebagai saksi pada tab Draft Akad.' }
-    }
-    if (!hasCompleteAkadAppendixDocuments(plan.appendixDocuments)) {
-      return {
-        ok: false,
-        message:
-          'Lengkapi nama, tanggal, status asli/fotokopi, dan jumlah dokumen lampiran sebelum menerbitkan akad.',
-      }
     }
     const product = String(applicationData.product ?? '')
     if (product === 'DEPARTURE_BRIDGING') {
