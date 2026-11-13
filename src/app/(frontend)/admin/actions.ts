@@ -5,9 +5,10 @@ import { APPLICATION_STATUSES, PRICING_STATUSES } from '@/lib/firebase-data'
 import {
   calculateInstallmentSchedule,
   coerceFinancingLines,
+  deriveDepartureFinancials,
   getFinancingLineTotal,
-  parseFinancingLines,
   serializeStable,
+  type DepartureFinancials,
   type FinancingCostLine,
 } from '@/lib/departure-financing'
 import { deleteDriveFile, uploadDriveFile } from '@/lib/gdrive'
@@ -54,22 +55,36 @@ const validateDepartureApproval = (
   const hppInvoice = Number(plan.hppLpkInvoiceAmount)
   const hppPocketMoney = Number(plan.hppPocketMoneyAmount)
   const requestedAmount = Number(applicationData.departureDetails?.requestedFinancingAmount)
-  const amountAfterAdminFee = requestedAmount - Math.round(requestedAmount * 0.05)
+  const storedPrincipal = Number(plan.principal)
+  const principal =
+    Number.isSafeInteger(storedPrincipal) && storedPrincipal > 0 ? storedPrincipal : requestedAmount
   const languageMonths = Number(plan.wakalahLanguageMonths)
   const skillMonths = Number(plan.wakalahSkillMonths)
   const documentReturnDays = Number(plan.wakalahDocumentReturnBusinessDays)
   const writtenWarningCount = Number(plan.wakalahWrittenWarningCount)
   const graceDays = Number(plan.wakalahGraceDays)
+  const derived = deriveDepartureFinancials({
+    principal,
+    invoice: hppInvoice,
+    lpkName: String(applicationData.lpkName ?? ''),
+  })
+  const nafaqahTotal = Number(plan.nafaqahTotal)
+  const ujrahTotal = Number(plan.ujrahTotal)
   if (
-    !Number.isSafeInteger(hppInvoice) ||
-    hppInvoice < 0 ||
+    !derived.valid ||
+    hppInvoice < 1 ||
     !Number.isSafeInteger(hppPocketMoney) ||
     hppPocketMoney < 0 ||
-    requestedAmount <= 0 ||
-    hppInvoice + hppPocketMoney !== amountAfterAdminFee ||
-    getFinancingLineTotal(nafaqahItems) !== hppInvoice ||
+    hppInvoice + hppPocketMoney !== derived.netAmount ||
+    hppPocketMoney !== derived.pocketMoney ||
     Number(plan.qardhAmount) !== hppPocketMoney ||
     (hppPocketMoney > 0 && plan.qardhDisbursed !== true) ||
+    !Number.isSafeInteger(nafaqahTotal) ||
+    nafaqahTotal !== hppInvoice ||
+    !Number.isSafeInteger(ujrahTotal) ||
+    ujrahTotal !== derived.ujrahTotal ||
+    serializeStable(nafaqahItems) !== serializeStable(derived.nafaqahItems) ||
+    serializeStable(ujrahItems) !== serializeStable(derived.ujrahItems) ||
     !Number.isInteger(languageMonths) ||
     languageMonths < 1 ||
     languageMonths > 60 ||
@@ -86,24 +101,18 @@ const validateDepartureApproval = (
     graceDays < 1 ||
     graceDays > 90
   ) {
-    return 'Lengkapi jangka waktu dan ketentuan Draft 1, lalu cocokkan penggunaan dana setelah potongan admin 5%: invoice LPK + uang saku harus sama dengan dana bersih, Nafaqah sama dengan invoice, dan uang saku sama dengan qardh yang diserahkan.'
+    return 'Lengkapi jangka waktu dan ketentuan Draft 1, lalu cocokkan penggunaan dana setelah potongan admin 5%: invoice LPK + uang saku harus sama dengan dana bersih, rincian Lampiran A harus sesuai turunan otomatis (Nafaqah = invoice, Ujrah = wakalah 2,4% × 12 + administrasi 5%, uang saku = qardh yang diserahkan).'
   }
-  const positiveNafaqah = nafaqahItems.filter((line) => line.amount > 0)
-  const positiveUjrah = ujrahItems.filter((line) => line.amount > 0)
   const installmentCount = Number(plan.installmentCount)
   const firstPaymentDate = String(plan.firstPaymentDate ?? '')
   if (
-    positiveNafaqah.length === 0 ||
-    positiveNafaqah.some((line) => !line.label || !line.recipient || !line.evidenceReference) ||
-    positiveUjrah.length === 0 ||
-    positiveUjrah.some((line) => !line.label) ||
     !Number.isInteger(installmentCount) ||
     installmentCount < 1 ||
     installmentCount > 36 ||
     !firstPaymentDate ||
     (refundTotal > 0 && !refundEvidenceReference)
   ) {
-    return 'Lengkapi Nafaqah, Ujrah, jumlah dan tanggal angsuran, serta bukti untuk setiap refund sebelum verifikasi.'
+    return 'Lengkapi jumlah dan tanggal angsuran, serta bukti untuk setiap refund, sebelum verifikasi.'
   }
   const estimatedDeparture = applicationData.eligibility?.estimatedDeparture
   if (typeof estimatedDeparture === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(estimatedDeparture)) {
@@ -281,11 +290,6 @@ export async function saveFinancialPlan(
   if (textFields.some((field) => typeof financialValues?.[field] !== 'string')) {
     return { ok: false, message: 'Rincian akad atau penyelesaian tidak valid.' }
   }
-  const nafaqahItems = parseFinancingLines(financialValues?.nafaqahItems ?? '')
-  const ujrahItems = parseFinancingLines(financialValues?.ujrahItems ?? '')
-  if (!nafaqahItems || !ujrahItems) {
-    return { ok: false, message: 'Rincian Nafaqah atau Ujrah tidak valid.' }
-  }
   const qardhDisbursed = financialValues?.qardhDisbursed === 'true'
   const akadDate = financialValues?.akadDate ?? ''
   const firstPaymentDate = financialValues?.firstPaymentDate ?? ''
@@ -348,29 +352,47 @@ export async function saveFinancialPlan(
     }
     let updateValues: Record<string, unknown> = {}
     if (applicationProduct === 'DEPARTURE_BRIDGING') {
-      const nafaqahTotal = getFinancingLineTotal(nafaqahItems)
-      const ujrahTotal = getFinancingLineTotal(ujrahItems)
-      const qardhAmount = financialNumbers.qardhAmount ?? 0
-      if (
-        !Number.isSafeInteger(nafaqahTotal) ||
-        !Number.isSafeInteger(ujrahTotal) ||
-        refundTotal > nafaqahTotal
-      ) {
-        return { ok: false, message: 'Total biaya atau refund tidak valid.' }
-      }
-      if (qardhAmount > 0 && !qardhDisbursed) {
+      const requestedAmount =
+        Number(applicationData.departureDetails?.requestedFinancingAmount) || 0
+      const storedPrincipal = Number(existingFinancialPlan.principal)
+      const principal =
+        Number.isSafeInteger(storedPrincipal) && storedPrincipal > 0
+          ? storedPrincipal
+          : requestedAmount
+      const derived = deriveDepartureFinancials({
+        principal,
+        invoice: financialNumbers.hppLpkInvoiceAmount ?? 0,
+        lpkName: String(applicationData.lpkName ?? ''),
+      })
+      if (!derived.valid) {
         return {
           ok: false,
           message:
-            'Uang saku qardh hanya dapat dicatat setelah benar-benar diserahkan kepada pemohon.',
+            'Invoice LPK harus berupa angka dan tidak melebihi dana setelah biaya admin 5%. Periksa kartu Rincian penggunaan dana.',
         }
+      }
+      Object.assign(nextFinancialPlan, {
+        principal: derived.principal,
+        hppLpkInvoiceAmount: derived.invoice,
+        hppPocketMoneyAmount: derived.pocketMoney,
+        qardhAmount: derived.qardhAmount,
+        nafaqahItems: derived.nafaqahItems,
+        ujrahItems: derived.ujrahItems,
+        nafaqahTotal: derived.nafaqahTotal,
+        ujrahTotal: derived.ujrahTotal,
+      })
+      const nafaqahTotal = derived.nafaqahTotal
+      const ujrahTotal = derived.ujrahTotal
+      const qardhAmount = derived.qardhAmount
+      if (refundTotal > nafaqahTotal) {
+        return { ok: false, message: 'Total biaya atau refund tidak valid.' }
       }
       if (currentPricingStatus === 'VERIFIED' || currentPricingStatus === 'AGREED') {
         const approvalError = validateDepartureApproval(
           applicationData,
           nextFinancialPlan,
-          nafaqahItems,
-          ujrahItems,
+          derived.nafaqahItems,
+          derived.ujrahItems,
           refundTotal,
           refundEvidenceReference,
         )
@@ -401,8 +423,9 @@ export async function saveFinancialPlan(
         }
       }
       const offerSnapshot = {
-        nafaqahItems,
-        ujrahItems,
+        principal: derived.principal,
+        nafaqahItems: derived.nafaqahItems,
+        ujrahItems: derived.ujrahItems,
         nafaqahTotal,
         ujrahTotal,
         qardhAmount,
@@ -711,43 +734,17 @@ export async function rejectAndDeleteApplication(documentId: string): Promise<Ac
   }
 }
 
-const scaleFinancingLines = (lines: FinancingCostLine[], factor: number): FinancingCostLine[] =>
-  lines.map((line) =>
-    line.amount > 0
-      ? { ...line, amount: Math.max(1, Math.round(line.amount * factor)) }
-      : { ...line },
-  )
-
-const adjustLastPositiveLine = (
-  lines: FinancingCostLine[],
-  diff: number,
-): FinancingCostLine[] | null => {
-  if (diff === 0) return lines
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const line = lines[index]
-    if (line.amount <= 0) continue
-    const nextAmount = line.amount + diff
-    if (nextAmount >= 1 && Number.isSafeInteger(nextAmount)) {
-      const copy = [...lines]
-      copy[index] = { ...line, amount: nextAmount }
-      return copy
-    }
-  }
-  return null
-}
-
 const buildDepartureOfferSnapshot = (
-  nafaqahItems: FinancingCostLine[],
-  ujrahItems: FinancingCostLine[],
-  qardhAmount: number,
+  derived: DepartureFinancials,
   qardhDisbursed: boolean,
   refundTotal: number,
   refundEvidenceReference: string,
   installmentCount: number,
   firstPaymentDate: string,
 ): { snapshot: Record<string, unknown>; error: string | null } => {
-  const nafaqahTotal = getFinancingLineTotal(nafaqahItems)
-  const ujrahTotal = getFinancingLineTotal(ujrahItems)
+  const nafaqahTotal = derived.nafaqahTotal
+  const ujrahTotal = derived.ujrahTotal
+  const qardhAmount = derived.qardhAmount
   const totalObligation = nafaqahTotal + ujrahTotal + qardhAmount - refundTotal
   if (!Number.isSafeInteger(totalObligation) || totalObligation < 0) {
     return { snapshot: {}, error: 'Total kewajiban setelah potongan tidak valid.' }
@@ -761,8 +758,9 @@ const buildDepartureOfferSnapshot = (
   }
   return {
     snapshot: {
-      nafaqahItems,
-      ujrahItems,
+      principal: derived.principal,
+      nafaqahItems: derived.nafaqahItems,
+      ujrahItems: derived.ujrahItems,
       nafaqahTotal,
       ujrahTotal,
       qardhAmount,
@@ -825,48 +823,40 @@ export async function approveApplicationPricing(
         typeof requested === 'number' && Number.isSafeInteger(requested) && requested > 0
           ? requested
           : 0
-      const parsedNafaqah = coerceFinancingLines(plan.nafaqahItems)
-      const parsedUjrah = coerceFinancingLines(plan.ujrahItems)
-      const hasPositiveNafaqah = Boolean(
-        parsedNafaqah && parsedNafaqah.some((line) => line.amount > 0),
-      )
-      const hasPositiveUjrah = Boolean(parsedUjrah && parsedUjrah.some((line) => line.amount > 0))
-      const refCode = String(applicationData.applicationId || documentId).slice(0, 120)
-      const defaultRecipient =
-        String(applicationData.lpkName || 'LPK Mitra')
-          .trim()
-          .slice(0, 120) || 'LPK Mitra'
-      const nafaqahItems: FinancingCostLine[] | null = hasPositiveNafaqah
-        ? parsedNafaqah
-        : requestedNumber > 0
-          ? [
-              {
-                label: 'Dana talangan keberangkatan (Nafaqah)',
-                recipient: defaultRecipient,
-                amount: requestedNumber,
-                evidenceReference: `EST-${refCode}`,
-              },
-            ]
-          : null
-      const ujrahItems: FinancingCostLine[] | null = hasPositiveUjrah
-        ? parsedUjrah
-        : requestedNumber > 0
-          ? [
-              {
-                label: 'Ujrah pengurusan Wakalah (2,4% × 12 bulan)',
-                recipient: 'VentureGo VSV',
-                amount: Math.max(1, Math.round(requestedNumber * 0.024) * 12),
-                evidenceReference: `UJR-${refCode}`,
-              },
-            ]
-          : null
-      if (!nafaqahItems || !ujrahItems || nafaqahItems.length === 0 || ujrahItems.length === 0) {
-        return {
-          ok: false,
-          message: 'Lengkapi rincian Nafaqah dan Ujrah pada tab Draft Akad sebelum menyetujui.',
+      const rawPrincipal = Number(plan.principal)
+      const principal =
+        Number.isSafeInteger(rawPrincipal) && rawPrincipal > 0 ? rawPrincipal : requestedNumber
+      if (newNominal !== null) {
+        if (requestedNumber > 0 && newNominal > requestedNumber) {
+          return {
+            ok: false,
+            message: `Nominal baru tidak boleh melebihi nominal yang diajukan siswa (Rp${requestedNumber.toLocaleString('id-ID')}).`,
+          }
         }
       }
-      const qardhAmount = Number(plan.qardhAmount) || 0
+      const storedInvoice = Number(plan.hppLpkInvoiceAmount) || 0
+      const outstandingInvoice = Number(applicationData.departureDetails?.outstandingLPKAmount) || 0
+      const invoice = storedInvoice > 0 ? storedInvoice : outstandingInvoice
+      const derived = deriveDepartureFinancials({
+        principal: newNominal ?? principal,
+        invoice,
+        lpkName: String(applicationData.lpkName ?? ''),
+      })
+      if (!derived.valid) {
+        return {
+          ok: false,
+          message:
+            'Isi invoice LPK pada tab Draft Akad (invoice tidak boleh melebihi dana setelah potongan admin 5%) sebelum menyetujui.',
+        }
+      }
+      plan.principal = derived.principal
+      plan.hppLpkInvoiceAmount = derived.invoice
+      plan.hppPocketMoneyAmount = derived.pocketMoney
+      plan.qardhAmount = derived.qardhAmount
+      plan.nafaqahItems = derived.nafaqahItems
+      plan.ujrahItems = derived.ujrahItems
+      plan.nafaqahTotal = derived.nafaqahTotal
+      plan.ujrahTotal = derived.ujrahTotal
       const qardhDisbursed = plan.qardhDisbursed === true
       const refundTotal = Number(plan.refundTotal) || 0
       const refundEvidenceReference = String(plan.refundEvidenceReference ?? '').trim()
@@ -896,71 +886,17 @@ export async function approveApplicationPricing(
       }
       plan.installmentCount = installmentCount
       plan.firstPaymentDate = firstPaymentDate
-      let scaledNafaqah = nafaqahItems
-      let scaledUjrah = ujrahItems
-      if (newNominal !== null) {
-        if (requestedNumber > 0 && newNominal > requestedNumber) {
-          return {
-            ok: false,
-            message: `Nominal baru tidak boleh melebihi nominal yang diajukan siswa (Rp${requestedNumber.toLocaleString('id-ID')}).`,
-          }
-        }
-        const linesTotal = getFinancingLineTotal(nafaqahItems) + getFinancingLineTotal(ujrahItems)
-        if (linesTotal <= 0) {
-          return {
-            ok: false,
-            message: 'Total rincian biaya masih nol. Isi rincian pada tab Draft Akad.',
-          }
-        }
-        const desiredLines = newNominal - qardhAmount + refundTotal
-        if (desiredLines <= 0) {
-          return {
-            ok: false,
-            message: 'Nominal baru terlalu kecil dibanding qardh dan refund yang tercatat.',
-          }
-        }
-        const factor = desiredLines / linesTotal
-        scaledNafaqah = scaleFinancingLines(nafaqahItems, factor)
-        scaledUjrah = scaleFinancingLines(ujrahItems, factor)
-        const scaledTotal =
-          getFinancingLineTotal(scaledNafaqah) + getFinancingLineTotal(scaledUjrah)
-        const diff = desiredLines - scaledTotal
-        const adjustedNafaqah = adjustLastPositiveLine(scaledNafaqah, diff)
-        if (adjustedNafaqah) {
-          scaledNafaqah = adjustedNafaqah
-        } else {
-          const adjustedUjrah = adjustLastPositiveLine(scaledUjrah, diff)
-          if (!adjustedUjrah) {
-            return {
-              ok: false,
-              message:
-                'Nominal baru tidak dapat dibagi ke rincian biaya. Ubah nominal atau rincian terlebih dahulu.',
-            }
-          }
-          scaledUjrah = adjustedUjrah
-        }
-        const finalTotal = getFinancingLineTotal(scaledNafaqah) + getFinancingLineTotal(scaledUjrah)
-        if (finalTotal !== desiredLines) {
-          return {
-            ok: false,
-            message:
-              'Nominal baru tidak dapat dibagi ke rincian biaya. Ubah nominal atau rincian terlebih dahulu.',
-          }
-        }
-      }
       const approvalError = validateDepartureApproval(
         applicationData,
         plan,
-        scaledNafaqah,
-        scaledUjrah,
+        derived.nafaqahItems,
+        derived.ujrahItems,
         refundTotal,
         refundEvidenceReference,
       )
       if (approvalError) return { ok: false, message: approvalError }
       const built = buildDepartureOfferSnapshot(
-        scaledNafaqah,
-        scaledUjrah,
-        qardhAmount,
+        derived,
         qardhDisbursed,
         refundTotal,
         refundEvidenceReference,
@@ -1118,11 +1054,8 @@ export async function setApplicationPricingAgreed(documentId: string): Promise<A
     let offerSnapshot: Record<string, unknown>
 
     if (product === 'DEPARTURE_BRIDGING') {
-      const nafaqahItems = coerceFinancingLines(plan.nafaqahItems)
-      const ujrahItems = coerceFinancingLines(plan.ujrahItems)
-      if (!nafaqahItems || !ujrahItems) {
-        return { ok: false, message: 'Rincian Nafaqah atau Ujrah tidak valid.' }
-      }
+      const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
+      const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
       const approvalError = validateDepartureApproval(
         applicationData,
         plan,
@@ -1217,14 +1150,11 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
     }
     const product = String(applicationData.product ?? '')
     if (product === 'DEPARTURE_BRIDGING') {
-      const nafaqahItems = coerceFinancingLines(plan.nafaqahItems)
-      const ujrahItems = coerceFinancingLines(plan.ujrahItems)
-      if (
-        !nafaqahItems ||
-        !ujrahItems ||
-        getFinancingLineTotal(nafaqahItems) <= 0 ||
-        getFinancingLineTotal(ujrahItems) <= 0
-      ) {
+      const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
+      const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
+      const nafaqahTotal = Number(plan.nafaqahTotal) || getFinancingLineTotal(nafaqahItems)
+      const ujrahTotal = Number(plan.ujrahTotal) || getFinancingLineTotal(ujrahItems)
+      if (!(nafaqahTotal > 0) || !(ujrahTotal > 0)) {
         return {
           ok: false,
           message:
@@ -1233,7 +1163,7 @@ export async function issueAkadDocument(documentId: string): Promise<IssueAkadRe
       }
       const hppError = validateDepartureApproval(
         applicationData,
-        plan,
+        { ...plan, nafaqahTotal, ujrahTotal },
         nafaqahItems,
         ujrahItems,
         Number(plan.refundTotal) || 0,

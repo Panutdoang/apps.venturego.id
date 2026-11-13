@@ -257,7 +257,7 @@ const buildSectionRows = (
         String(index + 1),
         item.label,
         item.recipient,
-        `Rp${rp(item.amount)}`,
+        item.amount > 0 ? `Rp${rp(item.amount)}` : '',
         keterangan,
       ]),
     )
@@ -284,19 +284,35 @@ const applyCostTable = (
   qardhAmount: number,
   total: number,
 ): string => {
+  const sectionModel =
+    parts.nafaqahRows[0] ?? parts.ujrahRows[0] ?? parts.others[0] ?? parts.qardhRow
+  const sectionRow = (label: string): string | null =>
+    sectionModel ? replaceTableRowCells(sectionModel, ['', label, '', '', '']) : null
   const nafaqah = buildSectionRows(parts.nafaqahRows, nafaqahItems, 'Nafaqah')
   const ujrah = buildSectionRows(parts.ujrahRows, ujrahItems, 'Ujrah')
   const rows: string[] = []
   if (parts.header) rows.push(parts.header)
-  rows.push(...nafaqah)
+  if (nafaqah.length > 0) {
+    const header = sectionRow('NAFAQAH')
+    if (header) rows.push(header)
+    rows.push(...nafaqah)
+  }
   if (parts.subtotalNafaqah) {
     rows.push(fillAmountCell(parts.subtotalNafaqah, nafaqahTotal) ?? parts.subtotalNafaqah)
   }
-  rows.push(...ujrah)
+  if (ujrah.length > 0) {
+    const header = sectionRow('UJRAH')
+    if (header) rows.push(header)
+    rows.push(...ujrah)
+  }
   if (parts.subtotalUjrah) {
     rows.push(fillAmountCell(parts.subtotalUjrah, ujrahTotal) ?? parts.subtotalUjrah)
   }
-  if (parts.qardhRow) rows.push(fillAmountCell(parts.qardhRow, qardhAmount) ?? parts.qardhRow)
+  if (parts.qardhRow && qardhAmount > 0) {
+    const header = sectionRow('UANG SAKU')
+    if (header) rows.push(header)
+    rows.push(fillAmountCell(parts.qardhRow, qardhAmount) ?? parts.qardhRow)
+  }
   if (parts.totalRow) rows.push(fillAmountCell(parts.totalRow, total) ?? parts.totalRow)
   rows.push(...parts.others)
 
@@ -772,8 +788,8 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
 
   const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
   const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
-  const nafaqahTotal = getFinancingLineTotal(nafaqahItems)
-  const ujrahTotal = getFinancingLineTotal(ujrahItems)
+  const nafaqahTotal = readNumber(plan.nafaqahTotal) || getFinancingLineTotal(nafaqahItems)
+  const ujrahTotal = readNumber(plan.ujrahTotal) || getFinancingLineTotal(ujrahItems)
   const qardhAmount = plan.qardhDisbursed === true ? readNumber(plan.qardhAmount) : 0
   const refundTotal = readNumber(plan.refundTotal)
   const total = Math.max(0, nafaqahTotal + ujrahTotal + qardhAmount - refundTotal)

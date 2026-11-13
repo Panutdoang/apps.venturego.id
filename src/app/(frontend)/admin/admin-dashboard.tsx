@@ -890,14 +890,20 @@ function ApplicationDrawerForm({
   const planNafaqah = Number(application.financialPlan?.nafaqahTotal) || 0
   const planUjrah = Number(application.financialPlan?.ujrahTotal) || 0
   const planTotal = Number(application.financialPlan?.totalObligation) || 0
+  const planPrincipalRaw = Number(application.financialPlan?.principal)
+  const planPrincipal =
+    Number.isSafeInteger(planPrincipalRaw) && planPrincipalRaw > 0
+      ? planPrincipalRaw
+      : requestedAmount
+  const planAdminFee = Math.round(planPrincipal * 0.05)
   const planApproved =
     (pricingStatus === 'VERIFIED' || pricingStatus === 'AGREED') && planNafaqah > 0 && planUjrah > 0
   const approvedWakalahRows = [
-    ['Principal (nominal disetujui)', formatRupiah(planNafaqah)],
+    ['Principal (nominal disetujui)', formatRupiah(planPrincipal)],
     ['Rata-rata Ujrah per bulan (12 bulan)', formatRupiah(Math.round(planUjrah / 12))],
     ['Total Ujrah (12 bulan)', formatRupiah(planUjrah)],
-    ['Biaya admin (5%)', formatRupiah(Math.round(planNafaqah * 0.05))],
-    ['Pencairan bersih ke pemohon', formatRupiah(planNafaqah - Math.round(planNafaqah * 0.05))],
+    ['Biaya admin (5%)', formatRupiah(planAdminFee)],
+    ['Pencairan bersih ke pemohon', formatRupiah(planPrincipal - planAdminFee)],
     ['Total nominal kewajiban', formatRupiah(planTotal)],
   ] as const
   const approvedFullCoverRows = [
@@ -1352,7 +1358,7 @@ function ApplicationDrawerForm({
               </h3>
               <p className="mt-1 text-xs leading-5 text-slate-500">
                 {pricingStatus === 'ESTIMATED'
-                  ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru, lalu jadwal angsuran dihitung ulang.'
+                  ? 'Setujui rincian untuk mengunci status biaya menjadi Terverifikasi. Dengan nominal baru, principal, invoice LPK, uang saku, Nafaqah, dan Ujrah dihitung ulang otomatis dari nominal tersebut, lalu jadwal angsuran disusun ulang.'
                   : pricingStatus === 'VERIFIED'
                     ? 'Rincian telah terverifikasi. Tandai Disepakati setelah pemohon menyetujui penawaran terbaru dan referensi akad final terisi pada tab Draft Akad.'
                     : 'Rincian biaya sudah disepakati dan siap diproses ke tahap akad.'}
@@ -1603,6 +1609,7 @@ function ApplicationDrawerForm({
               phone={application.phone}
               issuedAkad={akadMeta}
               key={JSON.stringify(application.financialPlan ?? {})}
+              lpkName={application.lpkName}
               product={application.product}
             />
           </fieldset>
@@ -2162,9 +2169,9 @@ function ApplicationDrawerForm({
                   </svg>
                 </span>
                 <p>
-                  Rincian Nafaqah &amp; Ujrah disesuaikan secara proporsional agar totalnya sama
-                  dengan nominal baru. Jadwal angsuran dihitung ulang dan status biaya menjadi
-                  Terverifikasi.
+                  {application.product === 'DEPARTURE_BRIDGING'
+                    ? 'Principal baru menetapkan ulang invoice LPK, uang saku, Nafaqah, dan Ujrah secara otomatis. Jadwal angsuran disusun ulang dan status biaya menjadi Terverifikasi.'
+                    : 'Rincian Nafaqah & Ujrah disesuaikan secara proporsional agar totalnya sama dengan nominal baru. Jadwal angsuran dihitung ulang dan status biaya menjadi Terverifikasi.'}
                 </p>
               </div>
 

@@ -106,6 +106,96 @@ export function calculateInstallmentSchedule(
 export const getFinancingLineTotal = (lines: FinancingCostLine[]) =>
   lines.reduce((total, line) => total + line.amount, 0)
 
+export const DEPARTURE_ADMIN_FEE_RATE = 0.05
+export const DEPARTURE_UJRAH_RATE_PER_MONTH = 0.024
+export const DEPARTURE_UJRAH_TENOR_MONTHS = 12
+
+export const FIXED_NAFAQAH_LABELS = [
+  'Pendidikan Bahasa Jepang',
+  'Pelatihan Skill Kerja',
+  'Pengurusan dokumen (Paspor, Visa, COE)',
+] as const
+
+export const UJRAH_WAKALAH_LABEL =
+  'Ujrah jasa wakalah bil ujrah (imbalan kuasa pengurusan pembiayaan)'
+export const UJRAH_ADMIN_LABEL = 'Ujrah biaya administrasi pencairan'
+export const QARDH_LABEL = 'Uang saku (qardh hasan)'
+
+export type DepartureFinancials = {
+  valid: boolean
+  principal: number
+  adminFee: number
+  netAmount: number
+  invoice: number
+  pocketMoney: number
+  wakalahUjrah: number
+  nafaqahItems: FinancingCostLine[]
+  ujrahItems: FinancingCostLine[]
+  nafaqahTotal: number
+  ujrahTotal: number
+  qardhAmount: number
+}
+
+export function departureAdminFee(principal: number): number {
+  return Math.round(principal * DEPARTURE_ADMIN_FEE_RATE)
+}
+
+export function departureWakalahUjrah(principal: number): number {
+  return Math.round(principal * DEPARTURE_UJRAH_RATE_PER_MONTH) * DEPARTURE_UJRAH_TENOR_MONTHS
+}
+
+export function deriveDepartureFinancials(options: {
+  principal: number
+  invoice: number
+  lpkName: string
+}): DepartureFinancials {
+  const lpkName = options.lpkName.trim().slice(0, 110) || 'LPK Mitra'
+  const principal =
+    Number.isSafeInteger(options.principal) && options.principal > 0 ? options.principal : 0
+  const invoice =
+    Number.isSafeInteger(options.invoice) && options.invoice >= 0 ? options.invoice : 0
+  const adminFee = departureAdminFee(principal)
+  const netAmount = principal - adminFee
+  const valid = principal > 0 && invoice <= netAmount
+  const pocketMoney = valid ? netAmount - invoice : 0
+  const wakalahUjrah = departureWakalahUjrah(principal)
+  const recipient = `oleh LPK ${lpkName}`.slice(0, 120)
+  const nafaqahItems: FinancingCostLine[] = FIXED_NAFAQAH_LABELS.map((label) => ({
+    label,
+    recipient,
+    amount: 0,
+    evidenceReference: '',
+  }))
+  const ujrahItems: FinancingCostLine[] = [
+    {
+      label: UJRAH_WAKALAH_LABEL,
+      recipient: 'VentureGo VSV',
+      amount: Math.max(0, wakalahUjrah),
+      evidenceReference: '',
+    },
+    {
+      label: UJRAH_ADMIN_LABEL,
+      recipient: 'VentureGo VSV',
+      amount: Math.max(0, adminFee),
+      evidenceReference: '',
+    },
+  ]
+  return {
+    valid,
+    principal,
+    adminFee: Math.max(0, adminFee),
+    netAmount,
+    invoice,
+    pocketMoney,
+    wakalahUjrah: Math.max(0, wakalahUjrah),
+    nafaqahItems,
+    ujrahItems,
+    nafaqahTotal: invoice,
+    ujrahTotal: Math.max(0, wakalahUjrah) + Math.max(0, adminFee),
+    qardhAmount: pocketMoney,
+  }
+}
+
 export function serializeStable(value: unknown): string {
   const normalize = (item: unknown): unknown => {
     if (Array.isArray(item)) return item.map(normalize)

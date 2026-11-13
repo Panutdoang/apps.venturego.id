@@ -149,6 +149,11 @@ function ApplicationTerms({
             ].map(([title, items]) => (
               <div className="rounded-xl border border-slate-100 p-3" key={title as string}>
                 <h4 className="text-xs font-bold text-slate-600">{title as string}</h4>
+                {(items as FinancingCostLine[]).every((line) => !line.amount) && (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Baris tidak dialokasikan per item; totalnya mengikuti invoice LPK terverifikasi.
+                  </p>
+                )}
                 <div className="mt-2 divide-y divide-slate-100">
                   {(items as FinancingCostLine[]).map((line, index) => (
                     <div
@@ -179,7 +184,7 @@ function ApplicationTerms({
                           ))}
                       </div>
                       <span className="shrink-0 font-semibold text-slate-700">
-                        {formatRupiah(line.amount)}
+                        {line.amount > 0 ? formatRupiah(line.amount) : '—'}
                       </span>
                     </div>
                   ))}
