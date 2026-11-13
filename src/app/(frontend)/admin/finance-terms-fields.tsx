@@ -452,8 +452,7 @@ export function FinanceTermsFields({
   const nafaqahTotal = derivedDeparture.nafaqahTotal
   const ujrahTotal = derivedDeparture.ujrahTotal
   const qardhAmount = derivedDeparture.qardhAmount
-  const effectiveQardh = qardhDisbursed ? qardhAmount : 0
-  const total = Math.max(0, nafaqahTotal + ujrahTotal + effectiveQardh - refundTotal)
+  const total = Math.max(0, nafaqahTotal + ujrahTotal + qardhAmount - refundTotal)
   const parsedCount = Number(installmentCount)
   const monthlyEstimate =
     Number.isInteger(parsedCount) && parsedCount > 0 ? Math.floor(total / parsedCount) : null
@@ -543,8 +542,9 @@ export function FinanceTermsFields({
       </section>
       {derivedDeparture.pocketMoney > 0 && !qardhDisbursed && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-          Uang saku qardh sebesar {amountLabel(derivedDeparture.pocketMoney)} ditandai sudah
-          diserahkan ke pemohon sebelum status biaya diverifikasi.
+          Uang saku qardh sebesar {amountLabel(derivedDeparture.pocketMoney)} belum ditandai
+          diserahkan ke pemohon — centang 'Qardh sudah diserahkan ke pemohon' sebelum status biaya
+          diverifikasi.
         </p>
       )}
       <input name="qardhDisbursed" type="hidden" value={String(qardhDisbursed)} />
@@ -666,8 +666,9 @@ export function FinanceTermsFields({
         </div>
         <p className="border-t border-slate-100 bg-slate-50/70 px-5 py-3 text-[11px] leading-5 text-slate-500">
           Total Nafaqah mengikuti invoice LPK; Ujrah dihitung otomatis (wakalah 2,4% × 12 bulan +
-          administrasi 5%); uang saku = dana bersih − invoice. Qardh dihitung pada total hanya bila
-          sudah diserahkan.
+          administrasi 5%); uang saku = dana bersih − invoice. Uang saku selalu ikut dihitung dalam
+          Total Kewajiban; penyerahannya tetap dicatat lewat centang 'Qardh sudah diserahkan ke
+          pemohon'.
         </p>
       </section>
 

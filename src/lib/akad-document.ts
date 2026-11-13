@@ -6,7 +6,9 @@ import { AKAD_TEMPLATE_BASE64 as WAKALAH_TEMPLATE_BASE64 } from './akad-template
 import {
   calculateInstallmentSchedule,
   coerceFinancingLines,
+  deriveDepartureFinancials,
   getFinancingLineTotal,
+  type FinancingCostLine,
 } from './departure-financing'
 import { terbilang } from './terbilang'
 
@@ -453,6 +455,8 @@ type ResolvedValues = {
   // wakalah
   nafaqahTotal: number
   ujrahTotal: number
+  nafaqahItems: FinancingCostLine[]
+  ujrahItems: FinancingCostLine[]
   qardhAmount: number
   total: number
   installmentCount: number
@@ -756,6 +760,8 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
       phone,
       nafaqahTotal,
       ujrahTotal,
+      nafaqahItems: [],
+      ujrahItems: [],
       qardhAmount: 0,
       total: totalObligation,
       installmentCount: tenorMonths,
@@ -786,11 +792,36 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
     }
   }
 
-  const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
-  const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
-  const nafaqahTotal = readNumber(plan.nafaqahTotal) || getFinancingLineTotal(nafaqahItems)
-  const ujrahTotal = readNumber(plan.ujrahTotal) || getFinancingLineTotal(ujrahItems)
-  const qardhAmount = plan.qardhDisbursed === true ? readNumber(plan.qardhAmount) : 0
+  const departureDetails = (application.departureDetails ?? {}) as Record<string, unknown>
+  const storedPrincipal = readNumber(plan.principal)
+  const principal =
+    Number.isSafeInteger(storedPrincipal) && storedPrincipal > 0
+      ? storedPrincipal
+      : readNumber(departureDetails.requestedFinancingAmount)
+  const invoice =
+    readNumber(plan.hppLpkInvoiceAmount) || readNumber(departureDetails.outstandingLPKAmount)
+  const derived = deriveDepartureFinancials({
+    principal,
+    invoice,
+    lpkName: readText(application.lpkName),
+  })
+  const nafaqahItems = derived.valid
+    ? derived.nafaqahItems
+    : (coerceFinancingLines(plan.nafaqahItems) ?? [])
+  const ujrahItems = derived.valid
+    ? derived.ujrahItems
+    : (coerceFinancingLines(plan.ujrahItems) ?? [])
+  const nafaqahTotal = derived.valid
+    ? derived.nafaqahTotal
+    : readNumber(plan.nafaqahTotal) || getFinancingLineTotal(nafaqahItems)
+  const ujrahTotal = derived.valid
+    ? derived.ujrahTotal
+    : readNumber(plan.ujrahTotal) || getFinancingLineTotal(ujrahItems)
+  const qardhAmount = derived.valid
+    ? derived.qardhAmount
+    : plan.qardhDisbursed === true
+      ? readNumber(plan.qardhAmount)
+      : 0
   const refundTotal = readNumber(plan.refundTotal)
   const total = Math.max(0, nafaqahTotal + ujrahTotal + qardhAmount - refundTotal)
   const countRaw = readNumber(plan.installmentCount)
@@ -808,6 +839,8 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
     phone,
     nafaqahTotal,
     ujrahTotal,
+    nafaqahItems,
+    ujrahItems,
     qardhAmount,
     total,
     installmentCount,
@@ -823,8 +856,10 @@ const resolveValues = (application: ApplicationData, issuedAt: Date): ResolvedVa
       ? String(readNumber(plan.wakalahSkillMonths))
       : null,
     lpkMitra,
-    hppInvoiceAmount: readNumber(plan.hppLpkInvoiceAmount),
-    hppPocketMoneyAmount: readNumber(plan.hppPocketMoneyAmount),
+    hppInvoiceAmount: derived.valid ? derived.invoice : readNumber(plan.hppLpkInvoiceAmount),
+    hppPocketMoneyAmount: derived.valid
+      ? derived.pocketMoney
+      : readNumber(plan.hppPocketMoneyAmount),
     languageAllowanceMonthly: readNumber(plan.languageAllowanceMonthly),
     skillAllowanceMonthly: readNumber(plan.skillAllowanceMonthly),
     departureAllowanceAmount: readNumber(plan.departureAllowanceAmount),
@@ -889,9 +924,8 @@ export const buildAkadDocument = async (options: {
     assertTokenCount(xml, '[nominal]', 6)
     assertTokenCount(xml, '[jumlah]', 6)
 
-    const plan = (application.financialPlan ?? {}) as Record<string, unknown>
-    const nafaqahItems = coerceFinancingLines(plan.nafaqahItems) ?? []
-    const ujrahItems = coerceFinancingLines(plan.ujrahItems) ?? []
+    const nafaqahItems = values.nafaqahItems
+    const ujrahItems = values.ujrahItems
     const ticketIncluded = nafaqahItems.some((item) => /tiket/i.test(item.label))
     if (!ticketIncluded) {
       xml = updateParagraphContaining(xml, 'Biaya tiket dan keperluan keberangkatan', null)
